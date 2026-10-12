@@ -1,0 +1,147 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio cache/options
+.vs/
+.vscode/
+
+# Visual Studio user-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results directory
+artifacts/
+
+# Rider IDE
+.idea/
+*.sln.iml
+*.swp
+*.sln.iml
+
+# Local vs Settings
+.vs/local.ruleset
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+
+# NuGet Package Manager
+.nuget/
+
+# Package restore directory
+packages/
+
+# dotnet add package adds to .gitignore
+.dotnetcli-nuget-helper/
+
+# Test Results
+TestResults/
+*.trx
+*.coverage
+
+# User Secrets
+**/appsettings.local.json
+secrets.json
+user-secrets.json
+
+# Environment specific configuration
+.env
+.env.local
+.env.*.local
+
+# Application Insights
+ApplicationInsights.config
+bin/Debug/net*/**/ApplicationInsights.config
+
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Coverage Report
+coverage/
+opencover/
+
+# Fody
+FodyWeavers.xsd
+
+# Node (for Angular frontend if present)
+node_modules/
+dist/
+npm-debug.log
+yarn-error.log
+
+# Architecture Test Results
+ArchitectureTestResults/
+
+# Local Azure Storage Emulator data
+AzureStorageEmulator/
+
+# Rider
+.idea_modules/
+
+# Compiled Python
+*.pyc
+__pycache__/
+
+# VS Code settings
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# LaunchSettings.json override
+Properties/launchSettings.json.override
+
+# Additional OS files
+*.tmp
+*.temp
+~*
+*~
+
+# Project Lock File
+project.lock.json
+project.assets.json
+
+# Generated files
+.generated/
