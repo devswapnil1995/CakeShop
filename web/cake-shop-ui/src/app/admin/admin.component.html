@@ -303,17 +303,83 @@
         </div>
 
 
+
         <div *ngIf="activeTab === 'orders'" class="panel-layout">
           <div class="panel-heading">
             <div>
               <span class="eyebrow">CUSTOMER ORDERS</span>
               <h2>Orders &amp; celebrations</h2>
-              <p class="muted">Review customer requests and manage each order's progress.</p>
+              <p class="muted">
+                Search orders, filter requests and manage their progress.
+              </p>
             </div>
 
-            <button class="text-btn" type="button" (click)="loadOrders()">
-              ↻ Refresh orders
+            <button class="text-btn" type="button" (click)="loadOrders()" [disabled]="loadingOrders">
+              {{ loadingOrders ? 'Refreshing…' : '↻ Refresh orders' }}
             </button>
+          </div>
+
+          <!-- ORDER SEARCH AND FILTERS -->
+          <div class="editor-card order-filters">
+            <h3>Find an order</h3>
+
+            <div class="form-grid">
+              <div class="field span-two">
+                <label for="orderSearch">Search orders</label>
+                <input id="orderSearch" name="orderSearch" type="search" [(ngModel)]="orderSearch"
+                  (ngModelChange)="currentOrderPage = 1" placeholder="Order number, customer, phone or cake name" />
+              </div>
+
+              <div class="field">
+                <label for="orderStatusFilter">Order status</label>
+                <select id="orderStatusFilter" name="orderStatusFilter" [(ngModel)]="orderStatusFilter"
+                  (ngModelChange)="currentOrderPage = 1">
+                  <option value="All">All statuses</option>
+                  <option *ngFor="let status of orderStatuses" [value]="status">
+                    {{ status }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="orderDateFilter">Preferred date</label>
+                <input id="orderDateFilter" name="orderDateFilter" type="date" [(ngModel)]="orderDateFilter"
+                  (ngModelChange)="currentOrderPage = 1" />
+              </div>
+            </div>
+
+
+            <div class="order-list-controls">
+              <div class="order-filter-field">
+                <label for="order-sort">Sort orders</label>
+                <select id="order-sort" name="orderSort" [(ngModel)]="orderSort" (ngModelChange)="onOrderSortChange()">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="preferredDate">Preferred date — earliest first</option>
+                </select>
+              </div>
+
+              <div class="order-filter-field">
+                <label for="orders-per-page">Orders per page</label>
+                <select id="orders-per-page" name="ordersPerPage" [(ngModel)]="ordersPerPage"
+                  (ngModelChange)="onOrdersPerPageChange()">
+                  <option *ngFor="let size of orderPageSizes" [ngValue]="size">
+                    {{ size }} orders
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <span class="form-hint">
+                Showing {{ firstVisibleOrder }}–{{ lastVisibleOrder }}
+                of {{ sortedOrders.length }} matching orders
+              </span>
+
+              <button class="quiet-btn" type="button" (click)="clearOrderFilters()">
+                Clear filters
+              </button>
+            </div>
           </div>
 
           <div *ngIf="loadingOrders" class="empty-state">
@@ -324,45 +390,261 @@
             No orders found yet. New customer orders will appear here.
           </div>
 
-          <article class="category-row" *ngFor="let order of orders">
+          <div *ngIf="!loadingOrders && orders.length > 0 && !filteredOrders.length" class="empty-state">
+            No orders match your search or filters.
+            <button class="text-btn" type="button" (click)="clearOrderFilters()">
+              Clear filters
+            </button>
+          </div>
+
+          <article class="category-row" *ngFor="let order of paginatedOrders">
             <span class="category-mark">♡</span>
 
             <div class="category-info">
               <strong>{{ order.cakeName }}</strong>
               <small>{{ order.orderNumber }}</small>
+
               <small>
                 {{ order.customerName }} · {{ order.customerPhone }}
               </small>
+
               <small>
                 Quantity: {{ order.quantity }} · Size: {{ order.cakeSize }}
               </small>
+
+              <small>
+                Unit price:
+                {{ order.unitPrice == null
+                ? '—'
+                : (order.unitPrice | currency:'INR':'symbol':'1.2-2':'en-IN') }}
+              </small>
+
+              <strong class="order-total">
+                Total:
+                {{ order.totalAmount == null
+                ? '—'
+                : (order.totalAmount | currency:'INR':'symbol':'1.2-2':'en-IN') }}
+              </strong>
+
               <small *ngIf="order.preferredDate">
                 Preferred date: {{ order.preferredDate | date:'mediumDate' }}
               </small>
+
               <small *ngIf="order.customization">
                 Message: {{ order.customization }}
               </small>
-              <small>Received: {{ order.createdUtc | date:'medium' }}</small>
-            </div>
 
-            <div class="order-status-control">
-              <span class="status-pill">{{ order.status }}</span>
-
-              <label [for]="'order-status-' + order.id">Update status</label>
-              <select [id]="'order-status-' + order.id" [ngModel]="order.status"
-                (ngModelChange)="updateOrderStatus(order, $event)" [name]="'order-status-' + order.id"
-                [disabled]="updatingOrderIds.has(order.id)">
-                <option *ngFor="let status of getAvailableOrderStatuses(order)" [value]="status">
-                  {{ status }}
-                </option>
-              </select>
-
-              <small *ngIf="updatingOrderIds.has(order.id)">
-                Updating…
+              <small>
+                Received: {{ order.createdUtc | date:'medium' }}
               </small>
             </div>
+
+
+            <div class="order-status-control">
+              <button class="quiet-btn" type="button" (click)="viewOrderDetails(order)">
+                View details
+              </button>
+
+              <span class="status-pill" [ngClass]="{
+        'order-status-pending': order.status === 'Pending',
+        'order-status-confirmed': order.status === 'Confirmed',
+        'order-status-preparing': order.status === 'Preparing',
+        'order-status-ready': order.status === 'Ready',
+        'order-status-completed': order.status === 'Completed',
+        'order-status-cancelled': order.status === 'Cancelled'
+      }">
+                {{ order.status }}
+              </span>
+
+              <ng-container *ngIf="order.status !== 'Completed' && order.status !== 'Cancelled'; else terminalOrder">
+
+                <label [for]="'order-status-' + order.id">
+                  Update status
+                </label>
+
+                <select [id]="'order-status-' + order.id" [ngModel]="order.status"
+                  (ngModelChange)="updateOrderStatus(order, $event)" [name]="'order-status-' + order.id"
+                  [disabled]="updatingOrderIds.has(order.id)">
+
+                  <option *ngFor="let status of getAvailableOrderStatuses(order)" [value]="status">
+                    {{ status }}
+                  </option>
+                </select>
+
+                <small *ngIf="updatingOrderIds.has(order.id)">
+                  Updating…
+                </small>
+              </ng-container>
+
+              <ng-template #terminalOrder>
+                <small class="terminal-order-note">
+                  {{ order.status === 'Completed'
+                  ? 'This order has been completed.'
+                  : 'This order has been cancelled.' }}
+                </small>
+              </ng-template>
+            </div>
+
           </article>
+
+
+          <div class="order-pagination" *ngIf="!loadingOrders && sortedOrders.length > 0">
+
+            <button class="quiet-btn" type="button" [disabled]="currentOrderPage <= 1"
+              (click)="goToOrderPage(currentOrderPage - 1)">
+              Previous
+            </button>
+
+            <div class="order-page-numbers">
+              <button *ngFor="let page of orderPageNumbers" class="quiet-btn" type="button"
+                [class.active-page]="page === currentOrderPage"
+                [attr.aria-current]="page === currentOrderPage ? 'page' : null" (click)="goToOrderPage(page)">
+                {{ page }}
+              </button>
+            </div>
+
+            <button class="quiet-btn" type="button" [disabled]="currentOrderPage >= totalOrderPages"
+              (click)="goToOrderPage(currentOrderPage + 1)">
+              Next
+            </button>
+          </div>
+
         </div>
+
+
+        <!-- ORDER DETAILS MODAL -->
+        <div *ngIf="selectedOrder as order" class="order-modal-backdrop" (click)="closeOrderDetails()">
+
+          <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title"
+            (click)="$event.stopPropagation()">
+
+            <div class="order-modal-header">
+              <div>
+                <span class="eyebrow">ORDER DETAILS</span>
+                <h2 id="order-modal-title">{{ order.orderNumber }}</h2>
+                <p class="muted">Complete order and customer information</p>
+              </div>
+
+              <button class="quiet-btn" type="button" aria-label="Close order details" (click)="closeOrderDetails()">
+                ✕ Close
+              </button>
+            </div>
+
+            <div class="order-detail-status">
+              <span class="status-pill">{{ order.status }}</span>
+              <span class="muted">Order received</span>
+              <strong>{{ order.createdUtc | date:'medium' }}</strong>
+            </div>
+
+            <div class="order-detail-grid">
+              <div class="order-detail-item">
+                <small>CUSTOMER NAME</small>
+                <strong>{{ order.customerName }}</strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>PHONE NUMBER</small>
+                <strong>{{ order.customerPhone }}</strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>CAKE</small>
+                <strong>{{ order.cakeName }}</strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>SIZE</small>
+                <strong>{{ order.cakeSize }}</strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>QUANTITY</small>
+                <strong>{{ order.quantity }}</strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>PREFERRED DATE</small>
+                <strong>
+                  {{ order.preferredDate
+                  ? (order.preferredDate | date:'mediumDate')
+                  : 'Not specified' }}
+                </strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>UNIT PRICE</small>
+                <strong>
+                  {{ order.unitPrice == null
+                  ? 'Not recorded'
+                  : (order.unitPrice | currency:'INR':'symbol':'1.2-2':'en-IN') }}
+                </strong>
+              </div>
+
+              <div class="order-detail-item">
+                <small>ORDER TOTAL</small>
+                <strong class="order-total">
+                  {{ order.totalAmount == null
+                  ? 'Not recorded'
+                  : (order.totalAmount | currency:'INR':'symbol':'1.2-2':'en-IN') }}
+                </strong>
+              </div>
+
+              <div class="order-detail-item order-detail-full">
+                <small>CUSTOMIZATION / MESSAGE</small>
+                <p>{{ order.customization || 'No customization provided.' }}</p>
+              </div>
+            </div>
+
+
+            <!-- ORDER STATUS HISTORY TIMELINE -->
+            <section class="order-history">
+              <div class="list-heading">
+                <h3>Order status history</h3>
+              </div>
+
+              <div *ngIf="historyLoading" class="empty-state">
+                Loading status history…
+              </div>
+
+              <div *ngIf="historyError" class="alert error">
+                {{ historyError }}
+              </div>
+
+              <div *ngIf="!historyLoading && !historyError && !orderStatusHistory.length" class="empty-state">
+                No status changes have been recorded yet.
+              </div>
+
+              <div *ngIf="!historyLoading && orderStatusHistory.length" class="history-timeline">
+
+                <article class="history-entry" *ngFor="let item of orderStatusHistory">
+
+                  <span class="history-marker">✓</span>
+
+                  <div class="history-content">
+                    <strong>
+                      {{ item.previousStatus }} → {{ item.newStatus }}
+                    </strong>
+
+                    <small>
+                      {{ item.changedUtc | date:'medium' }}
+                    </small>
+
+                    <small *ngIf="item.changedBy">
+                      Changed by: {{ item.changedBy }}
+                    </small>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <div class="order-modal-footer">
+              <button class="primary-btn" type="button" (click)="closeOrderDetails()">
+                Done
+              </button>
+            </div>
+          </section>
+        </div>
+
 
       </section>
     </div>

@@ -5,7 +5,7 @@ import { finalize } from 'rxjs';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
   CustomerOrderStatus,
-  AdminDashboardSummary
+  AdminDashboardSummary, OrderStatusHistory
 } from './admin-api.service';
 
 @Component({
@@ -39,6 +39,12 @@ export class AdminComponent implements OnInit {
   loadingOrders = false;
   updatingOrderIds = new Set<string>();
 
+  orderSearch = '';
+  orderStatusFilter: CustomerOrderStatus | 'All' = 'All';
+  orderDateFilter = '';
+
+  selectedOrder: AdminOrder | null = null;
+
   readonly orderStatuses: CustomerOrderStatus[] = [
     'Pending',
     'Confirmed',
@@ -47,6 +53,18 @@ export class AdminComponent implements OnInit {
     'Completed',
     'Cancelled'
   ];
+
+  orderStatusHistory: OrderStatusHistory[] = [];
+  historyLoading = false;
+  historyError = '';
+
+
+  orderSort: 'newest' | 'oldest' | 'preferredDate' = 'newest';
+
+  ordersPerPage = 10;
+  currentOrderPage = 1;
+
+  readonly orderPageSizes = [5, 10, 20, 50];
 
   get featuredCount(): number { return this.products.filter(product => product.isFeatured).length; }
 
@@ -63,7 +81,19 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  logout(): void { this.api.clearToken(); this.loggedIn = false; this.products = []; this.categories = []; this.resetProduct(); this.error = ''; }
+  logout(): void {
+    this.api.clearToken();
+    this.loggedIn = false;
+    this.products = [];
+    this.categories = [];
+    this.orders = [];
+    this.selectedOrder = null;
+    this.resetProduct();
+    this.error = '';
+    this.orderStatusHistory = [];
+    this.historyLoading = false;
+    this.historyError = '';
+  }
 
   loadData(): void {
     this.loading = true; this.error = '';
@@ -96,7 +126,13 @@ export class AdminComponent implements OnInit {
     this.api.getOrders()
       .pipe(finalize(() => this.loadingOrders = false))
       .subscribe({
-        next: orders => this.orders = orders,
+        next: orders => {
+          this.orders = orders;
+
+          if (this.currentOrderPage > this.totalOrderPages) {
+            this.currentOrderPage = this.totalOrderPages;
+          }
+        },
         error: err => this.handleApiError(err)
       });
   }
@@ -127,9 +163,27 @@ export class AdminComponent implements OnInit {
     return value == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value);
   }
 
+
+
   updateOrderStatus(order: AdminOrder, status: CustomerOrderStatus): void {
     if (this.updatingOrderIds.has(order.id) || order.status === status) {
       return;
+    }
+
+    if (status === 'Cancelled') {
+      if (!window.confirm(
+        `Are you sure you want to cancel order ${order.orderNumber}?`
+      )) {
+        return;
+      }
+    }
+
+    if (status === 'Completed') {
+      if (!window.confirm(
+        `Mark order ${order.orderNumber} as completed?`
+      )) {
+        return;
+      }
     }
 
     this.error = '';
@@ -141,11 +195,26 @@ export class AdminComponent implements OnInit {
       .subscribe({
         next: () => {
           this.notice = `Order ${order.orderNumber} updated to ${status}.`;
+
+          // Refresh server-backed order and dashboard data.
           this.loadOrders();
+          this.loadDashboard();
+
+          // Refresh the timeline if this order's details are open.
+          if (this.selectedOrder?.id === order.id) {
+            this.viewOrderDetails(order);
+          }
         },
-        error: err => this.handleApiError(err)
+        error: err => {
+          this.handleApiError(err);
+
+          // Recover the displayed state from the server.
+          this.loadOrders();
+          this.loadDashboard();
+        }
       });
   }
+
 
   editProduct(product: AdminProduct): void {
     this.editingProductId = product.id;
@@ -211,6 +280,141 @@ export class AdminComponent implements OnInit {
 
     // Keep the current status visible, but offer only valid next steps.
     return [order.status, ...transitions[order.status]];
+  }
+
+
+  get filteredOrders(): AdminOrder[] {
+    const search = this.orderSearch.trim().toLowerCase();
+
+    return this.orders.filter(order => {
+      const matchesSearch =
+        !search ||
+        order.orderNumber.toLowerCase().includes(search) ||
+        order.customerName.toLowerCase().includes(search) ||
+        order.customerPhone.toLowerCase().includes(search) ||
+        order.cakeName.toLowerCase().includes(search);
+
+      const matchesStatus =
+        this.orderStatusFilter === 'All' ||
+        order.status === this.orderStatusFilter;
+
+      const orderDate = order.preferredDate
+        ? order.preferredDate.substring(0, 10)
+        : '';
+
+      const matchesDate =
+        !this.orderDateFilter ||
+        orderDate === this.orderDateFilter;
+
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }
+
+  get sortedOrders(): AdminOrder[] {
+    const result = [...this.filteredOrders];
+
+    result.sort((a, b) => {
+      if (this.orderSort === 'preferredDate') {
+        const dateA = a.preferredDate
+          ? new Date(a.preferredDate).getTime()
+          : Number.MAX_SAFE_INTEGER;
+
+        const dateB = b.preferredDate
+          ? new Date(b.preferredDate).getTime()
+          : Number.MAX_SAFE_INTEGER;
+
+        return dateA - dateB;
+      }
+
+      const dateA = new Date(a.createdUtc).getTime();
+      const dateB = new Date(b.createdUtc).getTime();
+
+      return this.orderSort === 'newest'
+        ? dateB - dateA
+        : dateA - dateB;
+    });
+
+    return result;
+  }
+
+  get totalOrderPages(): number {
+    return Math.max(1, Math.ceil(this.sortedOrders.length / this.ordersPerPage));
+  }
+
+  get paginatedOrders(): AdminOrder[] {
+    const start = (this.currentOrderPage - 1) * this.ordersPerPage;
+
+    return this.sortedOrders.slice(start, start + this.ordersPerPage);
+  }
+
+  get orderPageNumbers(): number[] {
+    return Array.from(
+      { length: this.totalOrderPages },
+      (_, index) => index + 1
+    );
+  }
+
+  get firstVisibleOrder(): number {
+    return this.sortedOrders.length === 0
+      ? 0
+      : (this.currentOrderPage - 1) * this.ordersPerPage + 1;
+  }
+
+  get lastVisibleOrder(): number {
+    return Math.min(
+      this.currentOrderPage * this.ordersPerPage,
+      this.sortedOrders.length
+    );
+  }
+
+  goToOrderPage(page: number): void {
+    if (page < 1 || page > this.totalOrderPages) {
+      return;
+    }
+
+    this.currentOrderPage = page;
+  }
+
+  onOrderSortChange(): void {
+    this.currentOrderPage = 1;
+  }
+
+  onOrdersPerPageChange(): void {
+    this.currentOrderPage = 1;
+  }
+
+  clearOrderFilters(): void {
+    this.orderSearch = '';
+    this.orderStatusFilter = 'All';
+    this.orderDateFilter = '';
+    this.orderSort = 'newest';
+    this.ordersPerPage = 10;
+    this.currentOrderPage = 1;
+  }
+  viewOrderDetails(order: AdminOrder): void {
+    this.selectedOrder = order;
+    this.orderStatusHistory = [];
+    this.historyError = '';
+    this.historyLoading = true;
+
+    this.api.getOrderStatusHistory(order.id)
+      .pipe(finalize(() => this.historyLoading = false))
+      .subscribe({
+        next: history => {
+          this.orderStatusHistory = history;
+        },
+        error: err => {
+          this.historyError =
+            err.error?.message ?? 'Unable to load order status history.';
+        }
+      });
+  }
+
+  closeOrderDetails(): void {
+    this.selectedOrder = null;
+    this.orderStatusHistory = [];
+    this.historyLoading = false;
+    this.historyError = '';
   }
 
 }

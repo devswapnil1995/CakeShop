@@ -864,3 +864,388 @@
         margin-left: 48px;
     }
 }
+
+
+/* Phase 5.2: Order details modal */
+.order-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgb(36 25 20 / 55%);
+    overflow-y: auto;
+}
+
+.order-modal {
+    width: min(720px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 28px;
+    border: 1px solid #eadfd5;
+    border-radius: 20px;
+    background: #fffaf5;
+    box-shadow: 0 24px 80px rgb(36 25 20 / 25%);
+}
+
+.order-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eadfd5;
+}
+
+.order-modal-header h2 {
+    margin: 8px 0;
+    overflow-wrap: anywhere;
+}
+
+.order-detail-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.order-detail-item {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #eee2d7;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.order-detail-item small {
+    display: block;
+    margin-bottom: 8px;
+    color: #806b5d;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+}
+
+.order-detail-item strong,
+.order-detail-item p {
+    overflow-wrap: anywhere;
+}
+
+.order-detail-item p {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.order-detail-full {
+    grid-column: 1 / -1;
+}
+
+.order-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+@media (max-width: 560px) {
+    .order-modal-backdrop {
+        padding: 10px;
+        align-items: flex-start;
+    }
+
+    .order-modal {
+        max-height: calc(100vh - 20px);
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .order-modal-header {
+        flex-direction: column;
+    }
+
+    .order-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .order-detail-full {
+        grid-column: auto;
+    }
+}
+
+/* Order status history timeline */
+.order-history {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #eadfd5;
+}
+
+.order-history .list-heading {
+    margin-bottom: 16px;
+}
+
+.history-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.history-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 0 0 20px;
+    position: relative;
+}
+
+.history-entry:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 1px;
+    background: #eadfd5;
+}
+
+.history-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f2e5d8;
+    color: #704a35;
+    font-weight: 700;
+    z-index: 1;
+}
+
+.history-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.history-content strong {
+    overflow-wrap: anywhere;
+}
+
+.history-content small {
+    color: #806b5d;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+    .history-entry {
+        gap: 10px;
+    }
+}
+
+
+/* Phase 5.2 — Order sorting and pagination */
+
+.order-list-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.order-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.order-filter-field label {
+    font-size: 0.8rem;
+    color: #806b5d;
+}
+
+.order-filter-field select {
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid #eadfd5;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.order-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 24px 0;
+}
+
+.order-page-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.order-pagination button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.order-pagination .active-page {
+    background: #6b3e2e;
+    color: #fff;
+    border-color: #6b3e2e;
+}
+
+@media (max-width: 560px) {
+    .order-list-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .order-filter-field {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .order-pagination {
+        gap: 8px;
+    }
+}
+
+
+/* Phase 5.3 — Responsive order management polish */
+
+/* Prevent long customer and order details from widening the layout */
+.category-row {
+    min-width: 0;
+}
+
+.category-info {
+    overflow-wrap: anywhere;
+}
+
+.order-status-control {
+    flex: 0 1 220px;
+    min-width: 180px;
+}
+
+/* Tablet and mobile */
+@media (max-width: 800px) {
+    .order-status-control {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+        padding-left: 54px;
+    }
+
+    .order-status-control select {
+        max-width: 100%;
+    }
+
+    .order-list-controls {
+        gap: 12px;
+    }
+}
+
+/* Small phones */
+@media (max-width: 500px) {
+    .dashboard {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .content-panel {
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .category-row {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .category-mark {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .category-info {
+        flex: 1 1 0;
+        width: 0;
+        font-size: 13px;
+    }
+
+    .order-status-control {
+        padding-left: 46px;
+    }
+
+    .order-status-control .quiet-btn {
+        max-width: 100%;
+    }
+
+    .order-pagination {
+        width: 100%;
+    }
+
+    .order-page-numbers {
+        max-width: 100%;
+    }
+
+    .order-pagination button {
+        min-height: 40px;
+    }
+}
+
+
+/* Phase 5.3 — Step 2: Order status colors */
+
+.status-pill.order-status-pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffe69c;
+}
+
+.status-pill.order-status-confirmed {
+    background: #cfe2ff;
+    color: #084298;
+    border: 1px solid #9ec5fe;
+}
+
+.status-pill.order-status-preparing {
+    background: #f3e5f5;
+    color: #6a1b9a;
+    border: 1px solid #e1bee7;
+}
+
+.status-pill.order-status-ready {
+    background: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #a3cfbb;
+}
+
+.status-pill.order-status-completed {
+    background: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #a3cfbb;
+}
+
+.status-pill.order-status-cancelled {
+    background: #f8d7da;
+    color: #842029;
+    border: 1px solid #f1aeb5;
+}

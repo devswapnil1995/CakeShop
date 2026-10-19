@@ -61,6 +61,14 @@ export interface AdminOrder {
   updatedUtc: string;
 }
 
+export interface OrderStatusHistory {
+  id: string;
+  orderId: string;
+  previousStatus: CustomerOrderStatus;
+  newStatus: CustomerOrderStatus;
+  changedUtc: string;
+  changedBy: string | null;
+}
 
 export type CustomerOrderStatus =
   | 'Pending'
@@ -71,28 +79,28 @@ export type CustomerOrderStatus =
   | 'Cancelled';
 
 export interface DashboardOrder {
-  id: string; 
+  id: string;
   orderNumber: string;
-  customerName: string; 
+  customerName: string;
   cakeName: string;
   quantity: number;
-  cakeSize: string; 
-  preferredDate: string | null; 
+  cakeSize: string;
+  preferredDate: string | null;
   status: string;
-  unitPrice: number | null; 
+  unitPrice: number | null;
   totalAmount: number | null;
 }
 
 export interface AdminDashboardSummary {
-  localDate: string; 
-  createdToday: number; 
+  localDate: string;
+  createdToday: number;
   dueToday: number;
-  pendingConfirmation: number; 
-  preparing: number; 
+  pendingConfirmation: number;
+  preparing: number;
   ready: number;
-  completedRevenueToday: number | null; 
+  completedRevenueToday: number | null;
   revenueAvailable: boolean;
-  completedOrdersMissingPrice: number; 
+  completedOrdersMissingPrice: number;
   dueOrders: DashboardOrder[];
   upcomingOrders: DashboardOrder[];
 }
@@ -143,4 +151,12 @@ export class AdminApiService {
 
   getDashboardSummary(): Observable<AdminDashboardSummary> { return this.http.get<AdminDashboardSummary>(`${this.base}/dashboard/summary`, this.options); }
 
+  getOrderStatusHistory(
+    id: string
+  ): Observable<OrderStatusHistory[]> {
+    return this.http.get<OrderStatusHistory[]>(
+      `${this.base}/orders/${id}/history`,
+      this.options
+    );
+  }
 }

@@ -3,7 +3,6 @@ using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
 using CakeShop.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +46,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         NameClaimType = ClaimTypes.Name, RoleClaimType = ClaimTypes.Role
     };
 });
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -79,6 +79,7 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.MapGet("/api/v1/shop", async (CakeShopDbContext db, CancellationToken ct) =>
 {
     var shop = await db.Clients.AsNoTracking().Where(x => x.Id == defaultClientId && x.IsActive)
@@ -273,6 +274,7 @@ adminApi.MapGet("/orders", async (
 .WithName("GetAdminOrders")
 .WithTags("Admin Orders");
 
+
 adminApi.MapPut("/orders/{id:guid}/status", async (
     Guid id,
     ClaimsPrincipal user,
@@ -301,7 +303,6 @@ adminApi.MapPut("/orders/{id:guid}/status", async (
     if (order is null)
         return Results.NotFound(new { message = "Order not found." });
 
-
     if (!order.CanTransitionTo(status))
     {
         return Results.Conflict(new
@@ -310,19 +311,86 @@ adminApi.MapPut("/orders/{id:guid}/status", async (
         });
     }
 
+    // Capture the old status before updating the order.
+    var previousStatus = order.Status;
 
+    // Read the authenticated user's identifier when available.
+    var changedBy =
+        user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? user.FindFirst("sub")?.Value
+        ?? user.FindFirst(ClaimTypes.Email)?.Value
+        ?? user.FindFirst("email")?.Value;
+
+    // Update the order and create its history record together.
     order.UpdateStatus(status);
+
+    var history = new OrderStatusHistory(
+        id: Guid.NewGuid(),
+        clientId: clientId,
+        orderId: order.Id,
+        previousStatus: previousStatus,
+        newStatus: order.Status,
+        changedBy: changedBy);
+
+    db.OrderStatusHistories.Add(history);
+
+    // Both changes are saved in the same database transaction.
     await db.SaveChangesAsync(ct);
 
     return Results.Ok(new
     {
         order.Id,
         order.OrderNumber,
+        PreviousStatus = previousStatus.ToString(),
         Status = order.Status.ToString(),
-        order.UpdatedUtc
+        order.UpdatedUtc,
+        HistoryId = history.Id,
+        history.ChangedUtc,
+        history.ChangedBy
     });
 })
 .WithName("UpdateAdminOrderStatus")
+.WithTags("Admin Orders");
+
+
+adminApi.MapGet("/orders/{id:guid}/history", async (
+    Guid id,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    // Confirm the order belongs to the authenticated tenant.
+    var orderExists = await db.CustomerOrders
+        .AsNoTracking()
+        .AnyAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (!orderExists)
+        return Results.NotFound(new { message = "Order not found." });
+
+    var history = await db.OrderStatusHistories
+        .AsNoTracking()
+        .Where(x => x.OrderId == id && x.ClientId == clientId)
+        .OrderBy(x => x.ChangedUtc)
+        .ThenBy(x => x.Id)
+        .Select(x => new
+        {
+            x.Id,
+            x.OrderId,
+            PreviousStatus = x.PreviousStatus.ToString(),
+            NewStatus = x.NewStatus.ToString(),
+            x.ChangedUtc,
+            x.ChangedBy
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(history);
+})
+.WithName("GetAdminOrderStatusHistory")
 .WithTags("Admin Orders");
 
 

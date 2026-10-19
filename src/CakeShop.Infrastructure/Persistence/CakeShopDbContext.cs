@@ -13,7 +13,8 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
-
+    public DbSet<OrderStatusHistory> OrderStatusHistories
+    => Set<OrderStatusHistory>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -94,6 +95,46 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.HasOne<CakeShop.Domain.Tenants.ClientMaster>()
                 .WithMany()
                 .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasAlternateKey(x => new { x.ClientId, x.Id });
+        });
+
+        modelBuilder.Entity<OrderStatusHistory>(e =>
+        {
+            e.ToTable("OrderStatusHistories");
+
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.PreviousStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.NewStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.ChangedUtc)
+                .IsRequired();
+
+            e.Property(x => x.ChangedBy)
+                .HasMaxLength(254);
+
+            // Efficiently retrieve an order's history in chronological order.
+            e.HasIndex(x => new
+            {
+                x.ClientId,
+                x.OrderId,
+                x.ChangedUtc
+            });
+
+            // Ensure the order belongs to the same tenant.
+            e.HasOne<CustomerOrder>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.OrderId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -232,6 +232,42 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("CustomerOrders", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Orders.OrderStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ChangedBy")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTime>("ChangedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId", "OrderId", "ChangedUtc");
+
+                    b.ToTable("OrderStatusHistories", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Tenants.ClientMaster", b =>
                 {
                     b.Property<Guid>("Id")
@@ -301,6 +337,16 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
                         .WithMany()
                         .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Orders.OrderStatusHistory", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Orders.CustomerOrder", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId", "OrderId")
+                        .HasPrincipalKey("ClientId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
