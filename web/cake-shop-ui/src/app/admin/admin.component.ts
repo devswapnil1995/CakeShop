@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
-  CustomerOrderStatus
+  CustomerOrderStatus,
+  AdminDashboardSummary
 } from './admin-api.service';
 
 @Component({
@@ -19,7 +20,9 @@ export class AdminComponent implements OnInit {
   loggedIn = false;
   loading = false;
   saving = false;
-  activeTab: 'products' | 'categories' | 'orders' = 'products';
+  activeTab: 'dashboard' | 'products' | 'categories' | 'orders' = 'dashboard';
+  dashboard: AdminDashboardSummary | null = null;
+  dashboardLoading = false;
   error = '';
   notice = '';
   email = '';
@@ -49,13 +52,13 @@ export class AdminComponent implements OnInit {
 
   ngOnInit(): void {
     this.loggedIn = this.api.isLoggedIn;
-    if (this.loggedIn) this.loadData();
+    if (this.loggedIn) { this.loadData(); this.loadDashboard(); }
   }
 
   login(): void {
     this.error = ''; this.notice = ''; this.loading = true;
     this.api.login(this.email.trim(), this.password).pipe(finalize(() => this.loading = false)).subscribe({
-      next: result => { this.api.saveToken(result.accessToken); this.loggedIn = true; this.password = ''; this.loadData(); },
+      next: result => { this.api.saveToken(result.accessToken); this.loggedIn = true; this.password = ''; this.loadData(); this.loadDashboard(); },
       error: err => { this.error = err.status === 401 ? 'Email or password is incorrect.' : (err.error?.message ?? 'Unable to sign in. Check that the API is running and the admin account has been seeded.'); },
     });
   }
@@ -70,7 +73,9 @@ export class AdminComponent implements OnInit {
     this.api.getProducts().pipe(finalize(done)).subscribe({ next: rows => this.products = rows, error: err => this.handleApiError(err) });
   }
 
-  selectTab(tab: 'products' | 'categories' | 'orders'): void {
+  selectTab(
+    tab: 'dashboard' | 'products' | 'categories' | 'orders'
+  ): void {
     this.activeTab = tab;
     this.error = '';
     this.notice = '';
@@ -78,8 +83,11 @@ export class AdminComponent implements OnInit {
     if (tab === 'orders') {
       this.loadOrders();
     }
-  }
 
+    if (tab === 'dashboard') {
+      this.loadDashboard();
+    }
+  }
 
   loadOrders(): void {
     this.loadingOrders = true;
@@ -91,6 +99,32 @@ export class AdminComponent implements OnInit {
         next: orders => this.orders = orders,
         error: err => this.handleApiError(err)
       });
+  }
+
+
+  loadDashboard(): void {
+    if (!this.loggedIn) return;
+
+    this.dashboardLoading = true;
+
+    this.api.getDashboardSummary()
+      .pipe(finalize(() => {
+        this.dashboardLoading = false;
+      }))
+      .subscribe({
+        next: (result) => {
+          this.dashboard = result;
+          this.error = '';
+        },
+        error: (err) => {
+          this.dashboard = null;
+          this.handleApiError(err);
+        }
+      });
+  }
+
+  formatMoney(value: number | null): string {
+    return value == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value);
   }
 
   updateOrderStatus(order: AdminOrder, status: CustomerOrderStatus): void {

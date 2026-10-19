@@ -41,7 +41,13 @@
           }}</strong><span>Highlights on your menu</span></article>
     </div>
     <div class="workspace">
-      <aside class="side-nav"><span class="nav-caption">MANAGE SHOP</span>
+      <aside class="side-nav">
+        <span class="nav-caption">MANAGE SHOP</span>
+        <button type="button" [class.selected]="activeTab === 'dashboard'" (click)="selectTab('dashboard')">
+          <span>◷</span>
+          Dashboard
+        </button>
+
         <button type="button" [class.selected]="activeTab === 'products'" (click)="selectTab('products')"><span>▧</span>
           Products <b>{{
             products.length }}</b></button>
@@ -59,6 +65,145 @@
       <section class="content-panel">
         <div *ngIf="error" class="alert error">{{ error }}</div>
         <div *ngIf="notice" class="alert success">{{ notice }}</div>
+
+        <!-- DAILY OPERATIONS DASHBOARD -->
+        <div *ngIf="activeTab === 'dashboard'" class="panel-layout">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">DAILY OPERATIONS</span>
+              <h2>Shop overview</h2>
+              <p class="muted">
+                Today's orders, preparation queue and completed-order revenue.
+              </p>
+            </div>
+
+
+            <button class="text-btn" type="button" (click)="loadDashboard()" [disabled]="dashboardLoading">
+              {{ dashboardLoading ? 'Refreshing…' : '↻ Refresh dashboard' }}
+            </button>
+          </div>
+
+
+          <div *ngIf="dashboardLoading && !dashboard" class="empty-state">
+            Loading your daily summary…
+          </div>
+
+          <ng-container *ngIf="dashboard && dashboard as summary">
+            <div class="stats-grid dashboard-stats">
+              <article class="stat-card">
+                <span class="stat-icon">✦</span>
+                <small>CREATED TODAY</small>
+                <strong>{{ summary.createdToday }}</strong>
+                <span>Orders received today</span>
+              </article>
+
+              <article class="stat-card">
+                <span class="stat-icon">♡</span>
+                <small>DUE TODAY</small>
+                <strong>{{ summary.dueToday }}</strong>
+                <span>Orders requested for today</span>
+              </article>
+
+              <article class="stat-card">
+                <span class="stat-icon">◷</span>
+                <small>PENDING CONFIRMATION</small>
+                <strong>{{ summary.pendingConfirmation }}</strong>
+                <span>Awaiting confirmation</span>
+              </article>
+
+              <article class="stat-card">
+                <span class="stat-icon">✿</span>
+                <small>IN PREPARATION</small>
+                <strong>{{ summary.preparing }}</strong>
+                <span>Cakes being prepared</span>
+              </article>
+
+              <article class="stat-card">
+                <span class="stat-icon">✓</span>
+                <small>READY</small>
+                <strong>{{ summary.ready }}</strong>
+                <span>Ready for collection or delivery</span>
+              </article>
+
+              <article class="stat-card">
+                <span class="stat-icon">₹</span>
+                <small>COMPLETED REVENUE TODAY</small>
+                <strong>
+                  {{ summary.revenueAvailable
+                  ? formatMoney(summary.completedRevenueToday)
+                  : '—' }}
+                </strong>
+                <span>Based on recorded order prices</span>
+              </article>
+            </div>
+
+            <div *ngIf="summary.completedOrdersMissingPrice > 0" class="alert error">
+              Revenue may be incomplete:
+              {{ summary.completedOrdersMissingPrice }}
+              completed order(s) today have no recorded price.
+            </div>
+
+            <div class="list-heading">
+              <h3>Due today <span>{{ summary.dueOrders.length }}</span></h3>
+            </div>
+
+            <div *ngIf="!summary.dueOrders.length" class="empty-state">
+              No orders are scheduled for today.
+            </div>
+
+            <article class="category-row dashboard-order" *ngFor="let order of summary.dueOrders">
+              <span class="category-mark">♡</span>
+
+              <div class="category-info">
+                <strong>{{ order.cakeName }}</strong>
+                <small>{{ order.orderNumber }}</small>
+                <small>{{ order.customerName }}</small>
+                <small>
+                  Quantity: {{ order.quantity }} · Size: {{ order.cakeSize }}
+                </small>
+                <small>
+                  Unit price: {{ order.unitPrice == null ? '—' : (order.unitPrice |
+                  currency:'INR':'symbol':'1.2-2':'en-IN') }}
+                </small>
+                <strong class="order-total">
+                  Total: {{ order.totalAmount == null ? '—' : (order.totalAmount |
+                  currency:'INR':'symbol':'1.2-2':'en-IN') }}
+                </strong>
+
+              </div>
+
+              <span class="status-pill">{{ order.status }}</span>
+            </article>
+
+            <div class="list-heading upcoming-heading">
+              <h3>Upcoming orders <span>{{ summary.upcomingOrders.length }}</span></h3>
+            </div>
+
+            <div *ngIf="!summary.upcomingOrders.length" class="empty-state">
+              No upcoming orders found.
+            </div>
+
+            <article class="category-row dashboard-order" *ngFor="let order of summary.upcomingOrders">
+              <span class="category-mark">✿</span>
+
+              <div class="category-info">
+                <strong>{{ order.cakeName }}</strong>
+                <small>{{ order.orderNumber }}</small>
+                <small>{{ order.customerName }}</small>
+                <small *ngIf="order.preferredDate">
+                  Due: {{ order.preferredDate | date:'mediumDate' }}
+                </small>
+              </div>
+
+              <span class="status-pill">{{ order.status }}</span>
+            </article>
+          </ng-container>
+
+          <div *ngIf="!dashboardLoading && !dashboard" class="empty-state">
+            Dashboard data is unavailable. Check the API and refresh.
+          </div>
+        </div>
+
         <div *ngIf="activeTab === 'products'" class="panel-layout">
           <div class="panel-heading">
             <div><span class="eyebrow">YOUR MENU</span>

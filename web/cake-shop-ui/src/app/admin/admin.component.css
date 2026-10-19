@@ -826,3 +826,41 @@
 .category-info small {
     overflow-wrap: anywhere;
 }
+
+/* Daily operations dashboard */
+
+.dashboard-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-order {
+    flex-wrap: wrap;
+}
+
+.dashboard-order .status-pill {
+    flex-shrink: 0;
+}
+
+.upcoming-heading {
+    margin-top: 28px;
+}
+
+@media (max-width: 800px) {
+    .dashboard-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 500px) {
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-order {
+        align-items: flex-start;
+    }
+
+    .dashboard-order .status-pill {
+        margin-left: 48px;
+    }
+}

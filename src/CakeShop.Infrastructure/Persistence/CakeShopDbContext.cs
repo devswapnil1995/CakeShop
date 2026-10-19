@@ -74,6 +74,10 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.Property(x => x.Customization)
                 .HasMaxLength(1000);
 
+            e.Property(x => x.UnitPrice).HasPrecision(18, 2);
+            e.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            e.Property(x => x.CompletedUtc);
+
             e.Property(x => x.Status)
                 .HasConversion<string>()
                 .HasMaxLength(30)

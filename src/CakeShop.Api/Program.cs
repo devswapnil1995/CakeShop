@@ -134,9 +134,22 @@ app.MapPost("/api/v1/orders", async (
     if (customization?.Length > 1000)
         return Results.BadRequest(new { message = "Customization must be at most 1000 characters." });
 
+
+    var indiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+
+    var indiaToday = DateOnly.FromDateTime(
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, indiaTimeZone));
+
     if (request.PreferredDate.HasValue &&
-        request.PreferredDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
-        return Results.BadRequest(new { message = "Preferred date cannot be in the past." });
+        request.PreferredDate.Value < indiaToday)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Preferred date cannot be in the past."
+        });
+    }
+
 
     var product = await db.Products
         .AsNoTracking()
@@ -164,7 +177,8 @@ app.MapPost("/api/v1/orders", async (
         request.Quantity,
         cakeSize,
         request.PreferredDate,
-        customization);
+        customization,
+        product.Price);
 
     db.CustomerOrders.Add(order);
     await db.SaveChangesAsync(ct);
@@ -177,6 +191,8 @@ app.MapPost("/api/v1/orders", async (
             order.OrderNumber,
             order.CakeName,
             order.Quantity,
+            order.UnitPrice,
+            order.TotalAmount,
             Status = order.Status.ToString(),
             order.CreatedUtc,
             Message = "Your order has been saved successfully."
@@ -243,6 +259,9 @@ adminApi.MapGet("/orders", async (
             x.CakeSize,
             x.PreferredDate,
             x.Customization,
+            x.UnitPrice,
+            x.TotalAmount,
+            x.CompletedUtc,
             Status = x.Status.ToString(),
             x.CreatedUtc,
             x.UpdatedUtc
@@ -373,6 +392,72 @@ adminApi.MapPut("/products/{id:guid}", async (Guid id, ClaimsPrincipal user, Pro
     await db.SaveChangesAsync(ct);
     return Results.Ok(new { entity.Id, entity.CategoryId, entity.Name, entity.Slug, entity.Description, entity.Price, entity.ImageUrl, entity.Badge, entity.IsFeatured, entity.IsAvailable });
 });
+
+// Daily Operations dashboard. All aggregates are tenant-scoped and use India local-day boundaries.
+adminApi.MapGet("/dashboard/summary", async (
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+
+    var indiaZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+    var localToday = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, indiaZone));
+    var localStart = localToday.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+    var localEnd = localStart.AddDays(1);
+    var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, indiaZone);
+    var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, indiaZone);
+
+    var orders = db.CustomerOrders.AsNoTracking().Where(x => x.ClientId == clientId);
+    var createdToday = await orders.CountAsync(x => x.CreatedUtc >= utcStart && x.CreatedUtc < utcEnd, ct);
+    var dueToday = await orders.CountAsync(x => x.PreferredDate == localToday && x.Status != CustomerOrderStatus.Cancelled, ct);
+    var pending = await orders.CountAsync(x => x.Status == CustomerOrderStatus.Pending, ct);
+    var preparing = await orders.CountAsync(x => x.Status == CustomerOrderStatus.Preparing, ct);
+    var ready = await orders.CountAsync(x => x.Status == CustomerOrderStatus.Ready, ct);
+    var upcoming = await orders
+        .Where(x => x.PreferredDate > localToday && x.Status != CustomerOrderStatus.Cancelled)
+        .OrderBy(x => x.PreferredDate).ThenBy(x => x.CreatedUtc)
+        .Take(10)
+        .Select(x => new { x.Id, x.OrderNumber, x.CustomerName, x.CakeName, x.Quantity, x.CakeSize, x.PreferredDate, Status = x.Status.ToString() })
+        .ToListAsync(ct);
+    var dueOrders = await orders
+        .Where(x => x.PreferredDate == localToday && x.Status != CustomerOrderStatus.Cancelled)
+        .OrderBy(x => x.CreatedUtc)
+        .Select(x => new { x.Id, x.OrderNumber, x.CustomerName, x.CakeName, x.Quantity, x.CakeSize, x.PreferredDate, Status = x.Status.ToString() })
+        .ToListAsync(ct);
+
+    var completedOrdersToday = orders.Where(x =>
+        x.Status == CustomerOrderStatus.Completed
+        && x.CompletedUtc >= utcStart
+        && x.CompletedUtc < utcEnd);
+
+    var completedOrdersWithoutPrice = await completedOrdersToday
+        .CountAsync(x => x.TotalAmount == null, ct);
+
+    var completedRevenue = await completedOrdersToday
+        .Where(x => x.TotalAmount != null)
+        .SumAsync(x => (decimal?)x.TotalAmount, ct);
+
+    var revenueAvailable = completedOrdersWithoutPrice == 0;
+
+    return Results.Ok(new
+    {
+        localDate = localToday.ToString("yyyy-MM-dd"),
+        createdToday,
+        dueToday,
+        pendingConfirmation = pending,
+        preparing,
+        ready,
+        completedRevenueToday = completedRevenue,
+        revenueAvailable,
+        completedOrdersMissingPrice = completedOrdersWithoutPrice,
+        dueOrders,
+        upcomingOrders = upcoming
+    });
+}).WithName("GetAdminDashboardSummary").WithTags("Admin Dashboard");
+
+
 
 if (args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase)))
 {

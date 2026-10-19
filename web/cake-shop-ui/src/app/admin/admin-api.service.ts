@@ -43,6 +43,7 @@ export interface CategoryWrite {
   isActive: boolean;
 }
 
+
 export interface AdminOrder {
   id: string;
   orderNumber: string;
@@ -51,12 +52,15 @@ export interface AdminOrder {
   cakeName: string;
   quantity: number;
   cakeSize: string;
+  unitPrice: number | null;
+  totalAmount: number | null;
   preferredDate: string | null;
   customization: string | null;
   status: CustomerOrderStatus;
   createdUtc: string;
   updatedUtc: string;
 }
+
 
 export type CustomerOrderStatus =
   | 'Pending'
@@ -65,6 +69,33 @@ export type CustomerOrderStatus =
   | 'Ready'
   | 'Completed'
   | 'Cancelled';
+
+export interface DashboardOrder {
+  id: string; 
+  orderNumber: string;
+  customerName: string; 
+  cakeName: string;
+  quantity: number;
+  cakeSize: string; 
+  preferredDate: string | null; 
+  status: string;
+  unitPrice: number | null; 
+  totalAmount: number | null;
+}
+
+export interface AdminDashboardSummary {
+  localDate: string; 
+  createdToday: number; 
+  dueToday: number;
+  pendingConfirmation: number; 
+  preparing: number; 
+  ready: number;
+  completedRevenueToday: number | null; 
+  revenueAvailable: boolean;
+  completedOrdersMissingPrice: number; 
+  dueOrders: DashboardOrder[];
+  upcomingOrders: DashboardOrder[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
@@ -109,4 +140,7 @@ export class AdminApiService {
       this.options
     );
   }
+
+  getDashboardSummary(): Observable<AdminDashboardSummary> { return this.http.get<AdminDashboardSummary>(`${this.base}/dashboard/summary`, this.options); }
+
 }

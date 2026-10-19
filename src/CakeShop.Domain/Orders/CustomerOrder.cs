@@ -30,22 +30,26 @@ namespace CakeShop.Domain.Orders
         public string CakeSize { get; private set; } = string.Empty;
         public DateOnly? PreferredDate { get; private set; }
         public string? Customization { get; private set; }
+        public decimal? UnitPrice { get; private set; }
+        public decimal? TotalAmount { get; private set; }
+        public DateTime? CompletedUtc { get; private set; }
         public CustomerOrderStatus Status { get; private set; }
         public DateTime CreatedUtc { get; private set; }
         public DateTime UpdatedUtc { get; private set; }
 
         public CustomerOrder(
-            Guid id,
-            Guid clientId,
-            string orderNumber,
-            string customerName,
-            string customerPhone,
-            Guid? productId,
-            string cakeName,
-            int quantity,
-            string cakeSize,
-            DateOnly? preferredDate,
-            string? customization)
+         Guid id,
+         Guid clientId,
+         string orderNumber,
+         string customerName,
+         string customerPhone,
+         Guid? productId,
+         string cakeName,
+         int quantity,
+         string cakeSize,
+         DateOnly? preferredDate,
+         string? customization,
+         decimal? unitPrice = null)
         {
             if (id == Guid.Empty) throw new ArgumentException("Order ID is required.");
             if (clientId == Guid.Empty) throw new ArgumentException("Client ID is required.");
@@ -67,6 +71,9 @@ namespace CakeShop.Domain.Orders
             Customization = string.IsNullOrWhiteSpace(customization)
                 ? null
                 : customization.Trim();
+            if (unitPrice is < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
+            UnitPrice = unitPrice;
+            TotalAmount = unitPrice.HasValue ? decimal.Round(unitPrice.Value * quantity, 2, MidpointRounding.AwayFromZero) : null;
             Status = CustomerOrderStatus.Pending;
             CreatedUtc = DateTime.UtcNow;
             UpdatedUtc = CreatedUtc;
@@ -107,9 +114,13 @@ namespace CakeShop.Domain.Orders
                 throw new InvalidOperationException(
                     $"Cannot change order status from {Status} to {status}.");
             }
-
+            var now = DateTime.UtcNow;
+            if (status == CustomerOrderStatus.Completed && Status != CustomerOrderStatus.Completed)
+                CompletedUtc = now;
+            else if (status != CustomerOrderStatus.Completed)
+                CompletedUtc = null;
             Status = status;
-            UpdatedUtc = DateTime.UtcNow;
+            UpdatedUtc = now;
         }
 
     }
