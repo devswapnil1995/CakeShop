@@ -43,6 +43,29 @@ export interface CategoryWrite {
   isActive: boolean;
 }
 
+export interface AdminOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  cakeName: string;
+  quantity: number;
+  cakeSize: string;
+  preferredDate: string | null;
+  customization: string | null;
+  status: CustomerOrderStatus;
+  createdUtc: string;
+  updatedUtc: string;
+}
+
+export type CustomerOrderStatus =
+  | 'Pending'
+  | 'Confirmed'
+  | 'Preparing'
+  | 'Ready'
+  | 'Completed'
+  | 'Cancelled';
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -68,4 +91,22 @@ export class AdminApiService {
   getCategories(): Observable<AdminCategory[]> { return this.http.get<AdminCategory[]>(`${this.base}/categories`, this.options); }
   createCategory(body: CategoryWrite): Observable<AdminCategory> { return this.http.post<AdminCategory>(`${this.base}/categories`, body, this.options); }
   updateCategory(id: string, body: CategoryWrite): Observable<AdminCategory> { return this.http.put<AdminCategory>(`${this.base}/categories/${id}`, body, this.options); }
+
+  getOrders(): Observable<AdminOrder[]> {
+    return this.http.get<AdminOrder[]>(
+      `${this.base}/orders`,
+      this.options
+    );
+  }
+
+  updateOrderStatus(
+    id: string,
+    status: CustomerOrderStatus
+  ): Observable<unknown> {
+    return this.http.put(
+      `${this.base}/orders/${id}/status`,
+      { status },
+      this.options
+    );
+  }
 }

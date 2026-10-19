@@ -1,15 +1,17 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using CakeShop.Application.Catalog;
 using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Identity;
+using CakeShop.Domain.Orders;
 using CakeShop.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuredConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -46,13 +48,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
+
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT access token."
+    });
+
+    options.AddSecurityRequirement(document =>
+        new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+        });
+});
+
+
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseCors("AngularDev");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
-
+app.UseSwagger();
+app.UseSwaggerUI();
 app.MapGet("/api/v1/shop", async (CakeShopDbContext db, CancellationToken ct) =>
 {
     var shop = await db.Clients.AsNoTracking().Where(x => x.Id == defaultClientId && x.IsActive)
@@ -77,6 +103,90 @@ app.MapGet("/api/v1/products", async (CakeShopDbContext db, string? category, bo
         .Select(x => new ProductDto(x.product.Id, x.product.Name, x.product.Slug, x.product.Description, x.product.Price, x.product.ImageUrl, x.product.Badge, x.product.IsFeatured, x.cat.Name, x.cat.Slug)).ToListAsync(ct);
     return Results.Ok(result);
 }).WithName("GetProducts").WithTags("Catalog");
+
+
+app.MapPost("/api/v1/orders", async (
+    CreateCustomerOrderRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    var customerName = request.CustomerName?.Trim();
+    var phone = request.CustomerPhone?.Trim();
+    var cakeSize = request.CakeSize?.Trim();
+    var customization = request.Customization?.Trim();
+
+    if (string.IsNullOrWhiteSpace(customerName) || customerName.Length > 120)
+        return Results.BadRequest(new { message = "Customer name is required (maximum 120 characters)." });
+
+    if (string.IsNullOrWhiteSpace(phone) || phone.Length > 20)
+        return Results.BadRequest(new { message = "A valid phone number is required." });
+
+    var phoneDigits = new string(phone.Where(char.IsDigit).ToArray());
+    if (phoneDigits.Length < 10 || phoneDigits.Length > 15)
+        return Results.BadRequest(new { message = "Phone number must contain 10 to 15 digits." });
+
+    if (request.Quantity < 1 || request.Quantity > 100)
+        return Results.BadRequest(new { message = "Quantity must be between 1 and 100." });
+
+    if (string.IsNullOrWhiteSpace(cakeSize) || cakeSize.Length > 30)
+        return Results.BadRequest(new { message = "Cake size is required (maximum 30 characters)." });
+
+    if (customization?.Length > 1000)
+        return Results.BadRequest(new { message = "Customization must be at most 1000 characters." });
+
+    if (request.PreferredDate.HasValue &&
+        request.PreferredDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
+        return Results.BadRequest(new { message = "Preferred date cannot be in the past." });
+
+    var product = await db.Products
+        .AsNoTracking()
+        .SingleOrDefaultAsync(
+            x => x.Id == request.ProductId
+                 && x.ClientId == defaultClientId
+                 && x.IsAvailable,
+            ct);
+
+    if (product is null)
+        return Results.BadRequest(new { message = "Select an available cake from this shop." });
+
+    var orderId = Guid.NewGuid();
+    var orderNumber =
+        $"SP-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
+
+    var order = new CustomerOrder(
+        orderId,
+        defaultClientId,
+        orderNumber,
+        customerName,
+        phone,
+        product.Id,
+        product.Name,
+        request.Quantity,
+        cakeSize,
+        request.PreferredDate,
+        customization);
+
+    db.CustomerOrders.Add(order);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Created(
+        $"/api/v1/orders/{order.Id}",
+        new
+        {
+            order.Id,
+            order.OrderNumber,
+            order.CakeName,
+            order.Quantity,
+            Status = order.Status.ToString(),
+            order.CreatedUtc,
+            Message = "Your order has been saved successfully."
+        });
+})
+.AllowAnonymous()
+.WithName("CreateCustomerOrder")
+.WithTags("Orders");
+
+
 
 var auth = app.MapGroup("/api/v1/admin/auth").WithTags("Admin Authentication");
 auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPasswordHasher<AdminUser> hasher, IConfiguration config, CancellationToken ct) =>
@@ -108,6 +218,95 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+
+adminApi.MapGet("/orders", async (
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var orders = await db.CustomerOrders
+        .AsNoTracking()
+        .Where(x => x.ClientId == clientId)
+        .OrderByDescending(x => x.CreatedUtc)
+        .Select(x => new
+        {
+            x.Id,
+            x.OrderNumber,
+            x.CustomerName,
+            x.CustomerPhone,
+            x.CakeName,
+            x.Quantity,
+            x.CakeSize,
+            x.PreferredDate,
+            x.Customization,
+            Status = x.Status.ToString(),
+            x.CreatedUtc,
+            x.UpdatedUtc
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(orders);
+})
+.WithName("GetAdminOrders")
+.WithTags("Admin Orders");
+
+adminApi.MapPut("/orders/{id:guid}/status", async (
+    Guid id,
+    ClaimsPrincipal user,
+    UpdateCustomerOrderStatusRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    if (!Enum.TryParse<CustomerOrderStatus>(
+            request.Status, true, out var status)
+        || !Enum.IsDefined(status))
+    {
+        return Results.BadRequest(new
+        {
+            message = "Status must be Pending, Confirmed, Preparing, Ready, Completed, or Cancelled."
+        });
+    }
+
+    var order = await db.CustomerOrders
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (order is null)
+        return Results.NotFound(new { message = "Order not found." });
+
+
+    if (!order.CanTransitionTo(status))
+    {
+        return Results.Conflict(new
+        {
+            message = $"Cannot change order status from {order.Status} to {status}."
+        });
+    }
+
+
+    order.UpdateStatus(status);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new
+    {
+        order.Id,
+        order.OrderNumber,
+        Status = order.Status.ToString(),
+        order.UpdatedUtc
+    });
+})
+.WithName("UpdateAdminOrderStatus")
+.WithTags("Admin Orders");
+
+
 adminApi.MapGet("/categories", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
@@ -234,4 +433,17 @@ public sealed record AdminCategoryDto(Guid Id, string Name, string Slug, int Sor
 public sealed record ProductWriteRequest(Guid CategoryId, string? Name, string? Slug, string? Description, decimal Price, string? ImageUrl, string? Badge, bool IsFeatured, bool IsAvailable = true);
 public sealed record AdminProductDto(Guid Id, Guid CategoryId, string Name, string Slug, string Description, decimal Price, string? ImageUrl, string? Badge, bool IsFeatured, bool IsAvailable, string CategoryName);
 
+public sealed record CreateCustomerOrderRequest(
+    Guid ProductId,
+    string? CustomerName,
+    string? CustomerPhone,
+    int Quantity,
+    string? CakeSize,
+    DateOnly? PreferredDate,
+    string? Customization);
+
+public sealed record UpdateCustomerOrderStatusRequest(
+    string? Status);
+
 public partial class Program { }
+

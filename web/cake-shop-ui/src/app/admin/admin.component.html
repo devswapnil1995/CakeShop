@@ -1,40 +1,224 @@
 <div class="admin-shell">
   <header class="admin-topbar">
-    <a class="admin-brand" href="/"><span class="brand-flower">✿</span><span><strong>The Sweet Panda</strong><small>SHOP ADMINISTRATION</small></span></a>
+    <a class="admin-brand" href="/"><span class="brand-flower">✿</span><span><strong>The Sweet Panda</strong><small>SHOP
+          ADMINISTRATION</small></span></a>
     <a class="store-link" href="/">View storefront <span>↗</span></a>
   </header>
 
   <section *ngIf="!loggedIn" class="login-wrap">
-    <div class="login-art"><div class="art-orbit"></div><span class="art-flower">✿</span><p>Made with love.<br><em>Managed with care.</em></p><small>THE SWEET PANDA · BAKERY STUDIO</small></div>
+    <div class="login-art">
+      <div class="art-orbit"></div><span class="art-flower">✿</span>
+      <p>Made with love.<br><em>Managed with care.</em></p><small>THE SWEET PANDA · BAKERY STUDIO</small>
+    </div>
     <form class="login-card" (ngSubmit)="login()">
-      <span class="eyebrow">WELCOME BACK</span><h1>Good to see you.</h1><p class="muted">Sign in to manage your cakes, categories and shop catalogue.</p>
-      <label for="email">Email address</label><input id="email" type="email" name="email" [(ngModel)]="email" autocomplete="username" placeholder="you@yourbakery.com" required />
-      <label for="password">Password</label><input id="password" type="password" name="password" [(ngModel)]="password" autocomplete="current-password" placeholder="Enter your password" required />
+      <span class="eyebrow">WELCOME BACK</span>
+      <h1>Good to see you.</h1>
+      <p class="muted">Sign in to manage your cakes, categories and shop catalogue.</p>
+      <label for="email">Email address</label><input id="email" type="email" name="email" [(ngModel)]="email"
+        autocomplete="username" placeholder="you@yourbakery.com" required />
+      <label for="password">Password</label><input id="password" type="password" name="password" [(ngModel)]="password"
+        autocomplete="current-password" placeholder="Enter your password" required />
       <p *ngIf="error" class="alert error">{{ error }}</p>
-      <button class="primary-btn full" type="submit" [disabled]="loading">{{ loading ? 'Signing in…' : 'Sign in to dashboard' }} <span>→</span></button>
+      <button class="primary-btn full" type="submit" [disabled]="loading">{{ loading ? 'Signing in…' : 'Sign in to
+        dashboard' }} <span>→</span></button>
       <p class="login-foot">Your shop data is protected by server-side authentication.</p>
     </form>
   </section>
 
   <main *ngIf="loggedIn" class="dashboard">
-    <div class="welcome-row"><div><span class="eyebrow">THE SWEET PANDA / CONTROL ROOM</span><h1>A little sweetness,<br/><em>well organised.</em></h1><p class="muted">Keep your online catalogue fresh and ready for every celebration.</p></div><button class="quiet-btn" type="button" (click)="logout()">Sign out ↗</button></div>
-    <div class="stats-grid"><article class="stat-card"><span class="stat-icon">♡</span><small>CATALOGUE ITEMS</small><strong>{{ products.length }}</strong><span>All shop products</span></article><article class="stat-card"><span class="stat-icon">✿</span><small>CATEGORIES</small><strong>{{ categories.length }}</strong><span>Organise your menu</span></article><article class="stat-card"><span class="stat-icon">✦</span><small>FEATURED ITEMS</small><strong>{{ featuredCount }}</strong><span>Highlights on your menu</span></article></div>
+    <div class="welcome-row">
+      <div><span class="eyebrow">THE SWEET PANDA / CONTROL ROOM</span>
+        <h1>A little sweetness,<br /><em>well organised.</em></h1>
+        <p class="muted">Keep your online catalogue fresh and ready for every celebration.</p>
+      </div><button class="quiet-btn" type="button" (click)="logout()">Sign out ↗</button>
+    </div>
+    <div class="stats-grid">
+      <article class="stat-card"><span class="stat-icon">♡</span><small>CATALOGUE ITEMS</small><strong>{{
+          products.length }}</strong><span>All shop products</span></article>
+      <article class="stat-card"><span class="stat-icon">✿</span><small>CATEGORIES</small><strong>{{ categories.length
+          }}</strong><span>Organise your menu</span></article>
+      <article class="stat-card"><span class="stat-icon">✦</span><small>FEATURED ITEMS</small><strong>{{ featuredCount
+          }}</strong><span>Highlights on your menu</span></article>
+    </div>
     <div class="workspace">
-      <aside class="side-nav"><span class="nav-caption">MANAGE SHOP</span><button type="button" [class.selected]="activeTab === 'products'" (click)="selectTab('products')"><span>▧</span> Products <b>{{ products.length }}</b></button><button type="button" [class.selected]="activeTab === 'categories'" (click)="selectTab('categories')"><span>◫</span> Categories <b>{{ categories.length }}</b></button><div class="sidebar-note"><span>✿</span><strong>Small batches.<br/>Big happiness.</strong><p>Your catalogue is the first taste of your brand.</p></div></aside>
+      <aside class="side-nav"><span class="nav-caption">MANAGE SHOP</span>
+        <button type="button" [class.selected]="activeTab === 'products'" (click)="selectTab('products')"><span>▧</span>
+          Products <b>{{
+            products.length }}</b></button>
+        <button type="button" [class.selected]="activeTab === 'categories'"
+          (click)="selectTab('categories')"><span>◫</span> Categories <b>{{ categories.length }}</b></button>
+        <button type="button" [class.selected]="activeTab === 'orders'" (click)="selectTab('orders')">
+          <span>♡</span>
+          Orders
+          <b>{{ orders.length }}</b>
+        </button>
+        <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
+          <p>Your catalogue is the first taste of your brand.</p>
+        </div>
+      </aside>
       <section class="content-panel">
-        <div *ngIf="error" class="alert error">{{ error }}</div><div *ngIf="notice" class="alert success">{{ notice }}</div>
+        <div *ngIf="error" class="alert error">{{ error }}</div>
+        <div *ngIf="notice" class="alert success">{{ notice }}</div>
         <div *ngIf="activeTab === 'products'" class="panel-layout">
-          <div class="panel-heading"><div><span class="eyebrow">YOUR MENU</span><h2>{{ editingProductId ? 'Edit product' : 'Products' }}</h2><p class="muted">Update the cakes customers can discover.</p></div><button *ngIf="editingProductId" class="quiet-btn" type="button" (click)="resetProduct()">Cancel edit</button></div>
-          <form class="editor-card" (ngSubmit)="saveProduct()"><h3>{{ editingProductId ? 'Product details' : 'Add a new product' }}</h3><div class="form-grid"><div class="field"><label for="productName">Product name *</label><input id="productName" name="productName" [(ngModel)]="productForm.name" required maxlength="160" placeholder="e.g. Velvet Rose Cake" /></div><div class="field"><label for="productSlug">URL slug</label><input id="productSlug" name="productSlug" [(ngModel)]="productForm.slug" placeholder="velvet-rose-cake (optional)" /></div><div class="field"><label for="productCategory">Category *</label><select id="productCategory" name="productCategory" [(ngModel)]="productForm.categoryId" required><option value="">Choose a category</option><option *ngFor="let category of categories" [value]="category.id" [disabled]="!category.isActive">{{ category.name }}{{ category.isActive ? '' : ' (inactive)' }}</option></select></div><div class="field"><label for="productPrice">Price (₹) *</label><input id="productPrice" name="productPrice" type="number" min="0" step="0.01" [(ngModel)]="productForm.price" required /></div><div class="field span-two"><label for="productDescription">Description</label><textarea id="productDescription" name="productDescription" rows="3" [(ngModel)]="productForm.description" maxlength="2000" placeholder="Describe the layers, flavours and finish…"></textarea></div><div class="field span-two"><label for="productImage">Image URL (HTTPS)</label><input id="productImage" name="productImage" type="url" [(ngModel)]="productForm.imageUrl" placeholder="https://…" /></div><div class="field"><label for="productBadge">Badge</label><input id="productBadge" name="productBadge" [(ngModel)]="productForm.badge" maxlength="80" placeholder="Bestseller, New…" /></div></div><div class="toggle-row"><label><input type="checkbox" name="featured" [(ngModel)]="productForm.isFeatured" /> Featured item</label><label><input type="checkbox" name="available" [(ngModel)]="productForm.isAvailable" /> Available to order</label></div><div class="form-actions"><button class="primary-btn" type="submit" [disabled]="saving || !categories.length">{{ saving ? 'Saving…' : editingProductId ? 'Save changes' : 'Add product' }} <span>→</span></button><button class="quiet-btn" type="button" (click)="resetProduct()">Clear form</button></div><p *ngIf="!categories.length" class="form-hint">Create a category first to add products.</p></form>
-          <div class="list-heading"><h3>All products <span>{{ products.length }}</span></h3><button class="text-btn" type="button" (click)="loadData()">↻ Refresh</button></div>
-          <div *ngIf="loading" class="empty-state">Refreshing your catalogue…</div><div *ngIf="!loading && !products.length" class="empty-state">No products yet. Add your first sweet creation above.</div>
-          <article class="product-row" *ngFor="let product of products"><img [src]="product.imageUrl || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80'" [alt]="product.name"/><div class="product-info"><strong>{{ product.name }}</strong><span>{{ product.categoryName }} · ₹{{ product.price | number:'1.0-2' }}</span><small>{{ product.isAvailable ? '● Available' : '○ Unavailable' }}{{ product.isFeatured ? ' · ✦ Featured' : '' }}</small></div><button class="edit-btn" type="button" (click)="editProduct(product)">Edit ↗</button></article>
+          <div class="panel-heading">
+            <div><span class="eyebrow">YOUR MENU</span>
+              <h2>{{ editingProductId ? 'Edit product' : 'Products' }}</h2>
+              <p class="muted">Update the cakes customers can discover.</p>
+            </div><button *ngIf="editingProductId" class="quiet-btn" type="button" (click)="resetProduct()">Cancel
+              edit</button>
+          </div>
+          <form class="editor-card" (ngSubmit)="saveProduct()">
+            <h3>{{ editingProductId ? 'Product details' : 'Add a new product' }}</h3>
+            <div class="form-grid">
+              <div class="field"><label for="productName">Product name *</label><input id="productName"
+                  name="productName" [(ngModel)]="productForm.name" required maxlength="160"
+                  placeholder="e.g. Velvet Rose Cake" /></div>
+              <div class="field"><label for="productSlug">URL slug</label><input id="productSlug" name="productSlug"
+                  [(ngModel)]="productForm.slug" placeholder="velvet-rose-cake (optional)" /></div>
+              <div class="field"><label for="productCategory">Category *</label><select id="productCategory"
+                  name="productCategory" [(ngModel)]="productForm.categoryId" required>
+                  <option value="">Choose a category</option>
+                  <option *ngFor="let category of categories" [value]="category.id" [disabled]="!category.isActive">{{
+                    category.name }}{{ category.isActive ? '' : ' (inactive)' }}</option>
+                </select></div>
+              <div class="field"><label for="productPrice">Price (₹) *</label><input id="productPrice"
+                  name="productPrice" type="number" min="0" step="0.01" [(ngModel)]="productForm.price" required />
+              </div>
+              <div class="field span-two"><label for="productDescription">Description</label><textarea
+                  id="productDescription" name="productDescription" rows="3" [(ngModel)]="productForm.description"
+                  maxlength="2000" placeholder="Describe the layers, flavours and finish…"></textarea></div>
+              <div class="field span-two"><label for="productImage">Image URL (HTTPS)</label><input id="productImage"
+                  name="productImage" type="url" [(ngModel)]="productForm.imageUrl" placeholder="https://…" /></div>
+              <div class="field"><label for="productBadge">Badge</label><input id="productBadge" name="productBadge"
+                  [(ngModel)]="productForm.badge" maxlength="80" placeholder="Bestseller, New…" /></div>
+            </div>
+            <div class="toggle-row"><label><input type="checkbox" name="featured"
+                  [(ngModel)]="productForm.isFeatured" /> Featured item</label><label><input type="checkbox"
+                  name="available" [(ngModel)]="productForm.isAvailable" /> Available to order</label></div>
+            <div class="form-actions"><button class="primary-btn" type="submit"
+                [disabled]="saving || !categories.length">{{ saving ? 'Saving…' : editingProductId ? 'Save changes' :
+                'Add product' }} <span>→</span></button><button class="quiet-btn" type="button"
+                (click)="resetProduct()">Clear form</button></div>
+            <p *ngIf="!categories.length" class="form-hint">Create a category first to add products.</p>
+          </form>
+          <div class="list-heading">
+            <h3>All products <span>{{ products.length }}</span></h3><button class="text-btn" type="button"
+              (click)="loadData()">↻ Refresh</button>
+          </div>
+          <div *ngIf="loading" class="empty-state">Refreshing your catalogue…</div>
+          <div *ngIf="!loading && !products.length" class="empty-state">No products yet. Add your first sweet creation
+            above.</div>
+          <article class="product-row" *ngFor="let product of products"><img
+              [src]="product.imageUrl || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80'"
+              [alt]="product.name" />
+            <div class="product-info"><strong>{{ product.name }}</strong><span>{{ product.categoryName }} · ₹{{
+                product.price | number:'1.0-2' }}</span><small>{{ product.isAvailable ? '● Available' : '○ Unavailable'
+                }}{{ product.isFeatured ? ' · ✦ Featured' : '' }}</small></div><button class="edit-btn" type="button"
+              (click)="editProduct(product)">Edit ↗</button>
+          </article>
         </div>
 
-        <div *ngIf="activeTab === 'categories'" class="panel-layout"><div class="panel-heading"><div><span class="eyebrow">MENU STRUCTURE</span><h2>{{ editingCategoryId ? 'Edit category' : 'Categories' }}</h2><p class="muted">Make it easy for customers to find their favourite treats.</p></div><button *ngIf="editingCategoryId" class="quiet-btn" type="button" (click)="resetCategory()">Cancel edit</button></div>
-          <form class="editor-card" (ngSubmit)="saveCategory()"><h3>{{ editingCategoryId ? 'Category details' : 'Add a category' }}</h3><div class="form-grid"><div class="field"><label for="categoryName">Category name *</label><input id="categoryName" name="categoryName" [(ngModel)]="categoryForm.name" required maxlength="100" placeholder="e.g. Celebration Cakes" /></div><div class="field"><label for="categorySlug">URL slug</label><input id="categorySlug" name="categorySlug" [(ngModel)]="categoryForm.slug" maxlength="120" placeholder="celebration-cakes (optional)" /></div><div class="field"><label for="categoryOrder">Display order</label><input id="categoryOrder" name="categoryOrder" type="number" [(ngModel)]="categoryForm.sortOrder" /></div><div class="field field-check"><label><input type="checkbox" name="categoryActive" [(ngModel)]="categoryForm.isActive" /> Active in storefront</label></div></div><div class="form-actions"><button class="primary-btn" type="submit" [disabled]="saving">{{ saving ? 'Saving…' : editingCategoryId ? 'Save changes' : 'Add category' }} <span>→</span></button><button class="quiet-btn" type="button" (click)="resetCategory()">Clear form</button></div></form>
-          <div class="list-heading"><h3>All categories <span>{{ categories.length }}</span></h3><button class="text-btn" type="button" (click)="loadData()">↻ Refresh</button></div><div *ngIf="!categories.length" class="empty-state">No categories found. Add one to organise your catalogue.</div><article class="category-row" *ngFor="let category of categories"><span class="category-mark">✿</span><div class="category-info"><strong>{{ category.name }}</strong><small>/{{ category.slug }} · Order {{ category.sortOrder }}</small></div><span class="status-pill" [class.inactive]="!category.isActive">{{ category.isActive ? 'Active' : 'Inactive' }}</span><button class="edit-btn" type="button" (click)="editCategory(category)">Edit ↗</button></article>
+        <div *ngIf="activeTab === 'categories'" class="panel-layout">
+          <div class="panel-heading">
+            <div><span class="eyebrow">MENU STRUCTURE</span>
+              <h2>{{ editingCategoryId ? 'Edit category' : 'Categories' }}</h2>
+              <p class="muted">Make it easy for customers to find their favourite treats.</p>
+            </div><button *ngIf="editingCategoryId" class="quiet-btn" type="button" (click)="resetCategory()">Cancel
+              edit</button>
+          </div>
+          <form class="editor-card" (ngSubmit)="saveCategory()">
+            <h3>{{ editingCategoryId ? 'Category details' : 'Add a category' }}</h3>
+            <div class="form-grid">
+              <div class="field"><label for="categoryName">Category name *</label><input id="categoryName"
+                  name="categoryName" [(ngModel)]="categoryForm.name" required maxlength="100"
+                  placeholder="e.g. Celebration Cakes" /></div>
+              <div class="field"><label for="categorySlug">URL slug</label><input id="categorySlug" name="categorySlug"
+                  [(ngModel)]="categoryForm.slug" maxlength="120" placeholder="celebration-cakes (optional)" /></div>
+              <div class="field"><label for="categoryOrder">Display order</label><input id="categoryOrder"
+                  name="categoryOrder" type="number" [(ngModel)]="categoryForm.sortOrder" /></div>
+              <div class="field field-check"><label><input type="checkbox" name="categoryActive"
+                    [(ngModel)]="categoryForm.isActive" /> Active in storefront</label></div>
+            </div>
+            <div class="form-actions"><button class="primary-btn" type="submit" [disabled]="saving">{{ saving ?
+                'Saving…' : editingCategoryId ? 'Save changes' : 'Add category' }} <span>→</span></button><button
+                class="quiet-btn" type="button" (click)="resetCategory()">Clear form</button></div>
+          </form>
+          <div class="list-heading">
+            <h3>All categories <span>{{ categories.length }}</span></h3><button class="text-btn" type="button"
+              (click)="loadData()">↻ Refresh</button>
+          </div>
+          <div *ngIf="!categories.length" class="empty-state">No categories found. Add one to organise your catalogue.
+          </div>
+          <article class="category-row" *ngFor="let category of categories"><span class="category-mark">✿</span>
+            <div class="category-info"><strong>{{ category.name }}</strong><small>/{{ category.slug }} · Order {{
+                category.sortOrder }}</small></div><span class="status-pill" [class.inactive]="!category.isActive">{{
+              category.isActive ? 'Active' : 'Inactive' }}</span><button class="edit-btn" type="button"
+              (click)="editCategory(category)">Edit ↗</button>
+          </article>
         </div>
+
+
+        <div *ngIf="activeTab === 'orders'" class="panel-layout">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">CUSTOMER ORDERS</span>
+              <h2>Orders &amp; celebrations</h2>
+              <p class="muted">Review customer requests and manage each order's progress.</p>
+            </div>
+
+            <button class="text-btn" type="button" (click)="loadOrders()">
+              ↻ Refresh orders
+            </button>
+          </div>
+
+          <div *ngIf="loadingOrders" class="empty-state">
+            Loading customer orders…
+          </div>
+
+          <div *ngIf="!loadingOrders && !orders.length" class="empty-state">
+            No orders found yet. New customer orders will appear here.
+          </div>
+
+          <article class="category-row" *ngFor="let order of orders">
+            <span class="category-mark">♡</span>
+
+            <div class="category-info">
+              <strong>{{ order.cakeName }}</strong>
+              <small>{{ order.orderNumber }}</small>
+              <small>
+                {{ order.customerName }} · {{ order.customerPhone }}
+              </small>
+              <small>
+                Quantity: {{ order.quantity }} · Size: {{ order.cakeSize }}
+              </small>
+              <small *ngIf="order.preferredDate">
+                Preferred date: {{ order.preferredDate | date:'mediumDate' }}
+              </small>
+              <small *ngIf="order.customization">
+                Message: {{ order.customization }}
+              </small>
+              <small>Received: {{ order.createdUtc | date:'medium' }}</small>
+            </div>
+
+            <div class="order-status-control">
+              <span class="status-pill">{{ order.status }}</span>
+
+              <label [for]="'order-status-' + order.id">Update status</label>
+              <select [id]="'order-status-' + order.id" [ngModel]="order.status"
+                (ngModelChange)="updateOrderStatus(order, $event)" [name]="'order-status-' + order.id"
+                [disabled]="updatingOrderIds.has(order.id)">
+                <option *ngFor="let status of getAvailableOrderStatuses(order)" [value]="status">
+                  {{ status }}
+                </option>
+              </select>
+
+              <small *ngIf="updatingOrderIds.has(order.id)">
+                Updating…
+              </small>
+            </div>
+          </article>
+        </div>
+
       </section>
     </div>
     <footer class="admin-footer">THE SWEET PANDA <span>•</span> BAKED WITH A LITTLE MAGIC</footer>

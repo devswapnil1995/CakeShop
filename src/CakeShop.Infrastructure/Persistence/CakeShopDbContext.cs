@@ -1,6 +1,7 @@
 using CakeShop.Domain.Catalog;
-using CakeShop.Domain.Tenants;
 using CakeShop.Domain.Identity;
+using CakeShop.Domain.Orders;
+using CakeShop.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 
 namespace CakeShop.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+    public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,5 +44,54 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Category>().WithMany().HasForeignKey(x => new { x.ClientId, x.CategoryId }).HasPrincipalKey(x => new { x.ClientId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         });
+
+
+        modelBuilder.Entity<CustomerOrder>(e =>
+        {
+            e.ToTable("CustomerOrders");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.OrderNumber)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            e.Property(x => x.CustomerName)
+                .HasMaxLength(120)
+                .IsRequired();
+
+            e.Property(x => x.CustomerPhone)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            e.Property(x => x.CakeName)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            e.Property(x => x.CakeSize)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.Customization)
+                .HasMaxLength(1000);
+
+            e.Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.CreatedUtc).IsRequired();
+            e.Property(x => x.UpdatedUtc).IsRequired();
+
+            e.HasIndex(x => new { x.ClientId, x.OrderNumber })
+                .IsUnique();
+
+            e.HasIndex(x => new { x.ClientId, x.Status, x.CreatedUtc });
+
+            e.HasOne<CakeShop.Domain.Tenants.ClientMaster>()
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
     }
 }

@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite } from './admin-api.service';
+import {
+  AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
+  CustomerOrderStatus
+} from './admin-api.service';
 
 @Component({
   selector: 'app-admin',
@@ -16,7 +19,7 @@ export class AdminComponent implements OnInit {
   loggedIn = false;
   loading = false;
   saving = false;
-  activeTab: 'products' | 'categories' = 'products';
+  activeTab: 'products' | 'categories' | 'orders' = 'products';
   error = '';
   notice = '';
   email = '';
@@ -28,6 +31,19 @@ export class AdminComponent implements OnInit {
 
   productForm: ProductWrite = this.emptyProduct();
   categoryForm: CategoryWrite = this.emptyCategory();
+
+  orders: AdminOrder[] = [];
+  loadingOrders = false;
+  updatingOrderIds = new Set<string>();
+
+  readonly orderStatuses: CustomerOrderStatus[] = [
+    'Pending',
+    'Confirmed',
+    'Preparing',
+    'Ready',
+    'Completed',
+    'Cancelled'
+  ];
 
   get featuredCount(): number { return this.products.filter(product => product.isFeatured).length; }
 
@@ -54,7 +70,48 @@ export class AdminComponent implements OnInit {
     this.api.getProducts().pipe(finalize(done)).subscribe({ next: rows => this.products = rows, error: err => this.handleApiError(err) });
   }
 
-  selectTab(tab: 'products' | 'categories'): void { this.activeTab = tab; this.error = ''; this.notice = ''; }
+  selectTab(tab: 'products' | 'categories' | 'orders'): void {
+    this.activeTab = tab;
+    this.error = '';
+    this.notice = '';
+
+    if (tab === 'orders') {
+      this.loadOrders();
+    }
+  }
+
+
+  loadOrders(): void {
+    this.loadingOrders = true;
+    this.error = '';
+
+    this.api.getOrders()
+      .pipe(finalize(() => this.loadingOrders = false))
+      .subscribe({
+        next: orders => this.orders = orders,
+        error: err => this.handleApiError(err)
+      });
+  }
+
+  updateOrderStatus(order: AdminOrder, status: CustomerOrderStatus): void {
+    if (this.updatingOrderIds.has(order.id) || order.status === status) {
+      return;
+    }
+
+    this.error = '';
+    this.notice = '';
+    this.updatingOrderIds.add(order.id);
+
+    this.api.updateOrderStatus(order.id, status)
+      .pipe(finalize(() => this.updatingOrderIds.delete(order.id)))
+      .subscribe({
+        next: () => {
+          this.notice = `Order ${order.orderNumber} updated to ${status}.`;
+          this.loadOrders();
+        },
+        error: err => this.handleApiError(err)
+      });
+  }
 
   editProduct(product: AdminProduct): void {
     this.editingProductId = product.id;
@@ -101,4 +158,25 @@ export class AdminComponent implements OnInit {
     if (err.status === 401 || err.status === 403) { this.api.clearToken(); this.loggedIn = false; this.error = 'Your session has expired or is not authorized. Please sign in again.'; return; }
     this.error = err.error?.message ?? (err.status === 0 ? 'Could not reach the API. Start the .NET backend and check its connection string.' : 'Something went wrong. Please review the fields and try again.');
   }
+
+
+  getAvailableOrderStatuses(
+    order: AdminOrder
+  ): CustomerOrderStatus[] {
+    const transitions: Record<
+      CustomerOrderStatus,
+      CustomerOrderStatus[]
+    > = {
+      Pending: ['Confirmed', 'Cancelled'],
+      Confirmed: ['Preparing', 'Cancelled'],
+      Preparing: ['Ready', 'Cancelled'],
+      Ready: ['Completed', 'Cancelled'],
+      Completed: [],
+      Cancelled: []
+    };
+
+    // Keep the current status visible, but offer only valid next steps.
+    return [order.status, ...transitions[order.status]];
+  }
+
 }

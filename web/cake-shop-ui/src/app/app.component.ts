@@ -3,8 +3,20 @@ import { catchError, of } from 'rxjs';
 import { CatalogApiService } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { OrderApiService, CustomerOrderResponse } from './order-api.service';
 
 interface CakeProduct {
+  name: string;
+  description: string;
+  price: string;
+  tag?: string;
+  image: string;
+  category: string;
+}
+
+interface CakeProduct {
+  id?: string;
   name: string;
   description: string;
   price: string;
@@ -16,22 +28,44 @@ interface CakeProduct {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, FormsModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit {
   readonly isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
   private readonly catalogApi = inject(CatalogApiService);
+
+
+  private readonly orderApi = inject(OrderApiService);
+
+  isSubmittingOrder = false;
+  savedOrder: CustomerOrderResponse | null = null;
+
   apiConnected = false;
   readonly brandName = 'The Sweet Panda';
   // Replace with the shop's WhatsApp number in international format, digits only.
-  private readonly WHATSAPP_NUMBER = '919000000000';
+  private readonly WHATSAPP_NUMBER = '8456057904';
 
   activeCategory = 'All';
   mobileMenuOpen = false;
 
   categories = ['All', 'Celebration', 'Chocolate', 'Signature'];
+
+  today = new Date().toISOString().slice(0, 10);
+
+  // Phase 4: Customer ordering workflow
+  orderFormOpen = false;
+  selectedProduct: CakeProduct | null = null;
+
+  orderQuantity = 1;
+  orderSize = '1 kg';
+  preferredDate = '';
+  cakeMessage = '';
+  customerName = '';
+  customerPhone = '';
+  orderError = '';
+
 
   products: CakeProduct[] = [
     {
@@ -64,9 +98,13 @@ export class AppComponent implements OnInit {
       if (!items) return;
       this.apiConnected = true;
       this.products = items.map((item) => ({
-        name: item.name, description: item.description, price: `From ₹${item.price}`,
-        tag: item.badge ?? undefined, image: item.imageUrl ?? '',
-        category: this.toDisplayCategory(item.categoryName),
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: `From ₹${item.price}`,
+        tag: item.badge ?? undefined,
+        image: item.imageUrl ?? '',
+        category: this.toDisplayCategory(item.categoryName)
       }));
       const categoryNames = [...new Set(items.map((item) => this.toDisplayCategory(item.categoryName)))];
       this.categories.splice(0, this.categories.length, 'All', ...categoryNames);
@@ -91,11 +129,110 @@ export class AppComponent implements OnInit {
     this.mobileMenuOpen = !this.mobileMenuOpen;
   }
 
+  onOrderCakeChange(productName: string): void {
+    this.selectedProduct =
+      this.products.find(product => product.name === productName) ?? null;
+
+    this.orderError = '';
+  }
   orderOnWhatsApp(productName?: string): void {
-    const message = productName
-      ? `Hi ${this.brandName}! I'd like to know more about the ${productName}.`
-      : `Hi ${this.brandName}! I'd like to explore your cakes and place an order.`;
-    const url = `https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    this.selectedProduct =
+      this.products.find(product => product.name === productName) ?? null;
+
+    this.orderQuantity = 1;
+    this.orderSize = '1 kg';
+    this.preferredDate = '';
+    this.cakeMessage = '';
+    this.customerName = '';
+    this.customerPhone = '';
+    this.orderError = '';
+
+    this.orderFormOpen = true;
+
+    this.savedOrder = null;
+    this.isSubmittingOrder = false;
+  }
+
+  closeOrderForm(): void {
+    this.orderFormOpen = false;
+    this.orderError = '';
+  }
+
+
+  submitOrder(): void {
+    if (this.isSubmittingOrder) return;
+
+    if (!this.customerName.trim()) {
+      this.orderError = 'Please enter your name.';
+      return;
+    }
+
+    if (!/^[0-9]{10}$/.test(this.customerPhone.trim())) {
+      this.orderError = 'Please enter a valid 10-digit mobile number.';
+      return;
+    }
+
+    if (this.orderQuantity < 1 || this.orderQuantity > 100) {
+      this.orderError = 'Quantity must be between 1 and 100.';
+      return;
+    }
+
+    if (!this.selectedProduct?.id) {
+      this.orderError =
+        'The selected cake is not connected to the catalogue API. Please refresh and try again.';
+      return;
+    }
+
+    this.orderError = '';
+    this.isSubmittingOrder = true;
+
+    this.orderApi.createOrder({
+      productId: this.selectedProduct.id,
+      customerName: this.customerName.trim(),
+      customerPhone: this.customerPhone.trim(),
+      quantity: this.orderQuantity,
+      cakeSize: this.orderSize,
+      preferredDate: this.preferredDate || null,
+      customization: this.cakeMessage.trim() || null
+    }).subscribe({
+      next: (response) => {
+        this.savedOrder = response;
+        this.isSubmittingOrder = false;
+      },
+      error: (error) => {
+        this.isSubmittingOrder = false;
+        this.orderError =
+          error?.error?.message ??
+          'We could not save your order. Please try again.';
+      }
+    });
+  }
+
+  continueToWhatsApp(): void {
+    if (!this.savedOrder || !this.selectedProduct) return;
+
+    const message = [
+      `Hi ${this.brandName}! I've submitted an order request.`,
+      `Order number: ${this.savedOrder.orderNumber}`,
+      `Cake: ${this.savedOrder.cakeName}`,
+      `Quantity: ${this.savedOrder.quantity}`,
+      `Size: ${this.orderSize}`,
+      `Customer: ${this.customerName.trim()}`,
+      `Mobile: ${this.customerPhone.trim()}`,
+      ...(this.preferredDate
+        ? [`Preferred date: ${this.preferredDate}`]
+        : []),
+      ...(this.cakeMessage.trim()
+        ? [`Cake message/customization: ${this.cakeMessage.trim()}`]
+        : []),
+      'Please confirm availability and final price.'
+    ].join('\n');
+
+    const url =
+      `https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
     window.open(url, '_blank', 'noopener,noreferrer');
   }
+
+
 }
