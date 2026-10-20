@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { CatalogApiService } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
@@ -40,9 +40,9 @@ export class AppComponent implements OnInit {
   private readonly orderApi = inject(OrderApiService);
 
   isSubmittingOrder = false;
-  savedOrder: CustomerOrderResponse | null = null;
+  readonly savedOrder = signal<CustomerOrderResponse | null>(null);
 
-  apiConnected = false;
+  readonly apiConnected = signal(false);
   readonly brandName = 'The Sweet Panda';
   // Replace with the shop's WhatsApp number in international format, digits only.
   private readonly WHATSAPP_NUMBER = '8456057904';
@@ -50,13 +50,13 @@ export class AppComponent implements OnInit {
   activeCategory = 'All';
   mobileMenuOpen = false;
 
-  categories = ['All', 'Celebration', 'Chocolate', 'Signature'];
+  readonly categories = signal(['All', 'Celebration', 'Chocolate', 'Signature']);
 
   today = new Date().toISOString().slice(0, 10);
 
   // Phase 4: Customer ordering workflow
   orderFormOpen = false;
-  selectedProduct: CakeProduct | null = null;
+  readonly selectedProduct = signal<CakeProduct | null>(null);
 
   orderQuantity = 1;
   orderSize = '1 kg';
@@ -67,7 +67,7 @@ export class AppComponent implements OnInit {
   orderError = '';
 
 
-  products: CakeProduct[] = [
+  readonly products = signal<CakeProduct[]>([
     {
       name: 'Velvet Rose Cake',
       description: 'Silky vanilla cream, soft sponge and delicate rose finish.',
@@ -91,13 +91,13 @@ export class AppComponent implements OnInit {
       image: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=85',
       category: 'Signature',
     },
-  ];
+  ]);
 
   ngOnInit(): void {
     this.catalogApi.getProducts().pipe(catchError(() => of(null))).subscribe((items) => {
       if (!items) return;
-      this.apiConnected = true;
-      this.products = items.map((item) => ({
+      this.apiConnected.set(true);
+      this.products.set(items.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description,
@@ -105,9 +105,9 @@ export class AppComponent implements OnInit {
         tag: item.badge ?? undefined,
         image: item.imageUrl ?? '',
         category: this.toDisplayCategory(item.categoryName)
-      }));
+      })));
       const categoryNames = [...new Set(items.map((item) => this.toDisplayCategory(item.categoryName)))];
-      this.categories.splice(0, this.categories.length, 'All', ...categoryNames);
+      this.categories.set(['All', ...categoryNames]);
     });
   }
 
@@ -117,8 +117,8 @@ export class AppComponent implements OnInit {
 
   get visibleProducts(): CakeProduct[] {
     return this.activeCategory === 'All'
-      ? this.products
-      : this.products.filter((product) => product.category === this.activeCategory);
+      ? this.products()
+      : this.products().filter((product) => product.category === this.activeCategory);
   }
 
   setCategory(category: string): void {
@@ -130,14 +130,16 @@ export class AppComponent implements OnInit {
   }
 
   onOrderCakeChange(productName: string): void {
-    this.selectedProduct =
-      this.products.find(product => product.name === productName) ?? null;
+    this.selectedProduct.set(
+      this.products().find(product => product.name === productName) ?? null
+    );
 
     this.orderError = '';
   }
   orderOnWhatsApp(productName?: string): void {
-    this.selectedProduct =
-      this.products.find(product => product.name === productName) ?? null;
+    this.selectedProduct.set(
+      this.products().find(product => product.name === productName) ?? null
+    );
 
     this.orderQuantity = 1;
     this.orderSize = '1 kg';
@@ -149,7 +151,7 @@ export class AppComponent implements OnInit {
 
     this.orderFormOpen = true;
 
-    this.savedOrder = null;
+    this.savedOrder.set(null);
     this.isSubmittingOrder = false;
   }
 
@@ -177,7 +179,8 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    if (!this.selectedProduct?.id) {
+    const selectedProduct = this.selectedProduct();
+    if (!selectedProduct?.id) {
       this.orderError =
         'The selected cake is not connected to the catalogue API. Please refresh and try again.';
       return;
@@ -187,7 +190,7 @@ export class AppComponent implements OnInit {
     this.isSubmittingOrder = true;
 
     this.orderApi.createOrder({
-      productId: this.selectedProduct.id,
+      productId: selectedProduct.id,
       customerName: this.customerName.trim(),
       customerPhone: this.customerPhone.trim(),
       quantity: this.orderQuantity,
@@ -196,7 +199,7 @@ export class AppComponent implements OnInit {
       customization: this.cakeMessage.trim() || null
     }).subscribe({
       next: (response) => {
-        this.savedOrder = response;
+        this.savedOrder.set(response);
         this.isSubmittingOrder = false;
       },
       error: (error) => {
@@ -209,13 +212,15 @@ export class AppComponent implements OnInit {
   }
 
   continueToWhatsApp(): void {
-    if (!this.savedOrder || !this.selectedProduct) return;
+    const savedOrder = this.savedOrder();
+    const selectedProduct = this.selectedProduct();
+    if (!savedOrder || !selectedProduct) return;
 
     const message = [
       `Hi ${this.brandName}! I've submitted an order request.`,
-      `Order number: ${this.savedOrder.orderNumber}`,
-      `Cake: ${this.savedOrder.cakeName}`,
-      `Quantity: ${this.savedOrder.quantity}`,
+      `Order number: ${savedOrder.orderNumber}`,
+      `Cake: ${savedOrder.cakeName}`,
+      `Quantity: ${savedOrder.quantity}`,
       `Size: ${this.orderSize}`,
       `Customer: ${this.customerName.trim()}`,
       `Mobile: ${this.customerPhone.trim()}`,

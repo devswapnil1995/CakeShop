@@ -1,4 +1,4 @@
-<ng-container *ngIf="!isAdminRoute">
+@if (!isAdminRoute) {
   <!-- Announcement Bar -->
   <div class="announcement-bar">
     <span>Made with love, baked fresh for your sweetest moments</span>
@@ -8,7 +8,9 @@
   <!-- Header -->
   <header class="site-header">
     <a class="brand" href="#home" aria-label="The Sweet Panda home">
-      <span class="brand-mark" aria-hidden="true">✿</span>
+      <span class="brand-mark" aria-hidden="true">
+        <img src="assets/images/logo.jpeg" alt="" />
+      </span>
       <span class="brand-copy">
         <strong>The Sweet Panda</strong>
         <small>BAKED WITH A LITTLE MAGIC</small>
@@ -119,27 +121,32 @@
 
       <!-- Category Filters -->
       <div class="category-filters" aria-label="Filter cakes">
-        <button *ngFor="let category of categories" type="button" [class.active]="activeCategory === category"
+        @for (category of categories(); track category) {
+        <button type="button" [class.active]="activeCategory === category"
           (click)="setCategory(category)">
           {{ category }}
         </button>
+        }
       </div>
 
       <!-- Product Grid -->
       <div class="product-grid">
-        <article class="product-card" *ngFor="let product of visibleProducts">
-          <div class="product-image">
+        @for (product of visibleProducts; track product.id ?? product.name) {
+        <article class="product-card">
+          <!-- <div class="product-image">
             <img [src]="product.image" [alt]="product.name" loading="lazy" />
 
-            <span class="product-tag" *ngIf="product.tag">
-              {{ product.tag }}
-            </span>
+            @if (product.tag) {
+              <span class="product-tag">
+                {{ product.tag }}
+              </span>
+            }
 
             <button class="quick-order" type="button" (click)="orderOnWhatsApp(product.name)"
               [attr.aria-label]="'Ask about ' + product.name">
               ↗
             </button>
-          </div>
+          </div> -->
 
           <div class="product-details">
             <div>
@@ -154,6 +161,7 @@
             Ask about this cake <span>→</span>
           </button>
         </article>
+        }
       </div>
 
       <p class="catalog-note">
@@ -195,7 +203,8 @@
     </section>
 
     <!-- Customer Order Modal -->
-    <div class="order-modal-backdrop" *ngIf="orderFormOpen" (click)="closeOrderForm()">
+    @if (orderFormOpen) {
+    <div class="order-modal-backdrop" (click)="closeOrderForm()">
 
       <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title"
         (click)="$event.stopPropagation()">
@@ -209,27 +218,30 @@
         </h2>
 
         <!-- Show the preselected cake, or let the customer choose -->
-        <div *ngIf="selectedProduct; else chooseCake">
+        @if (selectedProduct(); as selectedProduct) {
+        <div>
           <p>
             Ordering:
             <strong>{{ selectedProduct.name }}</strong>
           </p>
         </div>
-
-        <ng-template #chooseCake>
+        } @else {
           <p>Tell us what you'd like to order.</p>
 
           <label for="selectedCake">Choose a cake *</label>
-          <select id="selectedCake" name="selectedCake" [ngModel]="selectedProduct?.name ?? ''"
+          <select id="selectedCake" name="selectedCake" [ngModel]="''"
             (ngModelChange)="onOrderCakeChange($event)" required>
             <option value="" disabled>Select a cake</option>
-            <option *ngFor="let product of products" [value]="product.name">
+            @for (product of products(); track product.id ?? product.name) {
+            <option [value]="product.name">
               {{ product.name }}
             </option>
+            }
           </select>
-        </ng-template>
+        }
 
-        <div *ngIf="savedOrder as order" class="order-success" role="status">
+        @if (savedOrder(); as order) {
+        <div class="order-success" role="status">
           <h3>Thank you, {{ customerName }}! 🎂</h3>
           <p>Your order request has been saved successfully.</p>
           <p>
@@ -246,8 +258,10 @@
             Close
           </button>
         </div>
+        }
 
-        <form *ngIf="!savedOrder" (ngSubmit)="submitOrder()" #orderForm="ngForm">
+        @if (!savedOrder()) {
+        <form (ngSubmit)="submitOrder()" #orderForm="ngForm">
           <label for="customerName">Your name *</label>
           <input id="customerName" name="customerName" type="text" [(ngModel)]="customerName" autocomplete="name"
             required />
@@ -284,17 +298,21 @@
           <textarea id="cakeMessage" name="cakeMessage" rows="3" [(ngModel)]="cakeMessage"
             placeholder="e.g. Happy Birthday!"></textarea>
 
-          <p class="order-error" *ngIf="orderError" role="alert">
-            {{ orderError }}
-          </p>
+          @if (orderError) {
+            <p class="order-error" role="alert">
+              {{ orderError }}
+            </p>
+          }
 
           <button type="submit" class="order-submit-button"
-            [disabled]="!selectedProduct?.id || isSubmittingOrder || !orderForm.valid">
+            [disabled]="!selectedProduct()?.id || isSubmittingOrder || !orderForm.valid">
             {{ isSubmittingOrder ? 'Saving order...' : 'Save order & continue' }}
           </button>
         </form>
+        }
       </section>
     </div>
+    }
 
     <!-- Visit Us -->
     <section class="visit-section section-wrap" id="visit">
@@ -343,7 +361,9 @@
   <!-- Footer -->
   <footer class="site-footer">
     <a class="brand footer-brand" href="#home">
-      <span class="brand-mark" aria-hidden="true">✿</span>
+      <span class="brand-mark" aria-hidden="true">
+        <img src="assets/images/logo.jpeg" alt="" />
+      </span>
       <span class="brand-copy">
         <strong>The Sweet Panda</strong>
         <small>BAKED WITH A LITTLE MAGIC</small>
@@ -359,7 +379,9 @@
       <span>FRESHLY MADE, ALWAYS.</span>
     </div>
   </footer>
-</ng-container>
+}
 
 <!-- Admin routes -->
-<router-outlet *ngIf="isAdminRoute"></router-outlet>
+@if (isAdminRoute) {
+  <router-outlet></router-outlet>
+}

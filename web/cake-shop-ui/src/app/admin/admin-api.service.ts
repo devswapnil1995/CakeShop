@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface AdminCategory {
@@ -105,6 +105,52 @@ export interface AdminDashboardSummary {
   upcomingOrders: DashboardOrder[];
 }
 
+
+export interface AdminExpense {
+  id: string;
+  category: string;
+  amount: number;
+  expenseDate: string;
+  description: string | null;
+  createdUtc: string;
+  updatedUtc: string;
+}
+
+export interface ExpensePage {
+  items: AdminExpense[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface ExpenseWrite {
+  category: string;
+  amount: number;
+  expenseDate: string;
+  description: string | null;
+}
+
+
+export interface ProfitReport {
+  fromDate: string;
+  toDate: string;
+  completedOrderCount: number;
+  completedOrdersMissingPrice: number;
+  revenue: number;
+  expenseCount: number;
+  expenses: number;
+  estimatedOperatingResult: number;
+  revenueComplete: boolean;
+  expenseBreakdown: ExpenseCategoryBreakdown[];
+}
+
+export interface ExpenseCategoryBreakdown {
+  category: string;
+  amount: number;
+  count: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -159,4 +205,74 @@ export class AdminApiService {
       this.options
     );
   }
+
+
+  getExpenses(
+    page = 1,
+    pageSize = 10,
+    fromDate?: string,
+    toDate?: string,
+    category?: string
+  ): Observable<ExpensePage> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize);
+
+    if (fromDate) params = params.set('fromDate', fromDate);
+    if (toDate) params = params.set('toDate', toDate);
+    if (category?.trim()) {
+      params = params.set('category', category.trim());
+    }
+
+    return this.http.get<ExpensePage>(
+      `${this.base}/expenses`,
+      { ...this.options, params }
+    );
+  }
+
+  getExpense(id: string): Observable<AdminExpense> {
+    return this.http.get<AdminExpense>(
+      `${this.base}/expenses/${id}`,
+      this.options
+    );
+  }
+
+  createExpense(body: ExpenseWrite): Observable<AdminExpense> {
+    return this.http.post<AdminExpense>(
+      `${this.base}/expenses`,
+      body,
+      this.options
+    );
+  }
+
+  updateExpense(
+    id: string,
+    body: ExpenseWrite
+  ): Observable<AdminExpense> {
+    return this.http.put<AdminExpense>(
+      `${this.base}/expenses/${id}`,
+      body,
+      this.options
+    );
+  }
+
+  deleteExpense(id: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.base}/expenses/${id}`,
+      this.options
+    );
+  }
+
+
+  getProfitReport(fromDate: string, toDate: string): Observable<ProfitReport> {
+    const params = new HttpParams()
+      .set('fromDate', fromDate)
+      .set('toDate', toDate);
+
+    return this.http.get<ProfitReport>(
+      `${this.base}/reports/profit`,
+      { ...this.options, params }
+    );
+  }
+
 }

@@ -1,5 +1,7 @@
+using CakeShop.Api.Contracts;
 using CakeShop.Application.Catalog;
 using CakeShop.Domain.Catalog;
+using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
 using CakeShop.Infrastructure.Persistence;
@@ -39,11 +41,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true, ValidIssuer = jwtIssuer,
-        ValidateAudience = true, ValidAudience = jwtAudience,
-        ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ValidateLifetime = true, ClockSkew = TimeSpan.FromSeconds(30),
-        NameClaimType = ClaimTypes.Name, RoleClaimType = ClaimTypes.Role
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromSeconds(30),
+        NameClaimType = ClaimTypes.Name,
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
@@ -400,6 +407,7 @@ adminApi.MapGet("/categories", async (ClaimsPrincipal user, CakeShopDbContext db
     return Results.Ok(await db.Categories.AsNoTracking().Where(x => x.ClientId == clientId)
         .OrderBy(x => x.SortOrder).Select(x => new AdminCategoryDto(x.Id, x.Name, x.Slug, x.SortOrder, x.IsActive)).ToListAsync(ct));
 });
+
 adminApi.MapPost("/categories", async (ClaimsPrincipal user, CategoryWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
@@ -412,6 +420,7 @@ adminApi.MapPost("/categories", async (ClaimsPrincipal user, CategoryWriteReques
     db.Categories.Add(entity); await db.SaveChangesAsync(ct);
     return Results.Created($"/api/v1/admin/categories/{entity.Id}", new AdminCategoryDto(entity.Id, entity.Name, entity.Slug, entity.SortOrder, entity.IsActive));
 });
+
 adminApi.MapPut("/categories/{id:guid}", async (Guid id, ClaimsPrincipal user, CategoryWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
@@ -434,6 +443,7 @@ adminApi.MapGet("/products", async (ClaimsPrincipal user, CakeShopDbContext db, 
                       select new AdminProductDto(product.Id, product.CategoryId, product.Name, product.Slug, product.Description, product.Price, product.ImageUrl, product.Badge, product.IsFeatured, product.IsAvailable, category.Name)).ToListAsync(ct);
     return Results.Ok(rows);
 });
+
 adminApi.MapPost("/products", async (ClaimsPrincipal user, ProductWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
@@ -526,6 +536,342 @@ adminApi.MapGet("/dashboard/summary", async (
 }).WithName("GetAdminDashboardSummary").WithTags("Admin Dashboard");
 
 
+adminApi.MapPost("/expenses", async (
+    ClaimsPrincipal user,
+    CreateExpenseRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var validation = ValidateExpense(
+        request.Category, request.Amount, request.Description);
+
+    if (validation is not null)
+        return Results.BadRequest(new { message = validation });
+
+    var expense = new Expense(
+        Guid.NewGuid(),
+        clientId,
+        request.Category,
+        request.Amount,
+        request.ExpenseDate,
+        request.Description);
+
+    db.Expenses.Add(expense);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Created(
+        $"/api/v1/admin/expenses/{expense.Id}",
+        new
+        {
+            expense.Id,
+            expense.Category,
+            expense.Amount,
+            expense.ExpenseDate,
+            expense.Description,
+            expense.CreatedUtc,
+            expense.UpdatedUtc
+        });
+})
+.WithName("CreateAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapGet("/expenses", async (
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    DateOnly? fromDate,
+    DateOnly? toDate,
+    string? category,
+    int page = 1,
+    int pageSize = 10,
+    CancellationToken ct = default) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    if (fromDate.HasValue && toDate.HasValue &&
+        fromDate.Value > toDate.Value)
+    {
+        return Results.BadRequest(new
+        {
+            message = "From date cannot be after to date."
+        });
+    }
+
+    if (page < 1 || pageSize < 1 || pageSize > 100)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Page must be at least 1 and page size must be between 1 and 100."
+        });
+    }
+
+    var query = db.Expenses
+        .AsNoTracking()
+        .Where(x => x.ClientId == clientId);
+
+    if (fromDate.HasValue)
+        query = query.Where(x => x.ExpenseDate >= fromDate.Value);
+
+    if (toDate.HasValue)
+        query = query.Where(x => x.ExpenseDate <= toDate.Value);
+
+    if (!string.IsNullOrWhiteSpace(category))
+    {
+        var normalizedCategory = category.Trim();
+        query = query.Where(x => x.Category == normalizedCategory);
+    }
+
+    var totalCount = await query.CountAsync(ct);
+
+    var items = await query
+        .OrderByDescending(x => x.ExpenseDate)
+        .ThenByDescending(x => x.CreatedUtc)
+        .ThenByDescending(x => x.Id)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(x => new
+        {
+            x.Id,
+            x.Category,
+            x.Amount,
+            x.ExpenseDate,
+            x.Description,
+            x.CreatedUtc,
+            x.UpdatedUtc
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(new
+    {
+        items,
+        page,
+        pageSize,
+        totalCount,
+        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+    });
+})
+.WithName("GetAdminExpenses")
+.WithTags("Admin Expenses");
+
+
+
+adminApi.MapGet("/reports/profit", async (
+    DateOnly fromDate,
+    DateOnly toDate,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new
+        {
+            message = "From date must be on or before the to date."
+        });
+    }
+
+    if (toDate == DateOnly.MaxValue)
+    {
+        return Results.BadRequest(new
+        {
+            message = "The selected end date is outside the supported reporting range."
+        });
+    }
+
+    if (toDate.DayNumber - fromDate.DayNumber > 366)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Select a date range of no more than 367 calendar days."
+        });
+    }
+
+    var indiaZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows()
+            ? "India Standard Time"
+            : "Asia/Kolkata");
+
+    var localStart = DateTime.SpecifyKind(
+        fromDate.ToDateTime(TimeOnly.MinValue),
+        DateTimeKind.Unspecified);
+
+    var localEndExclusive = DateTime.SpecifyKind(
+        toDate.AddDays(1).ToDateTime(TimeOnly.MinValue),
+        DateTimeKind.Unspecified);
+
+    var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, indiaZone);
+    var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEndExclusive, indiaZone);
+
+    var completedOrders = db.CustomerOrders
+        .AsNoTracking()
+        .Where(x =>
+            x.ClientId == clientId &&
+            x.Status == CustomerOrderStatus.Completed &&
+            x.CompletedUtc >= utcStart &&
+            x.CompletedUtc < utcEnd);
+
+    var completedOrderCount = await completedOrders.CountAsync(ct);
+
+    var missingPriceCount = await completedOrders
+        .CountAsync(x => x.TotalAmount == null, ct);
+
+    var revenue = await completedOrders
+        .Where(x => x.TotalAmount != null)
+        .SumAsync(x => (decimal?)x.TotalAmount, ct) ?? 0m;
+
+    var expenseQuery = db.Expenses
+        .AsNoTracking()
+        .Where(x =>
+            x.ClientId == clientId &&
+            x.ExpenseDate >= fromDate &&
+            x.ExpenseDate <= toDate);
+
+    var expenseCount = await expenseQuery.CountAsync(ct);
+
+    var expenses = await expenseQuery
+        .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+
+    var expenseBreakdown = await expenseQuery
+    .GroupBy(x => x.Category)
+    .Select(group => new
+    {
+        category = group.Key,
+        amount = group.Sum(x => x.Amount),
+        count = group.Count()
+    })
+    .OrderByDescending(x => x.amount)
+    .ToListAsync(ct);
+
+    return Results.Ok(new
+    {
+        fromDate = fromDate.ToString("yyyy-MM-dd"),
+        toDate = toDate.ToString("yyyy-MM-dd"),
+        completedOrderCount,
+        completedOrdersMissingPrice = missingPriceCount,
+        revenue,
+        expenseCount,
+        expenses,
+        expenseBreakdown,
+        estimatedOperatingResult = revenue - expenses,
+        revenueComplete = missingPriceCount == 0
+    });
+})
+.WithName("GetAdminProfitReport")
+.WithTags("Admin Reports");
+
+
+
+adminApi.MapGet("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var expense = await db.Expenses
+        .AsNoTracking()
+        .Where(x => x.Id == id && x.ClientId == clientId)
+        .Select(x => new
+        {
+            x.Id,
+            x.Category,
+            x.Amount,
+            x.ExpenseDate,
+            x.Description,
+            x.CreatedUtc,
+            x.UpdatedUtc
+        })
+        .SingleOrDefaultAsync(ct);
+
+    return expense is null
+        ? Results.NotFound(new { message = "Expense not found." })
+        : Results.Ok(expense);
+})
+.WithName("GetAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapPut("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    UpdateExpenseRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var validation = ValidateExpense(
+        request.Category, request.Amount, request.Description);
+
+    if (validation is not null)
+        return Results.BadRequest(new { message = validation });
+
+    var expense = await db.Expenses
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (expense is null)
+        return Results.NotFound(new { message = "Expense not found." });
+
+    expense.Update(
+        request.Category,
+        request.Amount,
+        request.ExpenseDate,
+        request.Description);
+
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new
+    {
+        expense.Id,
+        expense.Category,
+        expense.Amount,
+        expense.ExpenseDate,
+        expense.Description,
+        expense.CreatedUtc,
+        expense.UpdatedUtc
+    });
+})
+.WithName("UpdateAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapDelete("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var expense = await db.Expenses
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (expense is null)
+        return Results.NotFound(new { message = "Expense not found." });
+
+    db.Expenses.Remove(expense);
+    await db.SaveChangesAsync(ct);
+
+    return Results.NoContent();
+})
+.WithName("DeleteAdminExpense")
+.WithTags("Admin Expenses");
+
 
 if (args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase)))
 {
@@ -579,6 +925,29 @@ static string? ValidateProduct(ProductWriteRequest request)
     return null;
 }
 
+static string? ValidateExpense(
+    string? category,
+    decimal amount,
+    string? description)
+{
+    if (string.IsNullOrWhiteSpace(category) ||
+        category.Trim().Length > 80)
+    {
+        return "Category is required and must be at most 80 characters.";
+    }
+
+    if (amount <= 0 || amount > 9999999999999999m)
+        return "Amount must be greater than zero and within the supported limit.";
+
+    if (amount != decimal.Round(amount, 2, MidpointRounding.AwayFromZero))
+        return "Amount cannot have more than two decimal places.";
+
+    if (description?.Trim().Length > 500)
+        return "Description must be at most 500 characters.";
+
+    return null;
+}
+
 public sealed record LoginRequest(string? Email, string? Password);
 public sealed record LoginResponse(string AccessToken, DateTime ExpiresUtc, string Email, string Role);
 public sealed record CategoryWriteRequest(string? Name, string? Slug, int SortOrder = 0, bool IsActive = true);
@@ -600,3 +969,15 @@ public sealed record UpdateCustomerOrderStatusRequest(
 
 public partial class Program { }
 
+
+public sealed record CreateExpenseRequest(
+    string? Category,
+    decimal Amount,
+    DateOnly ExpenseDate,
+    string? Description);
+
+public sealed record UpdateExpenseRequest(
+    string? Category,
+    decimal Amount,
+    DateOnly ExpenseDate,
+    string? Description);

@@ -28,15 +28,13 @@
     text-decoration: none
 }
 
-.brand-flower {
+.admin-brand-logo {
     display: grid;
-    place-items: center;
     width: 42px;
     height: 42px;
+    flex: 0 0 42px;
     border-radius: 50%;
-    background: #f1e4d8;
-    color: #805344;
-    font-size: 26px
+    object-fit: contain
 }
 
 .admin-brand strong,
@@ -1248,4 +1246,74 @@
     background: #f8d7da;
     color: #842029;
     border: 1px solid #f1aeb5;
+}
+
+.expense-breakdown {
+    margin-top: 1.25rem;
+}
+
+.report-card-header {
+    margin-bottom: 1rem;
+}
+
+.report-card-header h3 {
+    margin: 0 0 0.35rem;
+}
+
+.report-card-header p {
+    margin: 0;
+    color: #796b62;
+    font-size: 0.9rem;
+}
+
+.expense-breakdown-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.expense-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid #eee4dc;
+}
+
+.expense-breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.expense-breakdown-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.expense-category-name {
+    color: #38271f;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.expense-category-count {
+    color: #796b62;
+    font-size: 0.85rem;
+}
+
+.expense-breakdown-row strong {
+    color: #593a2c;
+    white-space: nowrap;
+}
+
+.expense-breakdown-empty {
+    padding: 1rem 0;
+    color: #796b62;
+}
+
+@media (max-width: 480px) {
+    .expense-breakdown-row {
+        align-items: flex-start;
+    }
 }

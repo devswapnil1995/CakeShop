@@ -1,4 +1,5 @@
 using CakeShop.Domain.Catalog;
+using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
 using CakeShop.Domain.Tenants;
@@ -15,6 +16,8 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
     public DbSet<OrderStatusHistory> OrderStatusHistories
     => Set<OrderStatusHistory>();
+
+    public DbSet<Expense> Expenses => Set<Expense>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -138,5 +141,30 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Expense>(e =>
+        {
+            e.ToTable("Expenses");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Category)
+                .HasMaxLength(80)
+                .IsRequired();
+
+            e.Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            e.Property(x => x.Description)
+                .HasMaxLength(500);
+
+            e.Property(x => x.ExpenseDate)
+                .IsRequired();
+
+            e.HasIndex(x => new { x.ClientId, x.ExpenseDate });
+
+            e.HasOne<ClientMaster>()
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
