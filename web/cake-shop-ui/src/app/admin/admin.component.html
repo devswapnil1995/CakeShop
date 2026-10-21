@@ -1,6 +1,7 @@
 <div class="admin-shell">
   <header class="admin-topbar">
-    <a class="admin-brand" href="/"><img class="admin-brand-logo" src="assets/images/logo.jpeg" alt="" /><span><strong>The Sweet Panda</strong><small>SHOP
+    <a class="admin-brand" href="/"><img class="admin-brand-logo" src="assets/images/logo.jpeg"
+        alt="" /><span><strong>The Sweet Panda</strong><small>SHOP
           ADMINISTRATION</small></span></a>
     <a class="store-link" href="/">View storefront <span>↗</span></a>
   </header>
@@ -17,13 +18,17 @@
       <p class="muted">Sign in to manage your cakes, categories and shop catalogue.</p>
       <label for="email">Email address</label><input id="email" type="email" name="email" [(ngModel)]="email"
         autocomplete="username" placeholder="you@yourbakery.com" required />
+
       <label for="password">Password</label><input id="password" type="password" name="password" [(ngModel)]="password"
         autocomplete="current-password" placeholder="Enter your password" required />
+
       @if(error()){
-        <p class="alert error">{{ error() }}</p>
+      <p class="alert error">{{ error() }}</p>
       }
-      <button class="primary-btn full" type="submit" [disabled]="loading">{{ loading ? 'Signing in…' : 'Sign in to
+
+      <button class="primary-btn full" type="submit" [disabled]="loading()">{{ loading() ? 'Signing in…' : 'Sign in to
         dashboard' }} <span>→</span></button>
+
       <p class="login-foot">Your shop data is protected by server-side authentication.</p>
     </form>
   </section>
@@ -38,8 +43,9 @@
       </div><button class="quiet-btn" type="button" (click)="logout()">Sign out ↗</button>
     </div>
     <div class="stats-grid">
+
       <article class="stat-card"><span class="stat-icon">♡</span><small>CATALOGUE ITEMS</small><strong>{{
-      products().length }}</strong><span>All shop products</span></article>
+          products().length }}</strong><span>All shop products</span></article>
       <article class="stat-card"><span class="stat-icon">✿</span><small>CATEGORIES</small><strong>{{ categories().length
           }}</strong><span>Organise your menu</span></article>
       <article class="stat-card"><span class="stat-icon">✦</span><small>FEATURED ITEMS</small><strong>{{ featuredCount
@@ -53,16 +59,18 @@
           Dashboard
         </button>
 
-        <button type="button" [class.selected]="activeTab === 'products'" (click)="selectTab('products')"><span>▧</span>
-          Products <b>{{
-            products().length }}</b></button>
         <button type="button" [class.selected]="activeTab === 'categories'"
           (click)="selectTab('categories')"><span>◫</span> Categories <b>{{ categories().length }}</b></button>
+
+        <button type="button" [class.selected]="activeTab === 'products'" (click)="selectTab('products')"><span>▧</span>
+          Products <b>{{ products().length }}</b></button>
+
         <button type="button" [class.selected]="activeTab === 'orders'" (click)="selectTab('orders')">
           <span>♡</span>
           Orders
           <b>{{ orders().length }}</b>
         </button>
+
         <button type="button" [class.selected]="activeTab === 'expenses'" (click)="selectTab('expenses')">
           <span>₹</span>
           Expenses
@@ -72,6 +80,7 @@
           <span>₹</span>
           Profit report
         </button>
+        
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
@@ -81,7 +90,7 @@
         <div class="alert error">{{ error() }}</div>
         }
         @if (notice) {
-          <div class="alert success">{{ notice }}</div>
+        <div class="alert success">{{ notice }}</div>
         }
 
         <!-- DAILY OPERATIONS DASHBOARD -->
@@ -97,142 +106,142 @@
             </div>
 
 
-            <button class="text-btn" type="button" (click)="loadDashboard()" [disabled]="dashboardLoading">
-              {{ dashboardLoading ? 'Refreshing…' : '↻ Refresh dashboard' }}
+            <button class="text-btn" type="button" (click)="loadDashboard()" [disabled]="dashboardLoading()">
+              {{ dashboardLoading() ? 'Refreshing…' : '↻ Refresh dashboard' }}
             </button>
           </div>
 
 
-          @if (dashboardLoading && !dashboard()) {
+          @if (dashboardLoading() && !dashboard()) {
           <div class="empty-state">
             Loading your daily summary…
           </div>
           }
 
           @if (dashboard(); as summary) {
-            <div class="stats-grid dashboard-stats">
-              <article class="stat-card">
-                <span class="stat-icon">✦</span>
-                <small>CREATED TODAY</small>
-                <strong>{{ summary.createdToday }}</strong>
-                <span>Orders received today</span>
-              </article>
-
-              <article class="stat-card">
-                <span class="stat-icon">♡</span>
-                <small>DUE TODAY</small>
-                <strong>{{ summary.dueToday }}</strong>
-                <span>Orders requested for today</span>
-              </article>
-
-              <article class="stat-card">
-                <span class="stat-icon">◷</span>
-                <small>PENDING CONFIRMATION</small>
-                <strong>{{ summary.pendingConfirmation }}</strong>
-                <span>Awaiting confirmation</span>
-              </article>
-
-              <article class="stat-card">
-                <span class="stat-icon">✿</span>
-                <small>IN PREPARATION</small>
-                <strong>{{ summary.preparing }}</strong>
-                <span>Cakes being prepared</span>
-              </article>
-
-              <article class="stat-card">
-                <span class="stat-icon">✓</span>
-                <small>READY</small>
-                <strong>{{ summary.ready }}</strong>
-                <span>Ready for collection or delivery</span>
-              </article>
-
-              <article class="stat-card">
-                <span class="stat-icon">₹</span>
-                <small>COMPLETED REVENUE TODAY</small>
-                <strong>
-                  {{ summary.revenueAvailable
-                  ? formatMoney(summary.completedRevenueToday)
-                  : '—' }}
-                </strong>
-                <span>Based on recorded order prices</span>
-              </article>
-            </div>
-
-            @if (summary.completedOrdersMissingPrice > 0) {
-            <div class="alert error">
-              Revenue may be incomplete:
-              {{ summary.completedOrdersMissingPrice }}
-              completed order(s) today have no recorded price.
-            </div>
-            }
-
-            <div class="list-heading">
-              <h3>Due today <span>{{ summary.dueOrders.length }}</span></h3>
-            </div>
-
-            @if (!summary.dueOrders.length) {
-            <div class="empty-state">
-              No orders are scheduled for today.
-            </div>
-            }
-
-            @for (order of summary.dueOrders; track order.id) {
-            <article class="category-row dashboard-order">
-              <span class="category-mark">♡</span>
-
-              <div class="category-info">
-                <strong>{{ order.cakeName }}</strong>
-                <small>{{ order.orderNumber }}</small>
-                <small>{{ order.customerName }}</small>
-                <small>
-                  Quantity: {{ order.quantity }} · Size: {{ order.cakeSize }}
-                </small>
-                <small>
-                  Unit price: {{ order.unitPrice == null ? '—' : (order.unitPrice |
-                  currency:'INR':'symbol':'1.2-2':'en-IN') }}
-                </small>
-                <strong class="order-total">
-                  Total: {{ order.totalAmount == null ? '—' : (order.totalAmount |
-                  currency:'INR':'symbol':'1.2-2':'en-IN') }}
-                </strong>
-
-              </div>
-
-              <span class="status-pill">{{ order.status }}</span>
+          <div class="stats-grid dashboard-stats">
+            <article class="stat-card">
+              <span class="stat-icon">✦</span>
+              <small>CREATED TODAY</small>
+              <strong>{{ summary.createdToday }}</strong>
+              <span>Orders received today</span>
             </article>
-            }
 
-            <div class="list-heading upcoming-heading">
-              <h3>Upcoming orders <span>{{ summary.upcomingOrders.length }}</span></h3>
-            </div>
-
-            @if (!summary.upcomingOrders.length) {
-            <div class="empty-state">
-              No upcoming orders found.
-            </div>
-            }
-
-            @for (order of summary.upcomingOrders; track order.id) {
-            <article class="category-row dashboard-order">
-              <span class="category-mark">✿</span>
-
-              <div class="category-info">
-                <strong>{{ order.cakeName }}</strong>
-                <small>{{ order.orderNumber }}</small>
-                <small>{{ order.customerName }}</small>
-                @if (order.preferredDate) {
-                <small>
-                  Due: {{ order.preferredDate | date:'mediumDate' }}
-                </small>
-                }
-              </div>
-
-              <span class="status-pill">{{ order.status }}</span>
+            <article class="stat-card">
+              <span class="stat-icon">♡</span>
+              <small>DUE TODAY</small>
+              <strong>{{ summary.dueToday }}</strong>
+              <span>Orders requested for today</span>
             </article>
-            }
+
+            <article class="stat-card">
+              <span class="stat-icon">◷</span>
+              <small>PENDING CONFIRMATION</small>
+              <strong>{{ summary.pendingConfirmation }}</strong>
+              <span>Awaiting confirmation</span>
+            </article>
+
+            <article class="stat-card">
+              <span class="stat-icon">✿</span>
+              <small>IN PREPARATION</small>
+              <strong>{{ summary.preparing }}</strong>
+              <span>Cakes being prepared</span>
+            </article>
+
+            <article class="stat-card">
+              <span class="stat-icon">✓</span>
+              <small>READY</small>
+              <strong>{{ summary.ready }}</strong>
+              <span>Ready for collection or delivery</span>
+            </article>
+
+            <article class="stat-card">
+              <span class="stat-icon">₹</span>
+              <small>COMPLETED REVENUE TODAY</small>
+              <strong>
+                {{ summary.revenueAvailable
+                ? formatMoney(summary.completedRevenueToday)
+                : '—' }}
+              </strong>
+              <span>Based on recorded order prices</span>
+            </article>
+          </div>
+
+          @if (summary.completedOrdersMissingPrice > 0) {
+          <div class="alert error">
+            Revenue may be incomplete:
+            {{ summary.completedOrdersMissingPrice }}
+            completed order(s) today have no recorded price.
+          </div>
           }
 
-          @if (!dashboardLoading && !dashboard()) {
+          <div class="list-heading">
+            <h3>Due today <span>{{ summary.dueOrders.length }}</span></h3>
+          </div>
+
+          @if (!summary.dueOrders.length) {
+          <div class="empty-state">
+            No orders are scheduled for today.
+          </div>
+          }
+
+          @for (order of summary.dueOrders; track order.id) {
+          <article class="category-row dashboard-order">
+            <span class="category-mark">♡</span>
+
+            <div class="category-info">
+              <strong>{{ order.cakeName }}</strong>
+              <small>{{ order.orderNumber }}</small>
+              <small>{{ order.customerName }}</small>
+              <small>
+                Quantity: {{ order.quantity }} · Size: {{ order.cakeSize }}
+              </small>
+              <small>
+                Unit price: {{ order.unitPrice == null ? '—' : (order.unitPrice |
+                currency:'INR':'symbol':'1.2-2':'en-IN') }}
+              </small>
+              <strong class="order-total">
+                Total: {{ order.totalAmount == null ? '—' : (order.totalAmount |
+                currency:'INR':'symbol':'1.2-2':'en-IN') }}
+              </strong>
+
+            </div>
+
+            <span class="status-pill">{{ order.status }}</span>
+          </article>
+          }
+
+          <div class="list-heading upcoming-heading">
+            <h3>Upcoming orders <span>{{ summary.upcomingOrders.length }}</span></h3>
+          </div>
+
+          @if (!summary.upcomingOrders.length) {
+          <div class="empty-state">
+            No upcoming orders found.
+          </div>
+          }
+
+          @for (order of summary.upcomingOrders; track order.id) {
+          <article class="category-row dashboard-order">
+            <span class="category-mark">✿</span>
+
+            <div class="category-info">
+              <strong>{{ order.cakeName }}</strong>
+              <small>{{ order.orderNumber }}</small>
+              <small>{{ order.customerName }}</small>
+              @if (order.preferredDate) {
+              <small>
+                Due: {{ order.preferredDate | date:'mediumDate' }}
+              </small>
+              }
+            </div>
+
+            <span class="status-pill">{{ order.status }}</span>
+          </article>
+          }
+          }
+
+          @if (!dashboardLoading() && !dashboard()) {
           <div class="empty-state">
             Dashboard data is unavailable. Check the API and refresh.
           </div>
@@ -246,7 +255,10 @@
             <div><span class="eyebrow">YOUR MENU</span>
               <h2>{{ editingProductId ? 'Edit product' : 'Products' }}</h2>
               <p class="muted">Update the cakes customers can discover.</p>
-            </div>@if (editingProductId) {
+            </div>
+
+
+            @if (editingProductId) {
             <button class="quiet-btn" type="button" (click)="resetProduct()">Cancel
               edit</button>
             }
@@ -267,8 +279,12 @@
                     category.name }}{{ category.isActive ? '' : ' (inactive)' }}</option>
                   }
                 </select></div>
-              <div class="field"><label for="productPrice">Price (₹) *</label><input id="productPrice"
-                  name="productPrice" type="number" min="0" step="0.01" [(ngModel)]="productForm.price" required />
+              <div class="field"><label for="productPrice">Base price / fallback (₹) *</label>
+                <input id="productPrice" name="productPrice" type="number" min="0" step="0.01"
+                  [(ngModel)]="productForm.price" required />
+                <p class="form-hint">
+                  Customer orders use the selected size price when sizes are configured.
+                </p>
               </div>
               <div class="field span-two"><label for="productDescription">Description</label><textarea
                   id="productDescription" name="productDescription" rows="3" [(ngModel)]="productForm.description"
@@ -282,21 +298,24 @@
                   [(ngModel)]="productForm.isFeatured" /> Featured item</label><label><input type="checkbox"
                   name="available" [(ngModel)]="productForm.isAvailable" /> Available to order</label></div>
             <div class="form-actions"><button class="primary-btn" type="submit"
-                [disabled]="saving || !categories().length">{{ saving ? 'Saving…' : editingProductId ? 'Save changes' :
+                [disabled]="saving() || !categories().length">{{ saving() ? 'Saving…' : editingProductId ? 'Save
+                changes' :
                 'Add product' }} <span>→</span></button><button class="quiet-btn" type="button"
                 (click)="resetProduct()">Clear form</button></div>
+
             @if (!categories().length) {
             <p class="form-hint">Create a category first to add products.</p>
             }
           </form>
+
           <div class="list-heading">
             <h3>All products <span>{{ products().length }}</span></h3><button class="text-btn" type="button"
               (click)="loadData()">↻ Refresh</button>
           </div>
-          @if (loading) {
+          @if (loading()) {
           <div class="empty-state">Refreshing your catalogue…</div>
           }
-          @if (!loading && !products().length) {
+          @if (!loading() && !products().length) {
           <div class="empty-state">No products yet. Add your first sweet creation
             above.</div>
           }
@@ -308,6 +327,9 @@
                 product.price | number:'1.0-2' }}</span><small>{{ product.isAvailable ? '● Available' : '○ Unavailable'
                 }}{{ product.isFeatured ? ' · ✦ Featured' : '' }}</small></div><button class="edit-btn" type="button"
               (click)="editProduct(product)">Edit ↗</button>
+            <button type="button" class="quiet-btn" (click)="manageProductSizes(product)">
+              Manage sizes
+            </button>
           </article>
           }
         </div>
@@ -337,7 +359,7 @@
               <div class="field field-check"><label><input type="checkbox" name="categoryActive"
                     [(ngModel)]="categoryForm.isActive" /> Active in storefront</label></div>
             </div>
-            <div class="form-actions"><button class="primary-btn" type="submit" [disabled]="saving">{{ saving ?
+            <div class="form-actions"><button class="primary-btn" type="submit" [disabled]="saving()">{{ saving() ?
                 'Saving…' : editingCategoryId ? 'Save changes' : 'Add category' }} <span>→</span></button><button
                 class="quiet-btn" type="button" (click)="resetCategory()">Clear form</button></div>
           </form>
@@ -373,8 +395,8 @@
               </p>
             </div>
 
-            <button class="text-btn" type="button" (click)="loadOrders()" [disabled]="loadingOrders">
-              {{ loadingOrders ? 'Refreshing…' : '↻ Refresh orders' }}
+            <button class="text-btn" type="button" (click)="loadOrders()" [disabled]="loadingOrders()">
+              {{ loadingOrders() ? 'Refreshing…' : '↻ Refresh orders' }}
             </button>
           </div>
 
@@ -445,19 +467,19 @@
             </div>
           </div>
 
-          @if (loadingOrders) {
+          @if (loadingOrders()) {
           <div class="empty-state">
             Loading customer orders…
           </div>
           }
 
-          @if (!loadingOrders && !orders().length) {
+          @if (!loadingOrders() && !orders().length) {
           <div class="empty-state">
             No orders found yet. New customer orders will appear here.
           </div>
           }
 
-          @if (!loadingOrders && orders().length > 0 && !filteredOrders.length) {
+          @if (!loadingOrders() && orders().length > 0 && !filteredOrders.length) {
           <div class="empty-state">
             No orders match your search or filters.
             <button class="text-btn" type="button" (click)="clearOrderFilters()">
@@ -532,32 +554,32 @@
 
               @if (order.status !== 'Completed' && order.status !== 'Cancelled') {
 
-                <label [for]="'order-status-' + order.id">
-                  Update status
-                </label>
+              <label [for]="'order-status-' + order.id">
+                Update status
+              </label>
 
-                <select [id]="'order-status-' + order.id" [ngModel]="order.status"
-                  (ngModelChange)="updateOrderStatus(order, $event)" [name]="'order-status-' + order.id"
-                  [disabled]="updatingOrderIds.has(order.id)">
+              <select [id]="'order-status-' + order.id" [ngModel]="order.status"
+                (ngModelChange)="updateOrderStatus(order, $event)" [name]="'order-status-' + order.id"
+                [disabled]="updatingOrderIds.has(order.id)">
 
-                  @for (status of getAvailableOrderStatuses(order); track status) {
-                  <option [value]="status">
-                    {{ status }}
-                  </option>
-                  }
-                </select>
-
-                @if (updatingOrderIds.has(order.id)) {
-                <small>
-                  Updating…
-                </small>
+                @for (status of getAvailableOrderStatuses(order); track status) {
+                <option [value]="status">
+                  {{ status }}
+                </option>
                 }
+              </select>
+
+              @if (updatingOrderIds.has(order.id)) {
+              <small>
+                Updating…
+              </small>
+              }
               } @else {
-                <small class="terminal-order-note">
-                  {{ order.status === 'Completed'
-                  ? 'This order has been completed.'
-                  : 'This order has been cancelled.' }}
-                </small>
+              <small class="terminal-order-note">
+                {{ order.status === 'Completed'
+                ? 'This order has been completed.'
+                : 'This order has been cancelled.' }}
+              </small>
               }
             </div>
 
@@ -565,7 +587,7 @@
           }
 
 
-          @if (!loadingOrders && sortedOrders.length > 0) {
+          @if (!loadingOrders() && sortedOrders.length > 0) {
           <div class="order-pagination">
 
             <button class="quiet-btn" type="button" [disabled]="currentOrderPage <= 1"
@@ -575,8 +597,7 @@
 
             <div class="order-page-numbers">
               @for (page of orderPageNumbers; track page) {
-              <button class="quiet-btn" type="button"
-                [class.active-page]="page === currentOrderPage"
+              <button class="quiet-btn" type="button" [class.active-page]="page === currentOrderPage"
                 [attr.aria-current]="page === currentOrderPage ? 'page' : null" (click)="goToOrderPage(page)">
                 {{ page }}
               </button>
@@ -685,7 +706,7 @@
                 <h3>Order status history</h3>
               </div>
 
-              @if (historyLoading) {
+              @if (historyLoading()) {
               <div class="empty-state">
                 Loading status history…
               </div>
@@ -697,13 +718,13 @@
               </div>
               }
 
-              @if (!historyLoading && !historyError && !orderStatusHistory().length) {
+              @if (!historyLoading() && !historyError && !orderStatusHistory().length) {
               <div class="empty-state">
                 No status changes have been recorded yet.
               </div>
               }
 
-              @if (!historyLoading && orderStatusHistory().length) {
+              @if (!historyLoading() && orderStatusHistory().length) {
               <div class="history-timeline">
 
                 @for (item of orderStatusHistory(); track item.id) {
@@ -754,8 +775,8 @@
               </p>
             </div>
 
-            <button class="text-btn" type="button" (click)="loadExpenses()" [disabled]="loadingExpenses">
-              {{ loadingExpenses ? 'Refreshing…' : '↻ Refresh expenses' }}
+            <button class="text-btn" type="button" (click)="loadExpenses()" [disabled]="loadingExpenses()">
+              {{ loadingExpenses() ? 'Refreshing…' : '↻ Refresh expenses' }}
             </button>
           </div>
 
@@ -793,8 +814,8 @@
             </div>
 
             <div class="form-actions">
-              <button class="primary-btn" type="submit" [disabled]="expenseSaving">
-                {{ expenseSaving ? 'Saving…' : editingExpenseId ? 'Save changes' : 'Add expense' }}
+              <button class="primary-btn" type="submit" [disabled]="expenseSaving()">
+                {{ expenseSaving() ? 'Saving…' : editingExpenseId ? 'Save changes' : 'Add expense' }}
                 <span>→</span>
               </button>
 
@@ -857,20 +878,20 @@
             </article>
           </div>
 
-          @if (loadingExpenses) {
+          @if (loadingExpenses()) {
           <div class="empty-state">
             Loading expenses…
           </div>
           }
 
-          @if (!loadingExpenses && !expenses().length) {
+          @if (!loadingExpenses() && !expenses().length) {
           <div class="empty-state">
             No expenses found for the selected filters.
             Add an expense above or clear the filters.
           </div>
           }
 
-          @if (!loadingExpenses && expenses().length) {
+          @if (!loadingExpenses() && expenses().length) {
           <div>
             <div class="list-heading">
               <h3>Expense records</h3>
@@ -906,7 +927,7 @@
           </div>
           }
 
-          @if (!loadingExpenses && expenseTotalPages > 1) {
+          @if (!loadingExpenses() && expenseTotalPages > 1) {
           <div class="order-pagination">
             <button class="quiet-btn" type="button" [disabled]="expensePageNumber <= 1"
               (click)="changeExpensePage(expensePageNumber - 1)">
@@ -945,8 +966,8 @@
               </p>
             </div>
 
-            <button class="text-btn" type="button" (click)="loadProfitReport()" [disabled]="profitReportLoading">
-              {{ profitReportLoading ? 'Calculating…' : '↻ Refresh report' }}
+            <button class="text-btn" type="button" (click)="loadProfitReport()" [disabled]="profitReportLoading()">
+              {{ profitReportLoading() ? 'Calculating…' : '↻ Refresh report' }}
             </button>
           </div>
 
@@ -966,77 +987,77 @@
             </div>
 
             <div class="form-actions">
-              <button class="primary-btn" type="button" (click)="loadProfitReport()" [disabled]="profitReportLoading">
+              <button class="primary-btn" type="button" (click)="loadProfitReport()" [disabled]="profitReportLoading()">
                 Generate report →
               </button>
             </div>
           </div>
 
-          @if (profitReportLoading) {
+          @if (profitReportLoading()) {
           <div class="empty-state">
             Calculating your report…
           </div>
           }
 
           @if (profitReport(); as report) {
-            <div class="stats-grid">
-              <article class="stat-card">
-                <span class="stat-icon">₹</span>
-                <small>COMPLETED-ORDER REVENUE</small>
-                <strong>{{ formatMoney(report.revenue) }}</strong>
-                <span>{{ report.completedOrderCount }} completed orders</span>
-              </article>
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span class="stat-icon">₹</span>
+              <small>COMPLETED-ORDER REVENUE</small>
+              <strong>{{ formatMoney(report.revenue) }}</strong>
+              <span>{{ report.completedOrderCount }} completed orders</span>
+            </article>
 
-              <article class="stat-card">
-                <span class="stat-icon">−</span>
-                <small>RECORDED EXPENSES</small>
-                <strong>{{ formatMoney(report.expenses) }}</strong>
-                <span>{{ report.expenseCount }} expense records</span>
-              </article>
+            <article class="stat-card">
+              <span class="stat-icon">−</span>
+              <small>RECORDED EXPENSES</small>
+              <strong>{{ formatMoney(report.expenses) }}</strong>
+              <span>{{ report.expenseCount }} expense records</span>
+            </article>
 
-              <article class="stat-card">
-                <span class="stat-icon">=</span>
-                <small>ESTIMATED OPERATING RESULT</small>
-                <strong>{{ formatMoney(report.estimatedOperatingResult) }}</strong>
-                <span>Revenue minus recorded expenses</span>
-              </article>
-            </div>
+            <article class="stat-card">
+              <span class="stat-icon">=</span>
+              <small>ESTIMATED OPERATING RESULT</small>
+              <strong>{{ formatMoney(report.estimatedOperatingResult) }}</strong>
+              <span>Revenue minus recorded expenses</span>
+            </article>
+          </div>
 
-            @if (!report.revenueComplete) {
-            <div class="alert error">
-              Revenue may be understated. {{ report.completedOrdersMissingPrice }}
-              completed order(s) have no recorded total price.
-            </div>
-            }
-
-            <div class="editor-card">
-              <span class="eyebrow">REPORT SUMMARY</span>
-              <h3>{{ report.fromDate | date:'mediumDate' }} – {{ report.toDate | date:'mediumDate' }}</h3>
-
-              <p>
-                Completed-order revenue:
-                <strong>{{ formatMoney(report.revenue) }}</strong>
-              </p>
-
-              <p>
-                Recorded expenses:
-                <strong>{{ formatMoney(report.expenses) }}</strong>
-              </p>
-
-              <p>
-                Estimated operating result:
-                <strong>{{ formatMoney(report.estimatedOperatingResult) }}</strong>
-              </p>
-
-              <p class="form-hint">
-                This is not full accounting profit. It excludes unrecorded costs,
-                taxes and other liabilities. Revenue completeness only checks for
-                completed orders with missing prices.
-              </p>
-            </div>
+          @if (!report.revenueComplete) {
+          <div class="alert error">
+            Revenue may be understated. {{ report.completedOrdersMissingPrice }}
+            completed order(s) have no recorded total price.
+          </div>
           }
 
-          @if (!profitReportLoading && !profitReport()) {
+          <div class="editor-card">
+            <span class="eyebrow">REPORT SUMMARY</span>
+            <h3>{{ report.fromDate | date:'mediumDate' }} – {{ report.toDate | date:'mediumDate' }}</h3>
+
+            <p>
+              Completed-order revenue:
+              <strong>{{ formatMoney(report.revenue) }}</strong>
+            </p>
+
+            <p>
+              Recorded expenses:
+              <strong>{{ formatMoney(report.expenses) }}</strong>
+            </p>
+
+            <p>
+              Estimated operating result:
+              <strong>{{ formatMoney(report.estimatedOperatingResult) }}</strong>
+            </p>
+
+            <p class="form-hint">
+              This is not full accounting profit. It excludes unrecorded costs,
+              taxes and other liabilities. Revenue completeness only checks for
+              completed orders with missing prices.
+            </p>
+          </div>
+          }
+
+          @if (!profitReportLoading() && !profitReport()) {
           <div class="empty-state">
             Select a date range and generate a report to view your financial summary.
           </div>
@@ -1084,3 +1105,101 @@
   </main>
   }
 </div>
+
+
+@if (showVariantModal()) {
+<div class="variant-modal-backdrop" (click)="closeVariantModal()">
+
+  <section class="variant-modal" role="dialog" aria-modal="true" aria-labelledby="variantModalTitle"
+    (click)="$event.stopPropagation()">
+
+    <div class="variant-modal-header">
+      <div>
+        <h2 id="variantModalTitle">Sizes &amp; Pricing</h2>
+        <p class="muted">
+          Configure each cake weight and price independently.
+        </p>
+      </div>
+
+      <button type="button" class="quiet-btn" aria-label="Close sizes and pricing" (click)="closeVariantModal()">
+        ✕
+      </button>
+    </div>
+
+    @if (variantsLoading()) {
+    <p class="muted">Loading saved sizes...</p>
+    } @else {
+    @if (productVariants.length === 0) {
+    <div class="empty-state">
+      No sizes configured yet. Add the first size below.
+    </div>
+    }
+
+    @for (variant of productVariants; track variant.id) {
+    <article class="category-row">
+      <div class="category-info">
+        <strong>{{ variant.sizeLabel }}</strong>
+        <small>{{ variant.weightInGrams }} g</small>
+        <small>₹{{ variant.price | number:'1.2-2' }}</small>
+        <small>
+          {{ variant.isAvailable ? 'Available' : 'Unavailable' }}
+        </small>
+      </div>
+
+      <button type="button" class="quiet-btn" (click)="startVariantEdit(variant)">
+        Edit
+      </button>
+    </article>
+    }
+    }
+
+    <form class="form-grid" (ngSubmit)="saveVariant()">
+      <h3 class="span-two">
+        {{ editingVariantId ? 'Edit size' : 'Add size' }}
+      </h3>
+
+      <div class="field">
+        <label for="modalVariantLabel">Size label *</label>
+        <input id="modalVariantLabel" name="modalVariantLabel" [(ngModel)]="variantForm.sizeLabel" required
+          maxlength="30" placeholder="e.g. 500 g or 1 kg" />
+      </div>
+
+      <div class="field">
+        <label for="modalVariantWeight">Weight (grams) *</label>
+        <input id="modalVariantWeight" name="modalVariantWeight" type="number" min="1" step="1"
+          [(ngModel)]="variantForm.weightInGrams" required />
+      </div>
+
+      <div class="field">
+        <label for="modalVariantPrice">Price (₹) *</label>
+        <input id="modalVariantPrice" name="modalVariantPrice" type="number" min="0.01" step="0.01"
+          [(ngModel)]="variantForm.price" required />
+      </div>
+
+      <div class="field">
+        <label>
+          <input type="checkbox" name="modalVariantAvailable" [(ngModel)]="variantForm.isAvailable" />
+          Available for ordering
+        </label>
+      </div>
+
+      <div class="span-two form-actions">
+        <button type="submit" class="primary-btn" [disabled]="variantSaving() || variantsLoading()">
+          {{ variantSaving() ? 'Saving...' :
+          editingVariantId ? 'Save size' : 'Add size' }}
+        </button>
+
+        @if (editingVariantId) {
+        <button type="button" class="quiet-btn" (click)="resetVariantForm()">
+          Cancel edit
+        </button>
+        }
+
+        <button type="button" class="quiet-btn" (click)="closeVariantModal()">
+          Done
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+}

@@ -13,6 +13,7 @@ export interface CatalogProductDto {
   isFeatured: boolean;
   categoryName: string;
   categorySlug: string;
+  variants: CatalogProductVariantDto[];
 }
 
 export interface CatalogCategoryDto {
@@ -20,6 +21,31 @@ export interface CatalogCategoryDto {
   name: string;
   slug: string;
   sortOrder: number;
+}
+
+
+export interface ProductVariantDto {
+  id: string;
+  sizeLabel: string;
+  weightInGrams: number;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface ProductVariant {
+  id: string;
+  sizeLabel: string;
+  weightInGrams: number;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface CatalogProductVariantDto {
+  id: string;
+  sizeLabel: string;
+  weightInGrams: number;
+  price: number;
+  isAvailable: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

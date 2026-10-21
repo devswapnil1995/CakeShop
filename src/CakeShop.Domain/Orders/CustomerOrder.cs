@@ -36,7 +36,7 @@ namespace CakeShop.Domain.Orders
         public CustomerOrderStatus Status { get; private set; }
         public DateTime CreatedUtc { get; private set; }
         public DateTime UpdatedUtc { get; private set; }
-
+        public Guid? ProductVariantId { get; private set; }
         public CustomerOrder(
          Guid id,
          Guid clientId,

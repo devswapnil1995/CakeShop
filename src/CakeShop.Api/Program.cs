@@ -107,9 +107,31 @@ app.MapGet("/api/v1/products", async (CakeShopDbContext db, string? category, bo
                 select new { product, cat };
     if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.cat.Slug == category.Trim().ToLowerInvariant());
     if (featured == true) query = query.Where(x => x.product.IsFeatured);
-    var result = await query.OrderBy(x => x.cat.SortOrder).ThenBy(x => x.product.Name)
-        .Select(x => new ProductDto(x.product.Id, x.product.Name, x.product.Slug, x.product.Description, x.product.Price, x.product.ImageUrl, x.product.Badge, x.product.IsFeatured, x.cat.Name, x.cat.Slug)).ToListAsync(ct);
-    return Results.Ok(result);
+    var result = await query
+    .OrderBy(x => x.cat.SortOrder)
+    .ThenBy(x => x.product.Name)
+    .Select(x => new
+    {
+        x.product.Id,
+        x.product.Name,
+        x.product.Slug,
+        x.product.Description,
+        x.product.Price,
+        x.product.ImageUrl,
+        x.product.Badge,
+        x.product.IsFeatured,
+        CategoryName = x.cat.Name,
+        CategorySlug = x.cat.Slug,
+        Variants = db.ProductVariants
+            .Where(v => v.ClientId == x.product.ClientId &&
+                        v.ProductId == x.product.Id &&
+                        v.IsAvailable)
+            .OrderBy(v => v.WeightInGrams)
+            .Select(v => new ProductVariantDto(
+                v.Id, v.SizeLabel, v.WeightInGrams, v.Price, v.IsAvailable))
+            .ToList()
+    })
+    .ToListAsync(ct); return Results.Ok(result);
 }).WithName("GetProducts").WithTags("Catalog");
 
 
@@ -159,6 +181,7 @@ app.MapPost("/api/v1/orders", async (
     }
 
 
+
     var product = await db.Products
         .AsNoTracking()
         .SingleOrDefaultAsync(
@@ -168,7 +191,82 @@ app.MapPost("/api/v1/orders", async (
             ct);
 
     if (product is null)
-        return Results.BadRequest(new { message = "Select an available cake from this shop." });
+    {
+        return Results.BadRequest(new
+        {
+            message = "Select an available cake from this shop."
+        });
+    }
+
+    var availableVariants = db.ProductVariants
+    .AsNoTracking()
+    .Where(v =>
+        v.ClientId == defaultClientId &&
+        v.ProductId == product.Id &&
+        v.IsAvailable);
+
+    var hasVariants = await availableVariants.AnyAsync(ct);
+    
+    decimal unitPrice;
+    string selectedCakeSize;
+
+    if (request.VariantId.HasValue)
+    {
+        var variant = await availableVariants
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                x => x.Id == request.VariantId.Value,
+                ct);
+
+        if (variant is null)
+        {
+            return Results.BadRequest(new
+            {
+                message = "The selected cake size is unavailable. Please select another size."
+            });
+        }
+
+        unitPrice = variant.Price;
+        selectedCakeSize = variant.SizeLabel;
+    }
+    else
+    {
+        // Backward compatibility: allow legacy products only
+        // while they have no configured size variants.
+
+        if (hasVariants)
+        {
+            if (!request.VariantId.HasValue)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Select an available cake size."
+                });
+            }
+
+            var variant = await availableVariants.SingleOrDefaultAsync(
+                v => v.Id == request.VariantId.Value,
+                ct);
+
+            if (variant is null)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "The selected cake size is unavailable."
+                });
+            }
+
+            unitPrice = variant.Price;
+            selectedCakeSize = variant.SizeLabel;
+        }
+        else
+        {
+            return Results.BadRequest(new
+            {
+                message = "This product has no configured sizes. Please contact the shop."
+            });
+        }
+    }
 
     var orderId = Guid.NewGuid();
     var orderNumber =
@@ -183,12 +281,13 @@ app.MapPost("/api/v1/orders", async (
         product.Id,
         product.Name,
         request.Quantity,
-        cakeSize,
+        selectedCakeSize,
         request.PreferredDate,
         customization,
-        product.Price);
+        unitPrice);
 
     db.CustomerOrders.Add(order);
+
     await db.SaveChangesAsync(ct);
 
     return Results.Created(
@@ -873,6 +972,139 @@ adminApi.MapDelete("/expenses/{id:guid}", async (
 .WithTags("Admin Expenses");
 
 
+adminApi.MapGet("/products/{productId:guid}/variants",
+    async (Guid productId, ClaimsPrincipal user,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var productExists = await db.Products.AnyAsync(
+            x => x.Id == productId && x.ClientId == clientId, ct);
+
+        if (!productExists)
+            return Results.NotFound();
+
+        var variants = await db.ProductVariants
+            .AsNoTracking()
+            .Where(x => x.ProductId == productId && x.ClientId == clientId)
+            .OrderBy(x => x.WeightInGrams)
+            .Select(x => new ProductVariantDto(
+                x.Id, x.SizeLabel, x.WeightInGrams, x.Price, x.IsAvailable))
+            .ToListAsync(ct);
+
+        return Results.Ok(variants);
+    });
+
+adminApi.MapPost("/products/{productId:guid}/variants",
+    async (Guid productId, ClaimsPrincipal user,
+        ProductVariantWriteRequest request,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var productExists = await db.Products.AnyAsync(
+            x => x.Id == productId && x.ClientId == clientId, ct);
+
+        if (!productExists)
+            return Results.NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.SizeLabel) ||
+            request.SizeLabel.Trim().Length > 30 ||
+            request.WeightInGrams <= 0 || request.WeightInGrams > 100000 ||
+            request.Price <= 0 || request.Price > 9999999999999999m ||
+            request.Price != decimal.Round(request.Price, 2, MidpointRounding.AwayFromZero))
+        {
+            return Results.BadRequest(new
+            {
+                message = "Enter a valid size, weight and price."
+            });
+        }
+
+        var weightExists = await db.ProductVariants.AnyAsync(
+            x => x.ClientId == clientId &&
+                 x.ProductId == productId &&
+                 x.WeightInGrams == request.WeightInGrams, ct);
+
+        if (weightExists)
+            return Results.Conflict(new
+            {
+                message = "A variant for this weight already exists."
+            });
+
+        var variant = new ProductVariant(
+            Guid.NewGuid(),
+            clientId,
+            productId,
+            request.SizeLabel,
+            request.WeightInGrams,
+            request.Price,
+            request.IsAvailable);
+
+        db.ProductVariants.Add(variant);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/api/v1/admin/products/{productId}/variants/{variant.Id}",
+            new ProductVariantDto(
+                variant.Id, variant.SizeLabel, variant.WeightInGrams,
+                variant.Price, variant.IsAvailable));
+    });
+
+adminApi.MapPut("/products/{productId:guid}/variants/{variantId:guid}",
+    async (Guid productId, Guid variantId, ClaimsPrincipal user,
+        ProductVariantWriteRequest request,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var variant = await db.ProductVariants.SingleOrDefaultAsync(
+            x => x.Id == variantId &&
+                 x.ProductId == productId &&
+                 x.ClientId == clientId, ct);
+
+        if (variant is null)
+            return Results.NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.SizeLabel) ||
+            request.SizeLabel.Trim().Length > 30 ||
+            request.WeightInGrams <= 0 || request.WeightInGrams > 100000 ||
+            request.Price <= 0 || request.Price > 9999999999999999m ||
+            request.Price != decimal.Round(request.Price, 2, MidpointRounding.AwayFromZero))
+        {
+            return Results.BadRequest(new
+            {
+                message = "Enter a valid size, weight and price."
+            });
+        }
+
+        var duplicateWeight = await db.ProductVariants.AnyAsync(
+            x => x.ClientId == clientId &&
+                 x.ProductId == productId &&
+                 x.WeightInGrams == request.WeightInGrams &&
+                 x.Id != variantId, ct);
+
+        if (duplicateWeight)
+            return Results.Conflict(new
+            {
+                message = "A variant for this weight already exists."
+            });
+
+        variant.Update(
+            request.SizeLabel,
+            request.WeightInGrams,
+            request.Price,
+            request.IsAvailable);
+
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(new ProductVariantDto(
+            variant.Id, variant.SizeLabel, variant.WeightInGrams,
+            variant.Price, variant.IsAvailable));
+    });
+
 if (args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase)))
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -962,7 +1194,8 @@ public sealed record CreateCustomerOrderRequest(
     int Quantity,
     string? CakeSize,
     DateOnly? PreferredDate,
-    string? Customization);
+    string? Customization,
+    Guid? VariantId);
 
 public sealed record UpdateCustomerOrderStatusRequest(
     string? Status);
@@ -981,3 +1214,18 @@ public sealed record UpdateExpenseRequest(
     decimal Amount,
     DateOnly ExpenseDate,
     string? Description);
+
+
+
+public sealed record ProductVariantDto(
+    Guid Id,
+    string SizeLabel,
+    int WeightInGrams,
+    decimal Price,
+    bool IsAvailable);
+
+public sealed record ProductVariantWriteRequest(
+    string? SizeLabel,
+    int WeightInGrams,
+    decimal Price,
+    bool IsAvailable);

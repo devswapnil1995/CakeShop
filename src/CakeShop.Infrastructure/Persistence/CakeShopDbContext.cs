@@ -17,6 +17,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<OrderStatusHistory> OrderStatusHistories
     => Set<OrderStatusHistory>();
 
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<Expense> Expenses => Set<Expense>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -166,5 +167,29 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
                 .HasForeignKey(x => x.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+
+        modelBuilder.Entity<ProductVariant>(e =>
+        {
+            e.ToTable("ProductVariants");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.SizeLabel)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.Price)
+                .HasPrecision(18, 2);
+
+            e.HasIndex(x => new { x.ClientId, x.ProductId, x.WeightInGrams })
+                .IsUnique();
+
+            e.HasOne<Product>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.ProductId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
     }
 }

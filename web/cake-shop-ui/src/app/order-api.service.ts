@@ -11,6 +11,7 @@ export interface CreateCustomerOrderRequest {
   cakeSize: string;
   preferredDate: string | null;
   customization: string | null;
+  variantId?: string | null;
 }
 
 export interface CustomerOrderResponse {

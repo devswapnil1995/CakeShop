@@ -151,6 +151,23 @@ export interface ExpenseCategoryBreakdown {
   count: number;
 }
 
+
+export interface AdminProductVariant {
+  id: string;
+  sizeLabel: string;
+  weightInGrams: number;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface ProductVariantWrite {
+  sizeLabel: string;
+  weightInGrams: number;
+  price: number;
+  isAvailable: boolean;
+}
+
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -171,7 +188,13 @@ export class AdminApiService {
   }
 
   getProducts(): Observable<AdminProduct[]> { return this.http.get<AdminProduct[]>(`${this.base}/products`, this.options); }
-  createProduct(body: ProductWrite): Observable<unknown> { return this.http.post(`${this.base}/products`, body, this.options); }
+  createProduct(body: ProductWrite): Observable<AdminProduct> {
+    return this.http.post<AdminProduct>(
+      `${this.base}/products`,
+      body,
+      this.options
+    );
+  }
   updateProduct(id: string, body: ProductWrite): Observable<unknown> { return this.http.put(`${this.base}/products/${id}`, body, this.options); }
   getCategories(): Observable<AdminCategory[]> { return this.http.get<AdminCategory[]>(`${this.base}/categories`, this.options); }
   createCategory(body: CategoryWrite): Observable<AdminCategory> { return this.http.post<AdminCategory>(`${this.base}/categories`, body, this.options); }
@@ -272,6 +295,37 @@ export class AdminApiService {
     return this.http.get<ProfitReport>(
       `${this.base}/reports/profit`,
       { ...this.options, params }
+    );
+  }
+
+
+  getProductVariants(productId: string): Observable<AdminProductVariant[]> {
+    return this.http.get<AdminProductVariant[]>(
+      `${this.base}/products/${productId}/variants`,
+      this.options
+    );
+  }
+
+  createProductVariant(
+    productId: string,
+    body: ProductVariantWrite
+  ): Observable<AdminProductVariant> {
+    return this.http.post<AdminProductVariant>(
+      `${this.base}/products/${productId}/variants`,
+      body,
+      this.options
+    );
+  }
+
+  updateProductVariant(
+    productId: string,
+    variantId: string,
+    body: ProductVariantWrite
+  ): Observable<AdminProductVariant> {
+    return this.http.put<AdminProductVariant>(
+      `${this.base}/products/${productId}/variants/${variantId}`,
+      body,
+      this.options
     );
   }
 

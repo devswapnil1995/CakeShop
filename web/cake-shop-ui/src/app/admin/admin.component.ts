@@ -10,7 +10,9 @@ import {
   AdminExpense,
   ExpensePage,
   ProfitReport,
-  ExpenseCategoryBreakdown
+  ExpenseCategoryBreakdown,
+  AdminProductVariant,
+  ProductVariantWrite
 } from './admin-api.service';
 
 @Component({
@@ -23,8 +25,8 @@ import {
 export class AdminComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   loggedIn = signal(false);
-  loading = false;
-  saving = false;
+  readonly loading = signal(false);
+  readonly saving = signal(false);
   activeTab:
     | 'dashboard'
     | 'products'
@@ -33,7 +35,7 @@ export class AdminComponent implements OnInit {
     | 'expenses'
     | 'reports' = 'dashboard';
   readonly dashboard = signal<AdminDashboardSummary | null>(null);
-  dashboardLoading = false;
+  readonly dashboardLoading = signal(false);
   error = signal('');
   notice = '';
   email = '';
@@ -47,7 +49,7 @@ export class AdminComponent implements OnInit {
   categoryForm: CategoryWrite = this.emptyCategory();
 
   readonly orders = signal<AdminOrder[]>([]);
-  loadingOrders = false;
+  readonly loadingOrders = signal(false);
   updatingOrderIds = new Set<string>();
 
   orderSearch = '';
@@ -66,7 +68,7 @@ export class AdminComponent implements OnInit {
   ];
 
   readonly orderStatusHistory = signal<OrderStatusHistory[]>([]);
-  historyLoading = false;
+  readonly historyLoading = signal(false);
   historyError = '';
 
 
@@ -79,9 +81,9 @@ export class AdminComponent implements OnInit {
 
   readonly expenses = signal<AdminExpense[]>([]);
   readonly expensePage = signal<ExpensePage | null>(null);
-  loadingExpenses = false;
+  readonly loadingExpenses = signal(false);
   editingExpenseId: string | null = null;
-  expenseSaving = false;
+  readonly expenseSaving = signal(false);
   deletingExpenseId: string | null = null;
 
   expensePageNumber = 1;
@@ -106,10 +108,9 @@ export class AdminComponent implements OnInit {
 
 
   readonly profitReport = signal<ProfitReport | null>(null);
-  profitReportLoading = false;
+  readonly profitReportLoading = signal(false);
   profitFromDate = this.firstDayOfMonth();
   profitToDate = this.localToday();
-
 
   expenseForm: ExpenseWrite = this.emptyExpense();
 
@@ -117,10 +118,28 @@ export class AdminComponent implements OnInit {
 
   get featuredCount(): number { return this.products().filter(product => product.isFeatured).length; }
 
+  productVariants: AdminProductVariant[] = [];
+  readonly variantsLoading = signal(false);
+  readonly variantSaving = signal(false);
+  editingVariantId: string | null = null;
+
+  variantForm: ProductVariantWrite = this.emptyVariant();
+
+  private emptyVariant(): ProductVariantWrite {
+    return {
+      sizeLabel: '',
+      weightInGrams: 500,
+      price: 0,
+      isAvailable: true
+    };
+  }
+
+  readonly showVariantModal = signal(false);
+
   ngOnInit(): void {
     this.loggedIn.set(this.api.isLoggedIn);
-    if (this.loggedIn()) { 
-      this.loadData(); 
+    if (this.loggedIn()) {
+      this.loadData();
       this.loadDashboard();
       this.loadOrders();
     }
@@ -129,8 +148,8 @@ export class AdminComponent implements OnInit {
   login(): void {
     this.error.set('');
     this.notice = '';
-    this.loading = true;
-    this.api.login(this.email.trim(), this.password).pipe(finalize(() => this.loading = false)).subscribe({
+    this.loading.set(true);
+    this.api.login(this.email.trim(), this.password).pipe(finalize(() => this.loading.set(false))).subscribe({
       next: result => {
         this.api.saveToken(result.accessToken);
         this.loggedIn.set(true);
@@ -155,7 +174,7 @@ export class AdminComponent implements OnInit {
     this.resetProduct();
     this.error.set('');
     this.orderStatusHistory.set([]);
-    this.historyLoading = false;
+    this.historyLoading.set(false);
     this.historyError = '';
 
     this.expenses.set([]);
@@ -164,21 +183,21 @@ export class AdminComponent implements OnInit {
   }
 
   loadData(): void {
-    this.loading = true; this.error.set('');
+    this.loading.set(true); this.error.set('');
     let completed = 0;
-    const done = () => { 
-      completed++; if (completed === 2) 
-        this.loading = false;
+    const done = () => {
+      completed++; if (completed === 2)
+        this.loading.set(false);
     };
 
-    this.api.getCategories().pipe(finalize(done)).subscribe({ 
-      next: rows => this.categories.set(rows), 
+    this.api.getCategories().pipe(finalize(done)).subscribe({
+      next: rows => this.categories.set(rows),
       error: err => this.handleApiError(err)
-     });
+    });
 
-    this.api.getProducts().pipe(finalize(done)).subscribe({ 
+    this.api.getProducts().pipe(finalize(done)).subscribe({
       next: rows => this.products.set(rows),
-      error: err => this.handleApiError(err) 
+      error: err => this.handleApiError(err)
     });
   }
 
@@ -207,11 +226,11 @@ export class AdminComponent implements OnInit {
   }
 
   loadOrders(): void {
-    this.loadingOrders = true;
+    this.loadingOrders.set(true);
     this.error.set('');
 
     this.api.getOrders()
-      .pipe(finalize(() => this.loadingOrders = false))
+      .pipe(finalize(() => this.loadingOrders.set(false)))
       .subscribe({
         next: orders => {
           this.orders.set(orders);
@@ -228,11 +247,11 @@ export class AdminComponent implements OnInit {
   loadDashboard(): void {
     if (!this.loggedIn()) return;
 
-    this.dashboardLoading = true;
+    this.dashboardLoading.set(true);
 
     this.api.getDashboardSummary()
       .pipe(finalize(() => {
-        this.dashboardLoading = false;
+        this.dashboardLoading.set(false);
       }))
       .subscribe({
         next: (result) => {
@@ -304,23 +323,78 @@ export class AdminComponent implements OnInit {
 
 
   editProduct(product: AdminProduct): void {
+    this.productVariants = [];
+    this.resetVariantForm();
+    this.loadProductVariants(product.id);
     this.editingProductId = product.id;
-    this.productForm = { categoryId: product.categoryId, name: product.name, slug: product.slug, description: product.description, price: product.price, imageUrl: product.imageUrl, badge: product.badge, isFeatured: product.isFeatured, isAvailable: product.isAvailable };
+    this.productForm = {
+      categoryId: product.categoryId,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      badge: product.badge,
+      isFeatured: product.isFeatured,
+      isAvailable: product.isAvailable
+    };
     this.activeTab = 'products'; this.notice = ''; this.error.set('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+
+
   saveProduct(): void {
-    this.error.set(''); this.notice = '';
-    if (!this.productForm.categoryId || !this.productForm.name.trim() || this.productForm.price < 0) { this.error.set('Add a name, select a category and enter a valid price.'); return; }
-    const body = { ...this.productForm, name: this.productForm.name.trim(), slug: this.productForm.slug.trim(), description: this.productForm.description.trim(), imageUrl: this.productForm.imageUrl?.trim() || null, badge: this.productForm.badge?.trim() || null };
-    this.saving = true;
-    const request = this.editingProductId ? this.api.updateProduct(this.editingProductId, body) : this.api.createProduct(body);
-    request.pipe(finalize(() => this.saving = false)).subscribe({
-      next: () => { this.notice = this.editingProductId ? 'Product updated successfully.' : 'Product created successfully.'; this.resetProduct(); this.loadData(); },
-      error: err => this.handleApiError(err),
-    });
+    this.error.set('');
+    this.notice = '';
+
+    if (
+      !this.productForm.categoryId ||
+      !this.productForm.name.trim() ||
+      !Number.isFinite(Number(this.productForm.price)) ||
+      Number(this.productForm.price) < 0
+    ) {
+      this.error.set(
+        'Add a name, select a category and enter a valid price.'
+      );
+      return;
+    }
+
+    const body: ProductWrite = {
+      ...this.productForm,
+      name: this.productForm.name.trim(),
+      slug: this.productForm.slug.trim(),
+      description: this.productForm.description.trim(),
+      imageUrl: this.productForm.imageUrl?.trim() || null,
+      badge: this.productForm.badge?.trim() || null
+    };
+
+    const existingId = this.editingProductId;
+    this.saving.set(true);
+
+    const request = existingId
+      ? this.api.updateProduct(existingId, body)
+      : this.api.createProduct(body);
+
+    request
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: result => {
+          const productId = existingId ?? (result as AdminProduct).id;
+
+          this.editingProductId = productId;
+          this.notice = existingId
+            ? 'Product updated successfully.'
+            : 'Product created successfully.';
+
+          this.loadData();
+          this.openVariantModal(productId);
+        },
+        error: err => this.handleApiError(err)
+      });
   }
+
+
 
   editCategory(category: AdminCategory): void {
     this.editingCategoryId = category.id;
@@ -332,15 +406,20 @@ export class AdminComponent implements OnInit {
     this.error.set(''); this.notice = '';
     if (!this.categoryForm.name.trim()) { this.error.set('Category name is required.'); return; }
     const body = { ...this.categoryForm, name: this.categoryForm.name.trim(), slug: this.categoryForm.slug.trim() };
-    this.saving = true;
+    this.saving.set(true);
     const request = this.editingCategoryId ? this.api.updateCategory(this.editingCategoryId, body) : this.api.createCategory(body);
-    request.pipe(finalize(() => this.saving = false)).subscribe({
+    request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.notice = this.editingCategoryId ? 'Category updated successfully.' : 'Category created successfully.'; this.resetCategory(); this.loadData(); },
       error: err => this.handleApiError(err),
     });
   }
 
-  resetProduct(): void { this.editingProductId = null; this.productForm = this.emptyProduct(); }
+  resetProduct(): void {
+    this.editingProductId = null;
+    this.productForm = this.emptyProduct();
+    this.productVariants = [];
+    this.resetVariantForm();
+  }
   resetCategory(): void { this.editingCategoryId = null; this.categoryForm = this.emptyCategory(); }
   private emptyProduct(): ProductWrite { return { categoryId: '', name: '', slug: '', description: '', price: 0, imageUrl: null, badge: null, isFeatured: false, isAvailable: true }; }
   private emptyCategory(): CategoryWrite { return { name: '', slug: '', sortOrder: 0, isActive: true }; }
@@ -486,10 +565,10 @@ export class AdminComponent implements OnInit {
     this.selectedOrder.set(order);
     this.orderStatusHistory.set([]);
     this.historyError = '';
-    this.historyLoading = true;
+    this.historyLoading.set(true);
 
     this.api.getOrderStatusHistory(order.id)
-      .pipe(finalize(() => this.historyLoading = false))
+      .pipe(finalize(() => this.historyLoading.set(false)))
       .subscribe({
         next: history => {
           this.orderStatusHistory.set(history);
@@ -504,8 +583,9 @@ export class AdminComponent implements OnInit {
   closeOrderDetails(): void {
     this.selectedOrder.set(null);
     this.orderStatusHistory.set([]);
-    this.historyLoading = false;
+    this.historyLoading.set(false);
     this.historyError = '';
+    this.resetProduct();
   }
 
   private emptyExpense(): ExpenseWrite {
@@ -527,7 +607,7 @@ export class AdminComponent implements OnInit {
 
 
   loadExpenses(): void {
-    this.loadingExpenses = true;
+    this.loadingExpenses.set(true);
     this.error.set('');
 
     this.api.getExpenses(
@@ -537,7 +617,7 @@ export class AdminComponent implements OnInit {
       this.expenseToDate || undefined,
       this.expenseCategoryFilter || undefined
     )
-      .pipe(finalize(() => this.loadingExpenses = false))
+      .pipe(finalize(() => this.loadingExpenses.set(false)))
       .subscribe({
         next: result => {
           this.expensePage.set(result);
@@ -657,14 +737,14 @@ export class AdminComponent implements OnInit {
     };
 
     const editingId = this.editingExpenseId;
-    this.expenseSaving = true;
+    this.expenseSaving.set(true);
 
     const request = editingId
       ? this.api.updateExpense(editingId, body)
       : this.api.createExpense(body);
 
     request
-      .pipe(finalize(() => this.expenseSaving = false))
+      .pipe(finalize(() => this.expenseSaving.set(false)))
       .subscribe({
         next: () => {
           this.notice = editingId
@@ -733,10 +813,10 @@ export class AdminComponent implements OnInit {
       return;
     }
 
-    this.profitReportLoading = true;
+    this.profitReportLoading.set(true);
 
     this.api.getProfitReport(this.profitFromDate, this.profitToDate)
-      .pipe(finalize(() => this.profitReportLoading = false))
+      .pipe(finalize(() => this.profitReportLoading.set(false)))
       .subscribe({
         next: result => this.profitReport.set(result),
         error: err => {
@@ -745,4 +825,109 @@ export class AdminComponent implements OnInit {
         }
       });
   }
+
+
+  loadProductVariants(productId: string): void {
+    this.variantsLoading.set(true);
+    this.productVariants = [];
+    this.error.set('');
+
+    this.api.getProductVariants(productId)
+      .pipe(finalize(() => this.variantsLoading.set(false)))
+      .subscribe({
+        next: variants => {
+          this.productVariants = variants;
+        },
+        error: err => {
+          this.productVariants = [];
+          this.handleApiError(err);
+        }
+      });
+  }
+
+
+  startVariantEdit(variant: AdminProductVariant): void {
+    this.editingVariantId = variant.id;
+    this.variantForm = {
+      sizeLabel: variant.sizeLabel,
+      weightInGrams: variant.weightInGrams,
+      price: variant.price,
+      isAvailable: variant.isAvailable
+    };
+  }
+
+  resetVariantForm(): void {
+    this.editingVariantId = null;
+    this.variantForm = this.emptyVariant();
+  }
+
+  saveVariant(): void {
+    const productId = this.editingProductId;
+
+    if (!productId) {
+      this.error.set('Save the product before adding sizes and prices.');
+      return;
+    }
+
+    const label = this.variantForm.sizeLabel.trim();
+    const weight = Number(this.variantForm.weightInGrams);
+    const price = Number(this.variantForm.price);
+
+    if (!label || label.length > 30 || !Number.isInteger(weight) ||
+      weight <= 0 || !Number.isFinite(price) || price <= 0 ||
+      Math.round(price * 100) !== price * 100) {
+      this.error.set('Enter a size label, a valid weight and a price with at most two decimal places.');
+      return;
+    }
+
+    const body: ProductVariantWrite = {
+      ...this.variantForm,
+      sizeLabel: label,
+      weightInGrams: weight,
+      price
+    };
+
+    this.error.set('');
+    this.notice = '';
+    this.variantSaving.set(true);
+
+    const request = this.editingVariantId
+      ? this.api.updateProductVariant(
+        productId, this.editingVariantId, body)
+      : this.api.createProductVariant(productId, body);
+
+    request.pipe(finalize(() => this.variantSaving.set(false)))
+      .subscribe({
+        next: () => {
+          this.notice = this.editingVariantId
+            ? 'Size and price updated.'
+            : 'Size and price added.';
+          this.resetVariantForm();
+          this.loadProductVariants(productId);
+        },
+        error: err => this.handleApiError(err)
+      });
+  }
+
+
+  openVariantModal(productId: string): void {
+    this.editingProductId = productId;
+    this.showVariantModal.set(true);
+    this.productVariants = [];
+    this.resetVariantForm();
+    this.error.set('');
+    this.loadProductVariants(productId);
+  }
+
+  closeVariantModal(): void {
+    this.showVariantModal.set(false);
+    this.resetProduct();
+    this.loadData();
+  }
+
+  manageProductSizes(product: AdminProduct): void {
+    this.editProduct(product);
+    this.openVariantModal(product.id);
+  }
+
 }

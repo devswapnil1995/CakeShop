@@ -110,6 +110,41 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("Products", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Catalog.ProductVariant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SizeLabel")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("WeightInGrams")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId", "ProductId", "WeightInGrams")
+                        .IsUnique();
+
+                    b.ToTable("ProductVariants", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Expenses.Expense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -241,6 +276,9 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ProductVariantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
@@ -356,6 +394,16 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.HasOne("CakeShop.Domain.Catalog.Category", null)
                         .WithMany()
                         .HasForeignKey("ClientId", "CategoryId")
+                        .HasPrincipalKey("ClientId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Catalog.ProductVariant", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId", "ProductId")
                         .HasPrincipalKey("ClientId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
