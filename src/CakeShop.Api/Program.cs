@@ -34,7 +34,15 @@ var tokenMinutes = int.TryParse(builder.Configuration["Jwt:ExpiryMinutes"], out 
 
 builder.Services.AddDbContext<CakeShopDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
-builder.Services.AddCors(options => options.AddPolicy("AngularDev", policy => policy.WithOrigins("http://localhost:4200", "https://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("AngularDev", policy =>
+        policy.WithOrigins(
+            "http://localhost:4200",
+            "https://localhost:4200",
+            "https://happy-coast-0b85acf00.6.azurestaticapps.net"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks().AddDbContextCheck<CakeShopDbContext>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>

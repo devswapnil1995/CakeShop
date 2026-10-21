@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AdminCategory {
   id: string;
@@ -171,7 +172,7 @@ export interface ProductVariantWrite {
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = '/api/v1/admin';
+  private readonly base = `${environment.apiBaseUrl}/api/v1/admin`;
   private readonly tokenKey = 'sweet-panda-admin-token';
 
   login(email: string, password: string): Observable<{ accessToken: string; expiresUtc: string; email: string; role: string }> {

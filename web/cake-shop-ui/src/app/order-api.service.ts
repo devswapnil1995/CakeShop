@@ -2,6 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
 
 export interface CreateCustomerOrderRequest {
   productId: string;
@@ -35,7 +36,7 @@ export type CustomerOrderStatus =
 @Injectable({ providedIn: 'root' })
 export class OrderApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1';
+  private readonly baseUrl = `${environment.apiBaseUrl}/api/v1`;
 
   createOrder(
     request: CreateCustomerOrderRequest
