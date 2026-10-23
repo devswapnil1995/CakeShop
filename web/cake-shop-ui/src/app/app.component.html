@@ -34,68 +34,112 @@
 </header>
 
 <main>
-  <!-- Hero Section -->
-  <section class="hero" id="home">
-    <div class="hero-copy">
-      <p class="eyebrow">
-        <span class="eyebrow-line"></span>
-        LITTLE MOMENTS, BEAUTIFULLY BAKED
-      </p>
-
-      <h1>
-        Every celebration<br />
-        deserves a <em>sweet</em><br />
-        little something.
-      </h1>
-
-      <p class="hero-description">
-        Thoughtfully crafted cakes, made fresh and finished with love.
-        For birthdays, big milestones, and the just-because days too.
-      </p>
-
-      <div class="hero-actions">
-        <a class="button button-dark" href="#collections">
-          Explore our cakes <span aria-hidden="true">↗</span>
-        </a>
-
-        <button class="text-link" type="button" (click)="orderOnWhatsApp()">
-          Let’s make it special <span aria-hidden="true">→</span>
-        </button>
+  <!-- Admin-managed hero section; retain the existing design as fallback until a banner is published. -->
+  @if (heroBanners().length > 0) {
+    @for (banner of heroBanners(); track banner.id; let i = $index) {
+      @if (i === activeHeroBannerIndex()) {
+        <section class="hero managed-hero" id="home">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-line"></span> THE SWEET PANDA</p>
+            <h1>{{ banner.title }}</h1>
+            <p class="hero-description">{{ banner.subtitle }}</p>
+            @if (banner.buttonText && banner.buttonUrl) {
+              <div class="hero-actions">
+                <a class="button button-dark" [href]="banner.buttonUrl">{{ banner.buttonText }} <span aria-hidden="true">↗</span></a>
+              </div>
+            }
+          </div>
+          <div class="hero-visual managed-hero-visual">
+            <div class="hero-image-frame">
+              @if (banner.mediaType === 'Video') {
+                <video class="managed-hero-media" [src]="banner.mediaUrl" [attr.poster]="banner.mobileMediaUrl || null"
+                  autoplay muted loop playsinline preload="metadata" [attr.aria-label]="banner.title"></video>
+              } @else {
+                <picture>
+                  @if (banner.mobileMediaUrl) {
+                    <source media="(max-width: 640px)" [srcset]="banner.mobileMediaUrl" />
+                  }
+                  <img class="managed-hero-media" [src]="banner.mediaUrl" [alt]="banner.title" fetchpriority="high" />
+                </picture>
+              }
+            </div>
+            <div class="image-stamp"><span>BAKED</span><strong>with love</strong><span>EVERY DAY</span></div>
+          </div>
+          @if (heroBanners().length > 1) {
+            <div class="managed-hero-controls" aria-label="Homepage banners">
+              <button type="button" aria-label="Previous banner" (click)="changeHeroBanner(-1)">←</button>
+              <span>{{ activeHeroBannerIndex() + 1 }} / {{ heroBanners().length }}</span>
+              <button type="button" aria-label="Next banner" (click)="changeHeroBanner(1)">→</button>
+            </div>
+          }
+        </section>
+      }
+    }
+  } @else {
+    <section class="hero" id="home">
+      <div class="hero-copy">
+        <p class="eyebrow">
+          <span class="eyebrow-line"></span>
+          LITTLE MOMENTS, BEAUTIFULLY BAKED
+        </p>
+  
+        <h1>
+          Every celebration<br />
+          deserves a <em>sweet</em><br />
+          little something.
+        </h1>
+  
+        <p class="hero-description">
+          Thoughtfully crafted cakes, made fresh and finished with love.
+          For birthdays, big milestones, and the just-because days too.
+        </p>
+  
+        <div class="hero-actions">
+          <a class="button button-dark" href="#collections">
+            Explore our cakes <span aria-hidden="true">↗</span>
+          </a>
+  
+          <button class="text-link" type="button" (click)="orderOnWhatsApp()">
+            Let’s make it special <span aria-hidden="true">→</span>
+          </button>
+        </div>
+  
+        <div class="hero-note">
+          <span class="note-star">✳</span>
+          <span>
+            <strong>Small-batch goodness</strong>
+            <small>Freshly made. Always from the heart.</small>
+          </span>
+        </div>
       </div>
-
-      <div class="hero-note">
-        <span class="note-star">✳</span>
-        <span>
-          <strong>Small-batch goodness</strong>
-          <small>Freshly made. Always from the heart.</small>
-        </span>
+  
+      <div class="hero-visual">
+        <div class="hero-image-frame">
+          <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1400&q=90"
+            alt="Elegant celebration cake decorated with cream and chocolate details" />
+        </div>
+  
+        <div class="image-stamp">
+          <span>BAKED</span>
+          <strong>with love</strong>
+          <span>EVERY DAY</span>
+        </div>
+  
+        <div class="floating-note">
+          <span class="floating-heart">♡</span>
+          <span>Made for your<br /><em>happy moments</em></span>
+        </div>
       </div>
-    </div>
-
-    <div class="hero-visual">
-      <div class="hero-image-frame">
-        <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1400&q=90"
-          alt="Elegant celebration cake decorated with cream and chocolate details" />
+  
+      <div class="hero-bottom-label">
+        <span>01 / THE SWEET LIFE</span>
+        <span>SCROLL TO DISCOVER ↓</span>
       </div>
-
-      <div class="image-stamp">
-        <span>BAKED</span>
-        <strong>with love</strong>
-        <span>EVERY DAY</span>
-      </div>
-
-      <div class="floating-note">
-        <span class="floating-heart">♡</span>
-        <span>Made for your<br /><em>happy moments</em></span>
-      </div>
-    </div>
-
-    <div class="hero-bottom-label">
-      <span>01 / THE SWEET LIFE</span>
-      <span>SCROLL TO DISCOVER ↓</span>
-    </div>
-  </section>
-
+    </section>
+  
+  
+  }
+  
   <!-- Our Promise -->
   <section class="intro-strip" aria-label="Our promise">
     <p>GOOD INGREDIENTS</p>
