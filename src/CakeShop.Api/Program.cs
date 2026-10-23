@@ -1858,32 +1858,6 @@ public sealed record VerifyRazorpayPaymentRequest(
     string RazorpayPaymentId,
     string RazorpaySignature);
 
-public sealed record HeroBannerWriteRequest(
-    string Title,
-    string Subtitle,
-    string MediaType,
-    string MediaUrl,
-    string? MobileMediaUrl,
-    string? ButtonText,
-    string? ButtonUrl,
-    int SortOrder,
-    DateTime? StartsUtc,
-    DateTime? EndsUtc);
-
-public sealed record HeroBannerDto(
-    Guid Id,
-    string Title,
-    string Subtitle,
-    string MediaType,
-    string MediaUrl,
-    string? MobileMediaUrl,
-    string? ButtonText,
-    string? ButtonUrl,
-    int SortOrder,
-    DateTime? StartsUtc,
-    DateTime? EndsUtc,
-    bool IsPublished = false);
-
 static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 {
     if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160)
@@ -1936,3 +1910,28 @@ static bool IsAllowedHeroDestination(string value) =>
     (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
      uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
 
+public sealed record HeroBannerWriteRequest(
+    string Title,
+    string Subtitle,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc);
+
+public sealed record HeroBannerDto(
+    Guid Id,
+    string Title,
+    string Subtitle,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc,
+    bool IsPublished = false);
