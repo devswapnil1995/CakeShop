@@ -4,6 +4,7 @@ import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBan
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../environments/environment';
 import { OrderApiService, CustomerOrderResponse, CreatePaymentResponse, VerifyPaymentRequest } from './order-api.service';
 
 interface CakeProduct {
@@ -89,6 +90,11 @@ export class AppComponent implements OnInit {
   readonly paymentAvailable = signal(false);
 
 
+
+  resolveHeroMediaUrl(url: string): string {
+    if (!url.startsWith('/')) return url;
+    return `${environment.apiBaseUrl}${url}`;
+  }
 
   changeHeroBanner(direction: number): void {
     const count = this.heroBanners().length;
