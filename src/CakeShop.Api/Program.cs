@@ -1,6 +1,7 @@
 using CakeShop.Api.Contracts;
 using CakeShop.Application.Catalog;
 using CakeShop.Domain.Catalog;
+using CakeShop.Domain.Content;
 using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
@@ -98,6 +99,23 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.UseSwagger();
 app.UseSwaggerUI();
+
+
+app.MapGet("/api/v1/hero-banners", async (CakeShopDbContext db, CancellationToken ct) =>
+{
+    var now = DateTime.UtcNow;
+    var banners = await db.HeroBanners.AsNoTracking()
+        .Where(x => x.ClientId == defaultClientId && x.IsPublished
+            && (!x.StartsUtc.HasValue || x.StartsUtc.Value <= now)
+            && (!x.EndsUtc.HasValue || x.EndsUtc.Value > now))
+        .OrderBy(x => x.SortOrder)
+        .ThenBy(x => x.CreatedUtc)
+        .Select(x => new HeroBannerDto(
+            x.Id, x.Title, x.Subtitle, x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc))
+        .ToListAsync(ct);
+    return Results.Ok(banners);
+}).WithName("GetPublishedHeroBanners").WithTags("Content");
 
 app.MapGet("/api/v1/shop", async (CakeShopDbContext db, CancellationToken ct) =>
 {
@@ -810,6 +828,89 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+
+adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var banners = await db.HeroBanners.AsNoTracking()
+        .Where(x => x.ClientId == clientId)
+        .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc)
+        .Select(x => new HeroBannerDto(
+            x.Id, x.Title, x.Subtitle, x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished))
+        .ToListAsync(ct);
+    return Results.Ok(banners);
+});
+
+adminApi.MapPost("/hero-banners", async (
+    ClaimsPrincipal user, HeroBannerWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateHeroBanner(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var banner = new HeroBanner(clientId, request.Title, request.Subtitle, request.MediaType,
+        request.MediaUrl, request.MobileMediaUrl, request.ButtonText, request.ButtonUrl,
+        request.SortOrder, request.StartsUtc, request.EndsUtc);
+    db.HeroBanners.Add(banner);
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/v1/admin/hero-banners/{banner.Id}",
+        new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, banner.MediaType,
+            banner.MediaUrl, banner.MobileMediaUrl, banner.ButtonText, banner.ButtonUrl,
+            banner.SortOrder, banner.StartsUtc, banner.EndsUtc, banner.IsPublished));
+});
+
+adminApi.MapPut("/hero-banners/{id:guid}", async (
+    Guid id, ClaimsPrincipal user, HeroBannerWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateHeroBanner(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var banner = await db.HeroBanners.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (banner is null) return Results.NotFound();
+    banner.UpdateContent(request.Title, request.Subtitle, request.MediaType, request.MediaUrl,
+        request.MobileMediaUrl, request.ButtonText, request.ButtonUrl,
+        request.SortOrder, request.StartsUtc, request.EndsUtc);
+    await db.SaveChangesAsync(ct);
+    return Results.Ok(new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, banner.MediaType,
+        banner.MediaUrl, banner.MobileMediaUrl, banner.ButtonText, banner.ButtonUrl,
+        banner.SortOrder, banner.StartsUtc, banner.EndsUtc, banner.IsPublished));
+});
+
+adminApi.MapPost("/hero-banners/{id:guid}/publish", async (
+    Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var banner = await db.HeroBanners.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (banner is null) return Results.NotFound();
+    banner.Publish();
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
+adminApi.MapPost("/hero-banners/{id:guid}/unpublish", async (
+    Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var banner = await db.HeroBanners.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (banner is null) return Results.NotFound();
+    banner.Unpublish();
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
+adminApi.MapDelete("/hero-banners/{id:guid}", async (
+    Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var banner = await db.HeroBanners.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (banner is null) return Results.NotFound();
+    db.HeroBanners.Remove(banner);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
+
 
 
 adminApi.MapGet("/orders", async (
@@ -1716,3 +1817,62 @@ public sealed record VerifyRazorpayPaymentRequest(
     Guid PaymentTransactionId,
     string RazorpayPaymentId,
     string RazorpaySignature);
+
+public sealed record HeroBannerWriteRequest(
+    string Title,
+    string Subtitle,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc);
+
+public sealed record HeroBannerDto(
+    Guid Id,
+    string Title,
+    string Subtitle,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc,
+    bool IsPublished = false);
+
+static string? ValidateHeroBanner(HeroBannerWriteRequest request)
+{
+    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160)
+        return "Title is required and must be at most 160 characters.";
+    if (string.IsNullOrWhiteSpace(request.Subtitle) || request.Subtitle.Trim().Length > 500)
+        return "Subtitle is required and must be at most 500 characters.";
+    if (request.MediaType is not ("Image" or "Video"))
+        return "MediaType must be Image or Video.";
+    if (!IsAllowedHeroMediaUrl(request.MediaUrl) ||
+        (!string.IsNullOrWhiteSpace(request.MobileMediaUrl) && !IsAllowedHeroMediaUrl(request.MobileMediaUrl)))
+        return "Media URLs must be valid HTTPS URLs.";
+    if (request.ButtonText?.Length > 80 || request.ButtonUrl?.Length > 2000)
+        return "Button text or URL exceeds its allowed length.";
+    if (!string.IsNullOrWhiteSpace(request.ButtonUrl) && !IsAllowedHeroDestination(request.ButtonUrl))
+        return "Button destination must be a relative path or HTTPS URL.";
+    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc)
+        return "End date must be after start date.";
+    if (request.SortOrder < 0 || request.SortOrder > 10000)
+        return "Sort order must be between 0 and 10000.";
+    return null;
+}
+
+static bool IsAllowedHeroMediaUrl(string value) =>
+    Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+    uri.Scheme == Uri.UriSchemeHttps &&
+    string.IsNullOrEmpty(uri.UserInfo);
+
+static bool IsAllowedHeroDestination(string value) =>
+    (value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
