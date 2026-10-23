@@ -1802,6 +1802,58 @@ static string? ValidateExpense(
     return null;
 }
 
+static string? ValidateHeroBanner(HeroBannerWriteRequest request)
+{
+    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160)
+        return "Title is required and must be at most 160 characters.";
+    if (string.IsNullOrWhiteSpace(request.Subtitle) || request.Subtitle.Trim().Length > 500)
+        return "Subtitle is required and must be at most 500 characters.";
+    if (request.MediaType is not ("Image" or "Video"))
+        return "MediaType must be Image or Video.";
+    if (!IsAllowedHeroMediaUrl(request.MediaUrl) ||
+        (!string.IsNullOrWhiteSpace(request.MobileMediaUrl) && !IsAllowedHeroMediaUrl(request.MobileMediaUrl)))
+        return "Media URLs must be valid HTTPS URLs.";
+    if (request.ButtonText?.Length > 80 || request.ButtonUrl?.Length > 2000)
+        return "Button text or URL exceeds its allowed length.";
+    if (!string.IsNullOrWhiteSpace(request.ButtonUrl) && !IsAllowedHeroDestination(request.ButtonUrl))
+        return "Button destination must be a relative path or HTTPS URL.";
+    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc)
+        return "End date must be after start date.";
+    if (request.SortOrder < 0 || request.SortOrder > 10000)
+        return "Sort order must be between 0 and 10000.";
+    return null;
+}
+
+static bool IsAllowedHeroMediaUrl(string value) =>
+    (value.StartsWith("/uploads/heroes/", StringComparison.Ordinal) &&
+     !value.StartsWith("//", StringComparison.Ordinal) &&
+     !value.Contains("..", StringComparison.Ordinal) &&
+     !value.Contains('\\', StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
+static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
+{
+    if (extension is ".jpg" or ".jpeg")
+        return read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+    if (extension == ".png")
+        return read >= 8 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+               header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A;
+    if (extension == ".webp")
+        return read >= 12 && header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
+               header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P';
+    if (extension == ".mp4")
+        return read >= 8 && header[4] == (byte)'f' && header[5] == (byte)'t' && header[6] == (byte)'y' && header[7] == (byte)'p';
+    if (extension == ".webm")
+        return read >= 4 && header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3;
+    return false;
+}
+
+static bool IsAllowedHeroDestination(string value) =>
+    (value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
 public sealed record LoginRequest(string? Email, string? Password);
 public sealed record LoginResponse(string AccessToken, DateTime ExpiresUtc, string Email, string Role);
 public sealed record CategoryWriteRequest(string? Name, string? Slug, int SortOrder = 0, bool IsActive = true);
@@ -1857,58 +1909,6 @@ public sealed record VerifyRazorpayPaymentRequest(
     Guid PaymentTransactionId,
     string RazorpayPaymentId,
     string RazorpaySignature);
-
-static string? ValidateHeroBanner(HeroBannerWriteRequest request)
-{
-    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160)
-        return "Title is required and must be at most 160 characters.";
-    if (string.IsNullOrWhiteSpace(request.Subtitle) || request.Subtitle.Trim().Length > 500)
-        return "Subtitle is required and must be at most 500 characters.";
-    if (request.MediaType is not ("Image" or "Video"))
-        return "MediaType must be Image or Video.";
-    if (!IsAllowedHeroMediaUrl(request.MediaUrl) ||
-        (!string.IsNullOrWhiteSpace(request.MobileMediaUrl) && !IsAllowedHeroMediaUrl(request.MobileMediaUrl)))
-        return "Media URLs must be valid HTTPS URLs.";
-    if (request.ButtonText?.Length > 80 || request.ButtonUrl?.Length > 2000)
-        return "Button text or URL exceeds its allowed length.";
-    if (!string.IsNullOrWhiteSpace(request.ButtonUrl) && !IsAllowedHeroDestination(request.ButtonUrl))
-        return "Button destination must be a relative path or HTTPS URL.";
-    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc)
-        return "End date must be after start date.";
-    if (request.SortOrder < 0 || request.SortOrder > 10000)
-        return "Sort order must be between 0 and 10000.";
-    return null;
-}
-
-static bool IsAllowedHeroMediaUrl(string value) =>
-    (value.StartsWith("/uploads/heroes/", StringComparison.Ordinal) &&
-     !value.StartsWith("//", StringComparison.Ordinal) &&
-     !value.Contains("..", StringComparison.Ordinal) &&
-     !value.Contains('\\', StringComparison.Ordinal)) ||
-    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
-
-static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
-{
-    if (extension is ".jpg" or ".jpeg")
-        return read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
-    if (extension == ".png")
-        return read >= 8 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
-               header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A;
-    if (extension == ".webp")
-        return read >= 12 && header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
-               header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P';
-    if (extension == ".mp4")
-        return read >= 8 && header[4] == (byte)'f' && header[5] == (byte)'t' && header[6] == (byte)'y' && header[7] == (byte)'p';
-    if (extension == ".webm")
-        return read >= 4 && header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3;
-    return false;
-}
-
-static bool IsAllowedHeroDestination(string value) =>
-    (value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) ||
-    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
 
 public sealed record HeroBannerWriteRequest(
     string Title,
