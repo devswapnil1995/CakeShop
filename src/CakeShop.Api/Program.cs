@@ -834,7 +834,7 @@ var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Ad
 adminApi.MapPost("/hero-banners/media", async (
     ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
 {
-    if (!TryGetClientId(user, out _)) return Results.Forbid();
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
     if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose a file to upload." });
     if (file.Length > 20 * 1024 * 1024) return Results.BadRequest(new { message = "Media files must be 20 MB or smaller." });
 
@@ -859,7 +859,7 @@ adminApi.MapPost("/hero-banners/media", async (
             return Results.BadRequest(new { message = "The file contents do not match the selected media type." });
     }
 
-    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "heroes");
+    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "heroes", clientId.ToString("N"));
     Directory.CreateDirectory(uploadRoot);
     var safeName = $"{Guid.NewGuid():N}{extension}";
     var fullPath = Path.Combine(uploadRoot, safeName);
@@ -867,7 +867,7 @@ adminApi.MapPost("/hero-banners/media", async (
     await using (var input = file.OpenReadStream())
         await input.CopyToAsync(output, ct);
 
-    return Results.Ok(new { mediaUrl = $"/uploads/heroes/{safeName}", mediaType = fileInfo.MediaType });
+    return Results.Ok(new { mediaUrl = $"/uploads/heroes/{clientId:N}/{safeName}", mediaType = fileInfo.MediaType });
 }).DisableAntiforgery();
 
 adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
