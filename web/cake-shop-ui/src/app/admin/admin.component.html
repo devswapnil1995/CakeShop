@@ -1146,9 +1146,9 @@
                 <small>{{ banner.isPublished ? 'Published' : 'Draft / unpublished' }}</small>
                 <small>{{ banner.mediaUrl }}</small>
                 @if (banner.mediaType === 'Image') {
-                  <img class="hero-banner-thumbnail" [src]="banner.mediaUrl" [alt]="banner.title" loading="lazy" />
+                  <img class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title" loading="lazy" />
                 } @else {
-                  <video class="hero-banner-thumbnail" [src]="banner.mediaUrl" muted controls preload="metadata"></video>
+                  <video class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" muted controls preload="metadata"></video>
                 }
                 @if (banner.startsUtc || banner.endsUtc) {
                   <small>Schedule: {{ banner.startsUtc || 'Immediately' }} — {{ banner.endsUtc || 'No end date' }}</small>
