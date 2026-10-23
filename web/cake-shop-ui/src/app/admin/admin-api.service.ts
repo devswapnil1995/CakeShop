@@ -3,6 +3,35 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+
+export interface AdminHeroBanner {
+  id: string;
+  title: string;
+  subtitle: string;
+  mediaType: 'Image' | 'Video';
+  mediaUrl: string;
+  mobileMediaUrl: string | null;
+  buttonText: string | null;
+  buttonUrl: string | null;
+  sortOrder: number;
+  startsUtc: string | null;
+  endsUtc: string | null;
+  isPublished: boolean;
+}
+
+export interface HeroBannerWrite {
+  title: string;
+  subtitle: string;
+  mediaType: 'Image' | 'Video';
+  mediaUrl: string;
+  mobileMediaUrl: string | null;
+  buttonText: string | null;
+  buttonUrl: string | null;
+  sortOrder: number;
+  startsUtc: string | null;
+  endsUtc: string | null;
+}
+
 export interface AdminCategory {
   id: string;
   name: string;
@@ -329,6 +358,31 @@ export class AdminApiService {
       body,
       this.options
     );
+  }
+
+
+  getHeroBanners(): Observable<AdminHeroBanner[]> {
+    return this.http.get<AdminHeroBanner[]>(`${this.base}/hero-banners`, this.options);
+  }
+
+  createHeroBanner(body: HeroBannerWrite): Observable<AdminHeroBanner> {
+    return this.http.post<AdminHeroBanner>(`${this.base}/hero-banners`, body, this.options);
+  }
+
+  updateHeroBanner(id: string, body: HeroBannerWrite): Observable<AdminHeroBanner> {
+    return this.http.put<AdminHeroBanner>(`${this.base}/hero-banners/${id}`, body, this.options);
+  }
+
+  publishHeroBanner(id: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/hero-banners/${id}/publish`, {}, this.options);
+  }
+
+  unpublishHeroBanner(id: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/hero-banners/${id}/unpublish`, {}, this.options);
+  }
+
+  deleteHeroBanner(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/hero-banners/${id}`, this.options);
   }
 
 }
