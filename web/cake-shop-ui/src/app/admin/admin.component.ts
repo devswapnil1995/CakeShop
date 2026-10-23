@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { environment } from '../../environments/environment';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
   CustomerOrderStatus,
@@ -223,7 +224,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -249,6 +250,11 @@ export class AdminComponent implements OnInit {
     }
   }
 
+
+  resolveHeroMediaUrl(url: string): string {
+    if (!url.startsWith('/')) return url;
+    return `${environment.apiBaseUrl}${url}`;
+  }
 
   loadHeroBanners(): void {
     if (!this.loggedIn()) return;
