@@ -251,7 +251,8 @@ export class AdminComponent implements OnInit {
   }
 
 
-  resolveHeroMediaUrl(url: string): string {
+  resolveHeroMediaUrl(url: string | null): string {
+    if (!url) return '';
     if (!url.startsWith('/')) return url;
     return `${environment.apiBaseUrl}${url}`;
   }
