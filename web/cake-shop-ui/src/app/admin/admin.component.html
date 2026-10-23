@@ -81,6 +81,11 @@
           Profit report
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'hero-banners'" (click)="selectTab('hero-banners')">
+          <span>▣</span>
+          Homepage banners <b>{{ heroBanners().length }}</b>
+        </button>
+
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
