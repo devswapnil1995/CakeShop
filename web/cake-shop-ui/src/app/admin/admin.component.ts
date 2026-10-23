@@ -41,6 +41,7 @@ export class AdminComponent implements OnInit {
   readonly heroBanners = signal<AdminHeroBanner[]>([]);
   readonly heroBannersLoading = signal(false);
   readonly heroBannerSaving = signal(false);
+  readonly heroMediaUploading = signal(false);
   editingHeroBannerId: string | null = null;
   heroBannerForm: HeroBannerWrite & { startsLocal: string; endsLocal: string } = this.emptyHeroBanner();
 
@@ -279,6 +280,26 @@ export class AdminComponent implements OnInit {
       startsLocal: banner.startsUtc ? this.toLocalDateTimeInput(banner.startsUtc) : '',
       endsLocal: banner.endsUtc ? this.toLocalDateTimeInput(banner.endsUtc) : ''
     };
+  }
+
+
+  uploadHeroMedia(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.error.set('');
+    this.heroMediaUploading.set(true);
+    this.api.uploadHeroBannerMedia(file).pipe(finalize(() => {
+      this.heroMediaUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.heroBannerForm.mediaUrl = result.mediaUrl;
+        this.heroBannerForm.mediaType = result.mediaType;
+        this.notice = 'Media uploaded. Save the banner to keep this change.';
+      },
+      error: err => this.handleApiError(err)
+    });
   }
 
   saveHeroBanner(): void {
