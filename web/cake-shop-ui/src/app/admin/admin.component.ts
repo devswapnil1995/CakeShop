@@ -12,7 +12,9 @@ import {
   ProfitReport,
   ExpenseCategoryBreakdown,
   AdminProductVariant,
-  ProductVariantWrite
+  ProductVariantWrite,
+  AdminHeroBanner,
+  HeroBannerWrite
 } from './admin-api.service';
 
 @Component({
@@ -33,7 +35,23 @@ export class AdminComponent implements OnInit {
     | 'categories'
     | 'orders'
     | 'expenses'
-    | 'reports' = 'dashboard';
+    | 'reports'
+    | 'hero-banners' = 'dashboard';
+
+  readonly heroBanners = signal<AdminHeroBanner[]>([]);
+  readonly heroBannersLoading = signal(false);
+  readonly heroBannerSaving = signal(false);
+  editingHeroBannerId: string | null = null;
+  heroBannerForm: HeroBannerWrite & { startsLocal: string; endsLocal: string } = this.emptyHeroBanner();
+
+  private emptyHeroBanner(): HeroBannerWrite & { startsLocal: string; endsLocal: string } {
+    return {
+      title: '', subtitle: '', mediaType: 'Image', mediaUrl: '', mobileMediaUrl: null,
+      buttonText: null, buttonUrl: null, sortOrder: 0, startsUtc: null, endsUtc: null,
+      startsLocal: '', endsLocal: ''
+    };
+  }
+
   readonly dashboard = signal<AdminDashboardSummary | null>(null);
   readonly dashboardLoading = signal(false);
   error = signal('');
@@ -142,6 +160,7 @@ export class AdminComponent implements OnInit {
       this.loadData();
       this.loadDashboard();
       this.loadOrders();
+      this.loadHeroBanners();
     }
   }
 
@@ -157,6 +176,7 @@ export class AdminComponent implements OnInit {
         this.loadData();
         this.loadDashboard();
         this.loadOrders();
+        this.loadHeroBanners();
       },
       error: err => {
         this.error.set(err.status === 401 ? 'Email or password is incorrect.' : (err.error?.message ?? 'Unable to sign in. Check that the API is running and the admin account has been seeded.'));
@@ -223,6 +243,104 @@ export class AdminComponent implements OnInit {
     if (tab === 'reports') {
       this.loadProfitReport();
     }
+    if (tab === 'hero-banners') {
+      this.loadHeroBanners();
+    }
+  }
+
+
+  loadHeroBanners(): void {
+    if (!this.loggedIn()) return;
+    this.heroBannersLoading.set(true);
+    this.api.getHeroBanners().pipe(finalize(() => this.heroBannersLoading.set(false))).subscribe({
+      next: rows => this.heroBanners.set(rows),
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  resetHeroBannerForm(): void {
+    this.editingHeroBannerId = null;
+    this.heroBannerForm = this.emptyHeroBanner();
+  }
+
+  editHeroBanner(banner: AdminHeroBanner): void {
+    this.editingHeroBannerId = banner.id;
+    this.heroBannerForm = {
+      title: banner.title,
+      subtitle: banner.subtitle,
+      mediaType: banner.mediaType,
+      mediaUrl: banner.mediaUrl,
+      mobileMediaUrl: banner.mobileMediaUrl,
+      buttonText: banner.buttonText,
+      buttonUrl: banner.buttonUrl,
+      sortOrder: banner.sortOrder,
+      startsUtc: banner.startsUtc,
+      endsUtc: banner.endsUtc,
+      startsLocal: banner.startsUtc ? this.toLocalDateTimeInput(banner.startsUtc) : '',
+      endsLocal: banner.endsUtc ? this.toLocalDateTimeInput(banner.endsUtc) : ''
+    };
+  }
+
+  saveHeroBanner(): void {
+    this.error.set('');
+    this.notice = '';
+    const form = this.heroBannerForm;
+    const body: HeroBannerWrite = {
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim(),
+      mediaType: form.mediaType,
+      mediaUrl: form.mediaUrl.trim(),
+      mobileMediaUrl: form.mobileMediaUrl?.trim() || null,
+      buttonText: form.buttonText?.trim() || null,
+      buttonUrl: form.buttonUrl?.trim() || null,
+      sortOrder: Number(form.sortOrder),
+      startsUtc: form.startsLocal ? new Date(form.startsLocal).toISOString() : null,
+      endsUtc: form.endsLocal ? new Date(form.endsLocal).toISOString() : null
+    };
+    this.heroBannerSaving.set(true);
+    const request = this.editingHeroBannerId
+      ? this.api.updateHeroBanner(this.editingHeroBannerId, body)
+      : this.api.createHeroBanner(body);
+    request.pipe(finalize(() => this.heroBannerSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = this.editingHeroBannerId ? 'Hero banner updated.' : 'Hero banner created as draft.';
+        this.resetHeroBannerForm();
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  toggleHeroBannerPublication(banner: AdminHeroBanner): void {
+    this.error.set('');
+    const request = banner.isPublished
+      ? this.api.unpublishHeroBanner(banner.id)
+      : this.api.publishHeroBanner(banner.id);
+    request.subscribe({
+      next: () => {
+        this.notice = banner.isPublished ? 'Hero banner unpublished.' : 'Hero banner published.';
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  deleteHeroBanner(banner: AdminHeroBanner): void {
+    if (!confirm(`Delete hero banner "${banner.title}"? This cannot be undone.`)) return;
+    this.api.deleteHeroBanner(banner.id).subscribe({
+      next: () => {
+        this.notice = 'Hero banner deleted.';
+        if (this.editingHeroBannerId === banner.id) this.resetHeroBannerForm();
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  private toLocalDateTimeInput(value: string): string {
+    const date = new Date(value);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
   }
 
   loadOrders(): void {
