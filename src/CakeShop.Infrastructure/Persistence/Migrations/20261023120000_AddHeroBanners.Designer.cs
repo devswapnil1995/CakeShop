@@ -456,6 +456,15 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("ProcessedPaymentWebhooks", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Content.HeroBanner", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Payments.TenantPaymentSettings", b =>
                 {
                     b.Property<Guid>("Id")
