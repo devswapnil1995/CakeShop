@@ -94,6 +94,7 @@ builder.Services.AddHttpClient<RazorpayPaymentService>();
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseCors("AngularDev");
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
@@ -829,6 +830,45 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
 
+
+adminApi.MapPost("/hero-banners/media", async (
+    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out _)) return Results.Forbid();
+    if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose a file to upload." });
+    if (file.Length > 20 * 1024 * 1024) return Results.BadRequest(new { message = "Media files must be 20 MB or smaller." });
+
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    var allowed = new Dictionary<string, (string MediaType, string[] ContentTypes)>(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"] = ("Image", new[] { "image/jpeg" }),
+        [".jpeg"] = ("Image", new[] { "image/jpeg" }),
+        [".png"] = ("Image", new[] { "image/png" }),
+        [".webp"] = ("Image", new[] { "image/webp" }),
+        [".mp4"] = ("Video", new[] { "video/mp4" }),
+        [".webm"] = ("Video", new[] { "video/webm" })
+    };
+    if (!allowed.TryGetValue(extension, out var fileInfo) || !fileInfo.ContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Supported files: JPG, PNG, WebP, MP4, and WebM. File type must match the extension." });
+
+    var header = new byte[12];
+    await using (var input = file.OpenReadStream())
+    {
+        var read = await input.ReadAsync(header.AsMemory(0, Math.Min(header.Length, (int)file.Length)), ct);
+        if (!IsAllowedHeroFileSignature(extension, header, read))
+            return Results.BadRequest(new { message = "The file contents do not match the selected media type." });
+    }
+
+    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "heroes");
+    Directory.CreateDirectory(uploadRoot);
+    var safeName = $"{Guid.NewGuid():N}{extension}";
+    var fullPath = Path.Combine(uploadRoot, safeName);
+    await using (var output = File.Create(fullPath))
+    await using (var input = file.OpenReadStream())
+        await input.CopyToAsync(output, ct);
+
+    return Results.Ok(new { mediaUrl = $"/uploads/heroes/{safeName}", mediaType = fileInfo.MediaType });
+}).DisableAntiforgery();
 
 adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
 {
@@ -1867,9 +1907,29 @@ static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 }
 
 static bool IsAllowedHeroMediaUrl(string value) =>
-    Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-    uri.Scheme == Uri.UriSchemeHttps &&
-    string.IsNullOrEmpty(uri.UserInfo);
+    (value.StartsWith("/uploads/heroes/", StringComparison.Ordinal) &&
+     !value.StartsWith("//", StringComparison.Ordinal) &&
+     !value.Contains("..", StringComparison.Ordinal) &&
+     !value.Contains('\\', StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
+static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
+{
+    if (extension is ".jpg" or ".jpeg")
+        return read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+    if (extension == ".png")
+        return read >= 8 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+               header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A;
+    if (extension == ".webp")
+        return read >= 12 && header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
+               header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P';
+    if (extension == ".mp4")
+        return read >= 8 && header[4] == (byte)'f' && header[5] == (byte)'t' && header[6] == (byte)'y' && header[7] == (byte)'p';
+    if (extension == ".webm")
+        return read >= 4 && header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3;
+    return false;
+}
 
 static bool IsAllowedHeroDestination(string value) =>
     (value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) ||
