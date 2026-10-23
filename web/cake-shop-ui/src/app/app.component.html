@@ -52,14 +52,14 @@
           <div class="hero-visual managed-hero-visual">
             <div class="hero-image-frame">
               @if (banner.mediaType === 'Video') {
-                <video class="managed-hero-media" [src]="banner.mediaUrl" [attr.poster]="banner.mobileMediaUrl || null"
+                <video class="managed-hero-media" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [attr.poster]="banner.mobileMediaUrl || null"
                   autoplay muted loop playsinline preload="metadata" [attr.aria-label]="banner.title"></video>
               } @else {
                 <picture>
                   @if (banner.mobileMediaUrl) {
-                    <source media="(max-width: 640px)" [srcset]="banner.mobileMediaUrl" />
+                    <source media="(max-width: 640px)" [srcset]="resolveHeroMediaUrl(banner.mobileMediaUrl)" />
                   }
-                  <img class="managed-hero-media" [src]="banner.mediaUrl" [alt]="banner.title" fetchpriority="high" />
+                  <img class="managed-hero-media" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title" fetchpriority="high" />
                 </picture>
               }
             </div>
