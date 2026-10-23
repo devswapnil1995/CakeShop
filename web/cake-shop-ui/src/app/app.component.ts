@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -63,6 +63,8 @@ export class AppComponent implements OnInit {
 
 
   readonly products = signal<CakeProduct[]>([]);
+  readonly heroBanners = signal<HeroBannerDto[]>([]);
+  readonly activeHeroBannerIndex = signal(0);
 
   selectedVariantId = '';
 
@@ -87,7 +89,18 @@ export class AppComponent implements OnInit {
   readonly paymentAvailable = signal(false);
 
 
+
+  changeHeroBanner(direction: number): void {
+    const count = this.heroBanners().length;
+    if (count < 2) return;
+    this.activeHeroBannerIndex.update(index => (index + direction + count) % count);
+  }
+
   ngOnInit(): void {
+    this.catalogApi.getHeroBanners().pipe(catchError(() => of([] as HeroBannerDto[]))).subscribe(banners => {
+      this.heroBanners.set(banners);
+      this.activeHeroBannerIndex.set(0);
+    });
     this.orderApi.getPaymentAvailability().subscribe({
       next: (response) => {
         this.paymentAvailable.set(response.available);
