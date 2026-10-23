@@ -361,6 +361,15 @@ export class AdminApiService {
   }
 
 
+
+  uploadHeroBannerMedia(file: File): Observable<{ mediaUrl: string; mediaType: 'Image' | 'Video' }> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.http.post<{ mediaUrl: string; mediaType: 'Image' | 'Video' }>(
+      `${this.base}/hero-banners/media`, body, this.options
+    );
+  }
+
   getHeroBanners(): Observable<AdminHeroBanner[]> {
     return this.http.get<AdminHeroBanner[]>(`${this.base}/hero-banners`, this.options);
   }
