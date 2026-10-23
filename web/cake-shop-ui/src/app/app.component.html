@@ -38,7 +38,7 @@
   @if (heroBanners().length > 0) {
     @for (banner of heroBanners(); track banner.id; let i = $index) {
       @if (i === activeHeroBannerIndex()) {
-        <section class="hero managed-hero" id="home">
+        <section class="hero managed-hero" id="home" (mouseenter)="pauseHeroRotation()" (mouseleave)="resumeHeroRotation()" (focusin)="pauseHeroRotation()" (focusout)="resumeHeroRotation()">
           <div class="hero-copy">
             <p class="eyebrow"><span class="eyebrow-line"></span> THE SWEET PANDA</p>
             <h1>{{ banner.title }}</h1>
@@ -68,7 +68,12 @@
           @if (heroBanners().length > 1) {
             <div class="managed-hero-controls" aria-label="Homepage banners">
               <button type="button" aria-label="Previous banner" (click)="changeHeroBanner(-1)">←</button>
-              <span>{{ activeHeroBannerIndex() + 1 }} / {{ heroBanners().length }}</span>
+              <div class="managed-hero-dots" aria-label="Choose banner">
+                @for (item of heroBanners(); track item.id; let dotIndex = $index) {
+                  <button type="button" class="managed-hero-dot" [class.active]="dotIndex === activeHeroBannerIndex()" [attr.aria-label]="'Show banner ' + (dotIndex + 1)" [attr.aria-current]="dotIndex === activeHeroBannerIndex() ? 'true' : null" (click)="setHeroBanner(dotIndex)"></button>
+                }
+              </div>
+              <span class="managed-hero-count">{{ activeHeroBannerIndex() + 1 }} / {{ heroBanners().length }}</span>
               <button type="button" aria-label="Next banner" (click)="changeHeroBanner(1)">→</button>
             </div>
           }
