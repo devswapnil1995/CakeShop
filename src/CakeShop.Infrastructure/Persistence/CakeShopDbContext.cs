@@ -1,4 +1,5 @@
 using CakeShop.Domain.Catalog;
+using CakeShop.Domain.Content;
 using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
@@ -11,6 +12,7 @@ namespace CakeShop.Infrastructure.Persistence;
 public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> options) : DbContext(options)
 {
     public DbSet<ClientMaster> Clients => Set<ClientMaster>();
+    public DbSet<HeroBanner> HeroBanners => Set<HeroBanner>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
@@ -30,6 +32,22 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<HeroBanner>(e =>
+        {
+            e.ToTable("HeroBanners");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(160).IsRequired();
+            e.Property(x => x.Subtitle).HasMaxLength(500).IsRequired();
+            e.Property(x => x.MediaType).HasMaxLength(20).IsRequired();
+            e.Property(x => x.MediaUrl).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.MobileMediaUrl).HasMaxLength(2000);
+            e.Property(x => x.ButtonText).HasMaxLength(80);
+            e.Property(x => x.ButtonUrl).HasMaxLength(2000);
+            e.HasIndex(x => new { x.ClientId, x.SortOrder });
+            e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<ClientMaster>(e => {
             e.ToTable("ClientMaster"); e.HasKey(x => x.Id); e.Property(x => x.Name).HasMaxLength(160).IsRequired();
             e.Property(x => x.Slug).HasMaxLength(100).IsRequired(); e.HasIndex(x => x.Slug).IsUnique();
