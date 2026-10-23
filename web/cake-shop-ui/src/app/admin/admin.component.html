@@ -80,7 +80,7 @@
           <span>₹</span>
           Profit report
         </button>
-        
+
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
@@ -551,7 +551,25 @@
                 }">
                 {{ order.status }}
               </span>
-
+              <span class="payment-status-pill" [ngClass]="{
+    'payment-status-paid': order.paymentStatus === 'Captured',
+    'payment-status-pending': order.paymentStatus === 'Pending',
+    'payment-status-failed': order.paymentStatus === 'Failed',
+    'payment-status-refunded': order.paymentStatus === 'Refunded',
+    'payment-status-none': !order.paymentStatus
+  }">
+                {{
+                order.paymentStatus === 'Captured'
+                ? 'Paid'
+                : order.paymentStatus === 'Pending'
+                ? 'Payment pending'
+                : order.paymentStatus === 'Failed'
+                ? 'Payment failed'
+                : order.paymentStatus === 'Refunded'
+                ? 'Refunded'
+                : 'No online payment'
+                }}
+              </span>
               @if (order.status !== 'Completed' && order.status !== 'Cancelled') {
 
               <label [for]="'order-status-' + order.id">

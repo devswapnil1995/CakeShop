@@ -60,6 +60,7 @@ export interface AdminOrder {
   status: CustomerOrderStatus;
   createdUtc: string;
   updatedUtc: string;
+  paymentStatus: string | null;
 }
 
 export interface OrderStatusHistory {

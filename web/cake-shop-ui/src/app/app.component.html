@@ -248,6 +248,33 @@
         </p>
         <p>We will confirm availability and final pricing with you.</p>
 
+        @if (!paymentAvailabilityChecked()) {
+        <p class="muted" role="status">
+          Checking online payment availability...
+        </p>
+        } @else if (paymentAvailable()) {
+          @if (paymentMessage()) {
+        <p role="status">{{ paymentMessage() }}</p>
+        }
+        @else {
+        <button type="button" class="order-submit-button" [disabled]="isStartingPayment()"
+          (click)="startOnlinePayment()">
+          {{ isStartingPayment() ? 'Preparing checkout...' : 'Pay Online (Test Mode)' }}
+        </button>
+      }
+        @if (paymentMessage()) {
+        <p role="status">{{ paymentMessage() }}</p>
+        }
+
+        @if (paymentError()) {
+        <p class="order-error" role="alert">{{ paymentError() }}</p>
+        }
+        } @else {
+        <p class="muted" role="status">
+          Online payments are coming soon. Please place your order through WhatsApp.
+        </p>
+        }
+
         <button type="button" class="order-submit-button" (click)="continueToWhatsApp()">
           Continue to WhatsApp
         </button>

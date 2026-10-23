@@ -4,6 +4,8 @@ using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
+using CakeShop.Domain.Payments;
+using CakeShop.Infrastructure.Payments;
 using CakeShop.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +14,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuredConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -84,7 +88,7 @@ builder.Services.AddSwaggerGen(options =>
             [new OpenApiSecuritySchemeReference("Bearer", document)] = []
         });
 });
-
+builder.Services.AddHttpClient<RazorpayPaymentService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -141,6 +145,30 @@ app.MapGet("/api/v1/products", async (CakeShopDbContext db, string? category, bo
     })
     .ToListAsync(ct); return Results.Ok(result);
 }).WithName("GetProducts").WithTags("Catalog");
+
+
+app.MapGet("/api/v1/payments/availability", (
+    IConfiguration configuration) =>
+{
+    var testMode = string.Equals(
+        configuration["Razorpay:Environment"],
+        "Test",
+        StringComparison.OrdinalIgnoreCase);
+
+    var hasTestKey = configuration["Razorpay:KeyId"]?
+        .StartsWith("rzp_test_", StringComparison.Ordinal) == true;
+
+    var hasSecret = !string.IsNullOrWhiteSpace(
+        configuration["Razorpay:KeySecret"]);
+
+    return Results.Ok(new
+    {
+        available = testMode && hasTestKey && hasSecret
+    });
+})
+.AllowAnonymous()
+.WithName("GetPaymentAvailability")
+.WithTags("Payments");
 
 
 app.MapPost("/api/v1/orders", async (
@@ -318,6 +346,439 @@ app.MapPost("/api/v1/orders", async (
 .WithTags("Orders");
 
 
+app.MapPost("/api/v1/orders/{id:guid}/payment", async (
+    Guid id,
+    CakeShopDbContext db,
+    RazorpayPaymentService razorpay,
+    IConfiguration configuration,
+    CancellationToken ct) =>
+{
+    // This single-shop MVP uses the configured shop ID.
+    // Resolve this from a trusted storefront/tenant mapping
+    // before enabling multiple public storefronts.
+    var order = await db.CustomerOrders
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == defaultClientId,
+            ct);
+
+    if (order is null)
+        return Results.NotFound(new { message = "Order not found." });
+
+    if (order.Status == CustomerOrderStatus.Cancelled ||
+        order.Status == CustomerOrderStatus.Completed)
+    {
+        return Results.Conflict(new
+        {
+            message = "Payment is unavailable for this order status."
+        });
+    }
+
+    if (order.TotalAmount is not decimal total ||
+        total < 1m ||
+        total != decimal.Round(total, 2, MidpointRounding.AwayFromZero))
+    {
+        return Results.BadRequest(new
+        {
+            message = "The order does not have a valid payable total."
+        });
+    }
+
+
+    var alreadyPaid = await db.PaymentTransactions.AnyAsync(
+        p => p.OrderId == order.Id
+          && p.ClientId == order.ClientId
+          && p.Provider == "Razorpay"
+          && p.Status == PaymentStatus.Captured,
+        ct);
+
+    if (alreadyPaid)
+    {
+        return Results.Conflict(new
+        {
+            message = "This order has already been paid.",
+            alreadyPaid = true
+        });
+    }
+
+
+    var environment = configuration["Razorpay:Environment"];
+
+    if (!string.Equals(environment, "Test",
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Conflict(new
+        {
+            message = "Only Test Mode is supported by this endpoint."
+        });
+    }
+
+    //var settings = await db.TenantPaymentSettings
+    //    .AsNoTracking()
+    //    .SingleOrDefaultAsync(x =>
+    //        x.ClientId == defaultClientId &&
+    //        x.Provider == "Razorpay" &&
+    //        x.Environment == PaymentEnvironment.Test &&
+    //        x.IsEnabled,
+    //        ct);
+
+    //if (settings is null ||
+    //    string.IsNullOrWhiteSpace(settings.MerchantAccountReference))
+    //{
+    //    return Results.Conflict(new
+    //    {
+    //        message = "Online payments are not configured for this shop. Please use WhatsApp ordering."
+    //    });
+    //}
+
+    // Reuse an existing pending provider order when possible.
+    var existing = await db.PaymentTransactions
+        .AsNoTracking()
+        .Where(x =>
+            x.ClientId == defaultClientId &&
+            x.OrderId == order.Id &&
+            x.Provider == "Razorpay" &&
+            x.Status == PaymentStatus.Pending &&
+            x.ProviderOrderId != null)
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefaultAsync(ct);
+
+    if (existing is not null)
+    {
+        return Results.Ok(new
+        {
+            paymentId = existing.Id,
+            orderId = existing.ProviderOrderId,
+            amount = decimal.ToInt64(total * 100m),
+            currency = "INR",
+            keyId = configuration["Razorpay:KeyId"]
+        });
+    }
+
+    var amountInPaise = decimal.ToInt64(total * 100m);
+
+    var providerOrder = await razorpay.CreateOrderAsync(
+     amountInPaise,
+     order.OrderNumber,
+     ct);
+
+    var transaction = new PaymentTransaction(
+        Guid.NewGuid(),
+        defaultClientId,
+        order.Id,
+        total);
+
+    transaction.SetProviderOrderId(providerOrder.OrderId);
+
+    db.PaymentTransactions.Add(transaction);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Created(
+        $"/api/v1/orders/{order.Id}/payment",
+        new
+        {
+            paymentId = transaction.Id,
+            orderId = providerOrder.OrderId,
+            amount = providerOrder.AmountInPaise,
+            currency = providerOrder.Currency,
+            keyId = configuration["Razorpay:KeyId"]
+        });
+})
+.AllowAnonymous()
+.WithName("CreateCustomerPaymentOrder")
+.WithTags("Payments");
+
+
+app.MapPost("/api/v1/payments/verify", async (
+    VerifyRazorpayPaymentRequest request,
+    CakeShopDbContext db,
+    RazorpayPaymentService razorpay,
+    CancellationToken ct) =>
+{
+    var transaction = await db.PaymentTransactions.SingleOrDefaultAsync(
+        x => x.Id == request.PaymentTransactionId
+          && x.ClientId == defaultClientId,
+        ct);
+
+    if (transaction is null)
+        return Results.NotFound(new
+        {
+            message = "Payment transaction not found."
+        });
+
+    // A previously captured payment must belong to this payment attempt.
+    if (transaction.Status == PaymentStatus.Captured)
+    {
+        return transaction.ProviderPaymentId == request.RazorpayPaymentId
+            ? Results.Ok(new { verified = true, status = "Captured" })
+            : Results.Conflict(new
+            {
+                message = "A different payment was already captured."
+            });
+    }
+
+    if (transaction.Status != PaymentStatus.Pending ||
+        string.IsNullOrWhiteSpace(transaction.ProviderOrderId))
+    {
+        return Results.Conflict(new
+        {
+            message = "Payment is not awaiting verification."
+        });
+    }
+
+    // Verify using the provider order ID saved on the server.
+    if (!razorpay.VerifyCheckoutSignature(
+            transaction.ProviderOrderId,
+            request.RazorpayPaymentId,
+            request.RazorpaySignature))
+    {
+        return Results.BadRequest(new
+        {
+            message = "Invalid payment signature."
+        });
+    }
+
+    var expectedAmount = decimal.ToInt64(transaction.Amount * 100m);
+
+    var captured = await razorpay.IsPaymentCapturedAsync(
+        request.RazorpayPaymentId,
+        transaction.ProviderOrderId,
+        expectedAmount,
+        ct);
+
+    if (!captured)
+    {
+        return Results.Conflict(new
+        {
+            message =
+                "Payment is not captured or does not match the expected order and amount."
+        });
+    }
+
+    // Find the corresponding order within the same tenant.
+    var order = await db.CustomerOrders.SingleOrDefaultAsync(
+        x => x.Id == transaction.OrderId
+          && x.ClientId == transaction.ClientId,
+        ct);
+
+    if (order is null)
+    {
+        return Results.Conflict(new
+        {
+            message = "The order associated with this payment was not found."
+        });
+    }
+
+    // Use the domain transition rules.
+    if (order.Status == CustomerOrderStatus.Pending)
+    {
+        order.UpdateStatus(CustomerOrderStatus.Confirmed);
+    }
+    else if (order.Status != CustomerOrderStatus.Confirmed)
+    {
+        return Results.Conflict(new
+        {
+            message = "The order cannot be confirmed in its current state."
+        });
+    }
+
+    // Persist payment and order changes together.
+    await using var dbTransaction =
+        await db.Database.BeginTransactionAsync(ct);
+
+    transaction.MarkCaptured(request.RazorpayPaymentId);
+
+    await db.SaveChangesAsync(ct);
+    await dbTransaction.CommitAsync(ct);
+
+    return Results.Ok(new
+    {
+        verified = true,
+        status = "Captured",
+        orderStatus = order.Status.ToString()
+    });
+})
+.AllowAnonymous()
+.WithName("VerifyCustomerPayment")
+.WithTags("Payments");
+
+
+app.MapPost("/api/v1/payments/webhook", async (
+    HttpRequest request,
+    CakeShopDbContext db,
+    IConfiguration configuration,
+    ILogger<Program> logger,
+    CancellationToken ct) =>
+{
+    var webhookSecret = configuration["Razorpay:WebhookSecret"];
+    var suppliedSignature =
+        request.Headers["X-Razorpay-Signature"].ToString();
+    var eventId = request.Headers["x-razorpay-event-id"].ToString();
+
+    if (string.IsNullOrWhiteSpace(webhookSecret) ||
+        string.IsNullOrWhiteSpace(suppliedSignature) ||
+        string.IsNullOrWhiteSpace(eventId) ||
+        eventId.Length > 200)
+    {
+        return Results.Unauthorized();
+    }
+
+    using var reader = new StreamReader(request.Body);
+    var rawBody = await reader.ReadToEndAsync(ct);
+
+    var expectedSignature = System.Security.Cryptography.HMACSHA256.HashData(
+        Encoding.UTF8.GetBytes(webhookSecret),
+        Encoding.UTF8.GetBytes(rawBody));
+
+    byte[] actualSignature;
+    try
+    {
+        actualSignature = Convert.FromHexString(suppliedSignature);
+    }
+    catch (FormatException)
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            expectedSignature, actualSignature))
+    {
+        return Results.Unauthorized();
+    }
+
+    using var document = JsonDocument.Parse(rawBody);
+    var root = document.RootElement;
+
+    // Acknowledge event types this handler doesn't process.
+    if (root.GetProperty("event").GetString() != "payment.captured")
+        return Results.Ok(new { received = true });
+
+    var payment = root.GetProperty("payload")
+       .GetProperty("payment")
+       .GetProperty("entity");
+
+    var providerPaymentId = payment.GetProperty("id").GetString();
+    var providerOrderId = payment.GetProperty("order_id").GetString();
+    var currency = payment.GetProperty("currency").GetString();
+    var amount = payment.GetProperty("amount").GetInt64();
+    var status = payment.GetProperty("status").GetString();
+
+    if (string.IsNullOrWhiteSpace(providerPaymentId) ||
+        string.IsNullOrWhiteSpace(providerOrderId) ||
+        currency != "INR" ||
+        status != "captured")
+    {
+        return Results.BadRequest();
+    }
+
+    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
+    // Record only events this handler actually processes.
+    db.ProcessedPaymentWebhooks.Add(
+        new CakeShop.Domain.Payments.ProcessedPaymentWebhook(eventId));
+
+    var paymentTransaction = await db.PaymentTransactions.SingleOrDefaultAsync(
+        x => x.Provider == "Razorpay" &&
+             x.ProviderOrderId == providerOrderId,
+        ct);
+
+    if (paymentTransaction is null)
+    {
+        logger.LogWarning(
+            "Razorpay captured event references unknown order {ProviderOrderId}.",
+            providerOrderId);
+
+        return Results.NotFound(new { message = "Payment order not found." });
+    }
+
+    var expectedAmount = decimal.ToInt64(paymentTransaction.Amount * 100m);
+
+    if (paymentTransaction.Currency != currency || expectedAmount != amount)
+        return Results.BadRequest(new { message = "Payment amount or currency mismatch." });
+
+
+    var order = await db.CustomerOrders.SingleOrDefaultAsync(
+        x => x.Id == paymentTransaction.OrderId
+          && x.ClientId == paymentTransaction.ClientId,
+        ct);
+
+    if (order is null)
+    {
+        logger.LogError(
+            "Captured Razorpay payment {PaymentId} has no matching order.",
+            providerPaymentId);
+
+        return Results.Conflict(new
+        {
+            message = "Payment captured, but the associated order was not found."
+        });
+    }
+
+    if (paymentTransaction.Status == PaymentStatus.Captured)
+    {
+        if (paymentTransaction.ProviderPaymentId == providerPaymentId)
+        {
+            // This payment is already recorded.
+            // Continue through the idempotent event-recording path.
+        }
+        else
+        {
+            logger.LogError(
+                "A different payment ID was received for captured transaction {TransactionId}.",
+                paymentTransaction.Id);
+
+            // Do not overwrite the previously captured payment.
+            // Record this event safely and flag it for reconciliation.
+        }
+    }
+    else
+    {
+        paymentTransaction.MarkCaptured(providerPaymentId);
+    }
+
+    paymentTransaction.MarkCaptured(providerPaymentId);
+
+    if (order.Status == CustomerOrderStatus.Pending)
+    {
+        order.UpdateStatus(CustomerOrderStatus.Confirmed);
+    }
+    else if (order.Status != CustomerOrderStatus.Confirmed)
+    {
+        // Preserve the captured payment, but flag the order for owner review.
+        logger.LogError(
+            "Payment {PaymentId} was captured for order {OrderNumber}, " +
+            "which is in status {OrderStatus}. Manual reconciliation is required.",
+            providerPaymentId,
+            order.OrderNumber,
+            order.Status);
+    }
+
+    try
+    {
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+    catch (DbUpdateException)
+    {
+        await transaction.RollbackAsync(ct);
+
+        var alreadyProcessed = await db.ProcessedPaymentWebhooks
+            .AsNoTracking()
+            .AnyAsync(
+                x => x.Provider == "Razorpay" && x.EventId == eventId,
+                ct);
+
+        if (alreadyProcessed)
+            return Results.Ok(new { received = true, duplicate = true });
+
+        throw;
+    }
+
+
+    return Results.Ok(new { received = true, processed = true });
+})
+.AllowAnonymous()
+.WithName("RazorpayWebhook")
+.WithTags("Payments");
 
 var auth = app.MapGroup("/api/v1/admin/auth").WithTags("Admin Authentication");
 auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPasswordHasher<AdminUser> hasher, IConfiguration config, CancellationToken ct) =>
@@ -379,7 +840,19 @@ adminApi.MapGet("/orders", async (
             x.CompletedUtc,
             Status = x.Status.ToString(),
             x.CreatedUtc,
-            x.UpdatedUtc
+            x.UpdatedUtc,
+            PaymentStatus = db.PaymentTransactions
+    .Where(p => p.OrderId == x.Id
+             && p.ClientId == x.ClientId
+             && p.Status == PaymentStatus.Captured)
+    .Select(p => p.Status.ToString())
+    .FirstOrDefault()
+    ?? db.PaymentTransactions
+        .Where(p => p.OrderId == x.Id
+                 && p.ClientId == x.ClientId)
+        .OrderByDescending(p => p.CreatedUtc)
+        .Select(p => p.Status.ToString())
+        .FirstOrDefault(),
         })
         .ToListAsync(ct);
 
@@ -1237,3 +1710,9 @@ public sealed record ProductVariantWriteRequest(
     int WeightInGrams,
     decimal Price,
     bool IsAvailable);
+
+
+public sealed record VerifyRazorpayPaymentRequest(
+    Guid PaymentTransactionId,
+    string RazorpayPaymentId,
+    string RazorpaySignature);

@@ -2,6 +2,7 @@ using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Expenses;
 using CakeShop.Domain.Identity;
 using CakeShop.Domain.Orders;
+using CakeShop.Domain.Payments;
 using CakeShop.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,13 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
 
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<PaymentTransaction> PaymentTransactions
+    => Set<PaymentTransaction>();
+    public DbSet<TenantPaymentSettings> TenantPaymentSettings
+    => Set<TenantPaymentSettings>();
+
+    public DbSet<ProcessedPaymentWebhook> ProcessedPaymentWebhooks
+    => Set<ProcessedPaymentWebhook>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -189,6 +197,163 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
                 .HasForeignKey(x => new { x.ClientId, x.ProductId })
                 .HasPrincipalKey(x => new { x.ClientId, x.Id })
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(e =>
+        {
+            e.ToTable("PaymentTransactions");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Provider)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            e.Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            e.Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.ProviderOrderId)
+                .HasMaxLength(100);
+
+            e.Property(x => x.ProviderPaymentId)
+                .HasMaxLength(100);
+
+            e.HasIndex(x => new { x.ClientId, x.OrderId });
+
+            e.HasIndex(x => new { x.Provider, x.ProviderOrderId })
+                .IsUnique()
+                .HasFilter("[ProviderOrderId] IS NOT NULL");
+
+            e.HasIndex(x => new { x.Provider, x.ProviderPaymentId })
+                .IsUnique()
+                .HasFilter("[ProviderPaymentId] IS NOT NULL");
+
+            e.HasOne<CakeShop.Domain.Tenants.ClientMaster>()
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne<CustomerOrder>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.OrderId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
+        modelBuilder.Entity<TenantPaymentSettings>(e =>
+        {
+            e.ToTable("TenantPaymentSettings");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Provider)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.Environment)
+                .HasConversion<string>()
+                .HasMaxLength(10)
+                .IsRequired();
+
+            e.Property(x => x.MerchantAccountReference)
+                .HasMaxLength(150);
+
+            e.Property(x => x.KeyId)
+                .HasMaxLength(150);
+
+            e.Property(x => x.CredentialSecretReference)
+                .HasMaxLength(500);
+
+            e.Property(x => x.IsEnabled).IsRequired();
+            e.Property(x => x.CreatedUtc).IsRequired();
+            e.Property(x => x.UpdatedUtc).IsRequired();
+
+            // One provider/environment configuration per tenant.
+            e.HasIndex(x => new
+            {
+                x.ClientId,
+                x.Provider,
+                x.Environment
+            }).IsUnique();
+
+            e.HasOne<ClientMaster>()
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(e =>
+        {
+            e.ToTable("PaymentTransactions");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Provider)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.Currency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            e.Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            e.Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            e.Property(x => x.ProviderOrderId).HasMaxLength(100);
+            e.Property(x => x.ProviderPaymentId).HasMaxLength(100);
+
+            e.HasIndex(x => new { x.ClientId, x.OrderId });
+
+            e.HasIndex(x => new { x.Provider, x.ProviderOrderId })
+                .IsUnique()
+                .HasFilter("[ProviderOrderId] IS NOT NULL");
+
+            e.HasIndex(x => new { x.Provider, x.ProviderPaymentId })
+                .IsUnique()
+                .HasFilter("[ProviderPaymentId] IS NOT NULL");
+
+            e.HasOne<ClientMaster>()
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne<CustomerOrder>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.OrderId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProcessedPaymentWebhook>(e =>
+        {
+            e.ToTable("ProcessedPaymentWebhooks");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Provider)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            e.Property(x => x.EventId)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            e.Property(x => x.ProcessedUtc)
+                .IsRequired();
+
+            e.HasIndex(x => new { x.Provider, x.EventId })
+                .IsUnique();
         });
 
     }

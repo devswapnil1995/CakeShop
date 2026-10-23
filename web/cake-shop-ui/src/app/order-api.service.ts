@@ -33,6 +33,30 @@ export type CustomerOrderStatus =
   | 'Completed'
   | 'Cancelled';
 
+
+export interface CreatePaymentResponse {
+  paymentId: string; // Internal PaymentTransaction ID
+  orderId: string;   // Razorpay order ID
+  amount: number;    // Amount in paise
+  currency: string;
+  keyId: string;
+}
+
+export interface VerifyPaymentRequest {
+  paymentTransactionId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}
+
+export interface VerifyPaymentResponse {
+  verified: boolean;
+  status: string;
+}
+
+export interface PaymentAvailabilityResponse {
+  available: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OrderApiService {
   private readonly http = inject(HttpClient);
@@ -60,6 +84,27 @@ export class OrderApiService {
     return this.http.put(
       `${this.baseUrl}/admin/orders/${id}/status`,
       { status }
+    );
+  }
+
+  createPayment(orderId: string) {
+    return this.http.post<CreatePaymentResponse>(
+      `${this.baseUrl}/orders/${orderId}/payment`,
+      {}
+    );
+  }
+
+  verifyPayment(request: VerifyPaymentRequest) {
+    return this.http.post<VerifyPaymentResponse>(
+      `${this.baseUrl}/payments/verify`,
+      request
+    );
+  }
+
+
+  getPaymentAvailability(): Observable<PaymentAvailabilityResponse> {
+    return this.http.get<PaymentAvailabilityResponse>(
+      `${this.baseUrl}/payments/availability`
     );
   }
 }

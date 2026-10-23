@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { catchError, of } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { OrderApiService, CustomerOrderResponse } from './order-api.service';
+import { OrderApiService, CustomerOrderResponse, CreatePaymentResponse, VerifyPaymentRequest } from './order-api.service';
 
 interface CakeProduct {
   id?: string;
@@ -80,7 +80,25 @@ export class AppComponent implements OnInit {
     return this.selectedUnitPrice * this.orderQuantity;
   }
 
+  readonly isStartingPayment = signal(false);
+  readonly paymentMessage = signal('');
+  readonly paymentError = signal('');
+  readonly paymentAvailabilityChecked = signal(false);
+  readonly paymentAvailable = signal(false);
+
+
   ngOnInit(): void {
+    this.orderApi.getPaymentAvailability().subscribe({
+      next: (response) => {
+        this.paymentAvailable.set(response.available);
+        this.paymentAvailabilityChecked.set(true);
+      },
+      error: () => {
+        // Fail closed: never offer online checkout if availability is unknown.
+        this.paymentAvailable.set(false);
+        this.paymentAvailabilityChecked.set(true);
+      }
+    });
     this.catalogApi.getProducts().pipe(catchError(() => of(null))).subscribe((items) => {
       if (!items) return;
       this.apiConnected.set(true);
@@ -169,11 +187,14 @@ export class AppComponent implements OnInit {
   closeOrderForm(): void {
     this.orderFormOpen.set(false);
     this.orderError = '';
+    this.paymentMessage.set('');
   }
 
 
   submitOrder(): void {
     if (this.isSubmittingOrder()) return;
+
+    this.paymentMessage.set('');
 
     if (!this.customerName.trim()) {
       this.orderError = 'Please enter your name.';
@@ -263,4 +284,86 @@ export class AppComponent implements OnInit {
   }
 
 
+  startOnlinePayment(): void {
+    const order = this.savedOrder();
+
+    if (!order || this.isStartingPayment()) return;
+
+    this.paymentMessage.set('');
+    this.paymentError.set('');
+    this.isStartingPayment.set(true);
+
+    this.orderApi.createPayment(order.id)
+      .pipe(finalize(() => this.isStartingPayment.set(false)))
+      .subscribe({
+        next: (payment: CreatePaymentResponse) => {
+          this.openRazorpayCheckout(payment);
+        },
+        error: (error) => {
+          this.paymentError.set(
+            error?.error?.message ??
+            'Online payments are not configured yet. Please continue using WhatsApp.'
+          );
+        }
+      });
+  }
+
+  private openRazorpayCheckout(payment: CreatePaymentResponse): void {
+    const razorpayWindow = window as Window & {
+      Razorpay?: new (options: Record<string, unknown>) => {
+        open: () => void;
+      };
+    };
+
+    if (!razorpayWindow.Razorpay) {
+      this.paymentError.set(
+        'Payment checkout could not be loaded. Please use WhatsApp instead.'
+      );
+      return;
+    }
+
+    const checkout = new razorpayWindow.Razorpay({
+      key: payment.keyId,
+      amount: payment.amount,
+      currency: payment.currency,
+      name: 'The Sweet Panda',
+      description: 'Cake order payment',
+      order_id: payment.orderId,
+      handler: (response: {
+        razorpay_payment_id: string;
+        razorpay_order_id: string;
+        razorpay_signature: string;
+      }) => {
+        // Verify against the server-created payment transaction.
+        this.orderApi.verifyPayment({
+          paymentTransactionId: payment.paymentId,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature
+        } satisfies VerifyPaymentRequest).subscribe({
+          next: result => {
+            if (result.verified) {
+              this.paymentMessage.set('Payment verified successfully.');
+            } else {
+              this.paymentError.set(
+                'Payment verification is pending. Please contact the shop before paying again.'
+              );
+            }
+          },
+          error: () => {
+            this.paymentError.set(
+              'We could not verify the payment yet. Please contact the shop before retrying.'
+            );
+          }
+        });
+      },
+      modal: {
+        ondismiss: () => {
+          this.paymentMessage.set('Checkout closed. You can still continue on WhatsApp.');
+        }
+      },
+      theme: { color: '#3e2b24' }
+    });
+
+    checkout.open();
+  }
 }
