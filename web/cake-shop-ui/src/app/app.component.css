@@ -4170,3 +4170,58 @@ h2 em {
   .managed-hero-media { min-height: 240px; }
   .managed-hero-controls { right: 16px; bottom: 12px; }
 }
+
+
+/* Refined admin-managed storefront hero */
+.managed-hero {
+  min-height: clamp(560px, 42vw, 690px);
+  grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
+  gap: clamp(28px, 4vw, 72px);
+  padding: clamp(46px, 5vw, 76px) 6.2% 82px;
+  isolation: isolate;
+  transition: background-color .35s ease;
+}
+.managed-hero::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 48%; pointer-events: none;
+  background: radial-gradient(ellipse at 10% 90%, rgba(215,166,137,.12), transparent 55%); z-index: -1;
+}
+.managed-hero .hero-copy { padding: 12px 0 24px; max-width: 590px; }
+.managed-hero .eyebrow { margin-bottom: 25px; }
+.managed-hero .hero-copy h1 { font-size: clamp(44px, 5vw, 76px); line-height: .99; letter-spacing: -.06em; text-wrap: balance; white-space: pre-line; }
+.managed-hero .hero-description { max-width: 440px; margin: 24px 0 28px; font-size: clamp(14px, 1.1vw, 16px); line-height: 1.75; }
+.managed-hero .hero-actions { gap: 18px; }
+.managed-hero .button { min-height: 54px; padding: 0 24px; font-size: 12px; }
+.managed-hero-visual { max-width: none; min-width: 0; padding: 0 0 10px; }
+.managed-hero-visual .hero-image-frame { height: clamp(390px, 36vw, 560px); border-radius: 44% 44% 3px 3px; box-shadow: 0 22px 60px rgba(62,43,36,.10); }
+.managed-hero-media { display: block; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: center; }
+.managed-hero-visual picture { display: block; width: 100%; height: 100%; }
+.managed-hero .image-stamp { left: -34px; top: 32px; width: 102px; height: 102px; }
+.managed-hero-controls { position: absolute; left: 6.2%; right: auto; bottom: 25px; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid rgba(62,43,36,.08); border-radius: 999px; background: rgba(255,253,248,.94); color: #3e2b24; box-shadow: 0 8px 26px rgba(62,43,36,.06); backdrop-filter: blur(10px); }
+.managed-hero-controls > button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: inherit; font: inherit; font-size: 19px; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.managed-hero-controls > button:hover { background: #f0e4d8; transform: scale(1.04); }
+.managed-hero-dots { display: flex; align-items: center; gap: 7px; }
+.managed-hero-dots .managed-hero-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: #dfd0c3; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.managed-hero-dots .managed-hero-dot.active { background: #b95535; transform: scale(1.18); }
+.managed-hero-count { min-width: 38px; color: #8d7465; font-size: 11px; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .managed-hero *, .managed-hero { transition: none !important; animation: none !important; } }
+@media (max-width: 900px) {
+  .managed-hero { grid-template-columns: minmax(0, 1fr) minmax(0, .95fr); gap: 24px; padding: 48px 5.5% 90px; min-height: 560px; }
+  .managed-hero .hero-copy h1 { font-size: clamp(40px, 5.4vw, 58px); }
+  .managed-hero-visual .hero-image-frame { height: 410px; }
+  .managed-hero-controls { left: 5.5%; bottom: 22px; }
+}
+@media (max-width: 640px) {
+  .managed-hero { display: flex; flex-direction: column; align-items: stretch; gap: 22px; padding: 38px 22px 86px; min-height: auto; }
+  .managed-hero .hero-copy { padding: 0; }
+  .managed-hero .eyebrow { margin-bottom: 16px; font-size: 8px; }
+  .managed-hero .hero-copy h1 { font-size: clamp(39px, 11vw, 54px); line-height: 1.02; }
+  .managed-hero .hero-description { margin: 17px 0 21px; font-size: 14px; line-height: 1.65; }
+  .managed-hero .hero-actions { gap: 14px; }
+  .managed-hero .button { min-height: 48px; padding: 0 17px; }
+  .managed-hero-visual { width: 90%; align-self: center; padding: 0 0 8px; }
+  .managed-hero-visual .hero-image-frame { height: clamp(270px, 78vw, 390px); border-radius: 46% 46% 3px 3px; }
+  .managed-hero .image-stamp { width: 78px; height: 78px; left: -22px; top: 20px; }
+  .managed-hero .image-stamp strong { font-size: 16px; }
+  .managed-hero-controls { left: 22px; bottom: 18px; gap: 8px; padding: 7px 9px; }
+  .managed-hero-controls > button { width: 27px; height: 27px; }
+}
