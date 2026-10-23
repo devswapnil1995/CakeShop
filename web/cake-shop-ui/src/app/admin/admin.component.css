@@ -1415,3 +1415,5 @@
   .hero-banner-actions { width: 100%; }
   .hero-banner-form { padding: 16px; }
 }
+
+.hero-banner-thumbnail { display: block; width: min(100%, 240px); max-height: 150px; object-fit: cover; border-radius: 10px; margin-top: 8px; background: #f3e9df; }
