@@ -22,6 +22,28 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CakeShop.Domain.Content.HeroBanner", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
+                    b.Property<string>("ButtonText").HasMaxLength(80).HasColumnType("nvarchar(80)");
+                    b.Property<string>("ButtonUrl").HasMaxLength(2000).HasColumnType("nvarchar(2000)");
+                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
+                    b.Property<DateTime>("CreatedUtc").HasColumnType("datetime2");
+                    b.Property<DateTime?>("EndsUtc").HasColumnType("datetime2");
+                    b.Property<bool>("IsPublished").HasColumnType("bit");
+                    b.Property<string>("MediaType").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                    b.Property<string>("MediaUrl").IsRequired().HasMaxLength(2000).HasColumnType("nvarchar(2000)");
+                    b.Property<string>("MobileMediaUrl").HasMaxLength(2000).HasColumnType("nvarchar(2000)");
+                    b.Property<int>("SortOrder").HasColumnType("int");
+                    b.Property<DateTime?>("StartsUtc").HasColumnType("datetime2");
+                    b.Property<string>("Subtitle").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("Title").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
+                    b.Property<DateTime>("UpdatedUtc").HasColumnType("datetime2");
+                    b.HasKey("Id");
+                    b.HasIndex("ClientId", "SortOrder");
+                    b.ToTable("HeroBanners", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Catalog.Category", b =>
                 {
                     b.Property<Guid>("Id")
