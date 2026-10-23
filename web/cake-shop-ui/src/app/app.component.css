@@ -4157,3 +4157,16 @@ h2 em {
     font-size: 23px;
   }
 }
+
+
+/* Admin-managed homepage hero media */
+.managed-hero .hero-copy h1 { white-space: pre-line; }
+.managed-hero-visual .hero-image-frame { overflow: hidden; }
+.managed-hero-media { display: block; width: 100%; height: 100%; min-height: 360px; object-fit: cover; }
+.managed-hero-visual picture { display: block; width: 100%; height: 100%; }
+.managed-hero-controls { position: absolute; right: 6.2%; bottom: 26px; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 999px; background: rgba(255,253,248,.94); color: #3e2b24; }
+.managed-hero-controls button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 4px 8px; }
+@media (max-width: 640px) {
+  .managed-hero-media { min-height: 240px; }
+  .managed-hero-controls { right: 16px; bottom: 12px; }
+}
