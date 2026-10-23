@@ -1122,6 +1122,103 @@
         </div>
         }
 
+
+        @if (activeTab === 'hero-banners') {
+        <div class="panel-layout">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">HOMEPAGE CONTENT</span>
+              <h2>Hero banners</h2>
+              <p class="muted">Manage the first message customers see. New banners start as drafts.</p>
+            </div>
+            <button class="text-btn" type="button" (click)="loadHeroBanners()" [disabled]="heroBannersLoading()">↻ Refresh</button>
+          </div>
+          @if (heroBannersLoading()) {
+            <p class="muted">Loading banners…</p>
+          } @else if (heroBanners().length === 0) {
+            <div class="empty-state">No banners yet. Create your first homepage banner below.</div>
+          }
+          @for (banner of heroBanners(); track banner.id) {
+            <article class="category-row hero-banner-row">
+              <div class="category-info">
+                <strong>{{ banner.title }}</strong>
+                <small>{{ banner.mediaType }} · order {{ banner.sortOrder }}</small>
+                <small>{{ banner.isPublished ? 'Published' : 'Draft / unpublished' }}</small>
+                <small>{{ banner.mediaUrl }}</small>
+                @if (banner.mediaType === 'Image') {
+                  <img class="hero-banner-thumbnail" [src]="banner.mediaUrl" [alt]="banner.title" loading="lazy" />
+                } @else {
+                  <video class="hero-banner-thumbnail" [src]="banner.mediaUrl" muted controls preload="metadata"></video>
+                }
+                @if (banner.startsUtc || banner.endsUtc) {
+                  <small>Schedule: {{ banner.startsUtc || 'Immediately' }} — {{ banner.endsUtc || 'No end date' }}</small>
+                }
+              </div>
+              <div class="hero-banner-actions">
+                <button type="button" class="quiet-btn" (click)="editHeroBanner(banner)">Edit</button>
+                <button type="button" class="quiet-btn" (click)="toggleHeroBannerPublication(banner)">{{ banner.isPublished ? 'Unpublish' : 'Publish' }}</button>
+                <button type="button" class="quiet-btn danger-btn" (click)="deleteHeroBanner(banner)">Delete</button>
+              </div>
+            </article>
+          }
+          <form class="form-grid hero-banner-form" (ngSubmit)="saveHeroBanner()">
+            <h3 class="span-two">{{ editingHeroBannerId ? 'Edit banner' : 'Create banner' }}</h3>
+            <div class="field">
+              <label for="heroTitle">Heading *</label>
+              <input id="heroTitle" name="heroTitle" [(ngModel)]="heroBannerForm.title" maxlength="160" required />
+            </div>
+            <div class="field">
+              <label for="heroSubtitle">Subtitle *</label>
+              <input id="heroSubtitle" name="heroSubtitle" [(ngModel)]="heroBannerForm.subtitle" maxlength="500" required />
+            </div>
+            <div class="field">
+              <label for="heroMediaType">Media type *</label>
+              <select id="heroMediaType" name="heroMediaType" [(ngModel)]="heroBannerForm.mediaType" required>
+                <option value="Image">Image</option><option value="Video">Video</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="heroMediaUrl">Media URL (HTTPS or uploaded file) *</label>
+              <input id="heroMediaUrl" name="heroMediaUrl" type="text" [(ngModel)]="heroBannerForm.mediaUrl" maxlength="2000" placeholder="https://… or /uploads/heroes/…" required />
+            </div>
+            <div class="field">
+              <label for="heroMobileMediaUrl">Mobile media URL (optional)</label>
+              <input id="heroMobileMediaUrl" name="heroMobileMediaUrl" type="text" [(ngModel)]="heroBannerForm.mobileMediaUrl" maxlength="2000" placeholder="HTTPS URL or uploaded path" />
+            </div>
+            <div class="field">
+              <label for="heroMediaUpload">Upload image or video (optional)</label>
+              <input id="heroMediaUpload" name="heroMediaUpload" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,image/jpeg,image/png,image/webp,video/mp4,video/webm" (change)="uploadHeroMedia($event)" />
+              <small class="form-hint">{{ heroMediaUploading() ? 'Uploading media…' : 'JPG, PNG, WebP, MP4 or WebM; max 20 MB.' }}</small>
+            </div>
+            <div class="field">
+              <label for="heroSortOrder">Display order</label>
+              <input id="heroSortOrder" name="heroSortOrder" type="number" min="0" max="10000" [(ngModel)]="heroBannerForm.sortOrder" required />
+            </div>
+            <div class="field">
+              <label for="heroButtonText">CTA button text</label>
+              <input id="heroButtonText" name="heroButtonText" [(ngModel)]="heroBannerForm.buttonText" maxlength="80" placeholder="Explore our cakes" />
+            </div>
+            <div class="field">
+              <label for="heroButtonUrl">CTA destination (HTTPS or site path)</label>
+              <input id="heroButtonUrl" name="heroButtonUrl" [(ngModel)]="heroBannerForm.buttonUrl" maxlength="2000" placeholder="/collections or https://…" />
+            </div>
+            <div class="field">
+              <label for="heroStartsUtc">Schedule start (local time)</label>
+              <input id="heroStartsUtc" name="heroStartsUtc" type="datetime-local" [(ngModel)]="heroBannerForm.startsLocal" />
+            </div>
+            <div class="field">
+              <label for="heroEndsUtc">Schedule end (local time)</label>
+              <input id="heroEndsUtc" name="heroEndsUtc" type="datetime-local" [(ngModel)]="heroBannerForm.endsLocal" />
+            </div>
+            <div class="span-two form-actions">
+              <button type="submit" class="primary-btn" [disabled]="heroBannerSaving() || heroMediaUploading()">{{ heroBannerSaving() ? 'Saving…' : (editingHeroBannerId ? 'Save banner' : 'Create draft') }}</button>
+              @if (editingHeroBannerId) { <button type="button" class="quiet-btn" (click)="resetHeroBannerForm()">Cancel edit</button> }
+            </div>
+            <p class="form-hint span-two">Local uploads are stored under the API wwwroot folder. Configure persistent cloud object storage before production deployment.</p>
+          </form>
+        </div>
+        }
+
       </section>
     </div>
     <footer class="admin-footer">THE SWEET PANDA <span>•</span> BAKED WITH A LITTLE MAGIC</footer>
