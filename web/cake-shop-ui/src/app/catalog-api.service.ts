@@ -3,6 +3,20 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
+export interface HeroBannerDto {
+  id: string;
+  title: string;
+  subtitle: string;
+  mediaType: 'Image' | 'Video';
+  mediaUrl: string;
+  mobileMediaUrl: string | null;
+  buttonText: string | null;
+  buttonUrl: string | null;
+  sortOrder: number;
+  startsUtc: string | null;
+  endsUtc: string | null;
+}
+
 export interface CatalogProductDto {
   id: string;
   name: string;
@@ -53,6 +67,9 @@ export interface CatalogProductVariantDto {
 export class CatalogApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1`;
+  getHeroBanners(): Observable<HeroBannerDto[]> {
+    return this.http.get<HeroBannerDto[]>(`${this.baseUrl}/hero-banners`);
+  }
   getProducts(): Observable<CatalogProductDto[]> {
     return this.http.get<CatalogProductDto[]>(`${this.baseUrl}/products`);
   }
