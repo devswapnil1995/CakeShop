@@ -94,7 +94,7 @@ export class AppComponent implements OnInit {
   resolveHeroMediaUrl(url: string | null): string {
     if (!url) return '';
     if (!url.startsWith('/')) return url;
-    return `${environment.apiBaseUrl}${url}`;
+    return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
   }
 
   changeHeroBanner(direction: number): void {
