@@ -4354,12 +4354,6 @@ h2 em {
   margin-left: 0;
   width: min(47%, 620px);
 }
-.managed-hero .hero-copy .eyebrow,
-.managed-hero .hero-copy h1,
-.managed-hero .hero-copy .hero-description,
-.managed-hero .hero-copy .hero-actions {
-  text-shadow: 0 1px 10px rgba(255, 253, 248, .16);
-}
 @media (max-width: 900px) {
   .managed-hero { padding-left: 4%; padding-right: 4%; }
   .managed-hero .hero-copy { width: min(57%, 560px); }
@@ -4367,4 +4361,33 @@ h2 em {
 @media (max-width: 640px) {
   .managed-hero { padding-left: 20px; padding-right: 20px; }
   .managed-hero .hero-copy { width: 100%; }
+}
+
+
+/* Optional copy placement for full-bleed managed banners. */
+.managed-hero.text-position-left { align-items: center; justify-content: flex-start; }
+.managed-hero.text-position-right { align-items: center; justify-content: flex-end; }
+.managed-hero.text-position-right .hero-copy { text-align: right; margin-left: auto; }
+.managed-hero.text-position-right .hero-description { margin-left: auto; }
+.managed-hero.text-position-right .hero-actions { justify-content: flex-end; }
+.managed-hero.text-position-top { align-items: flex-start; justify-content: center; }
+.managed-hero.text-position-top .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
+.managed-hero.text-position-top .hero-description { margin-inline: auto; }
+.managed-hero.text-position-top .hero-actions { justify-content: center; }
+.managed-hero.text-position-bottom { align-items: flex-end; justify-content: center; }
+.managed-hero.text-position-bottom .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
+.managed-hero.text-position-bottom .hero-description { margin-inline: auto; }
+.managed-hero.text-position-bottom .hero-actions { justify-content: center; }
+.managed-hero.text-empty { justify-content: flex-start; align-items: flex-end; min-height: clamp(440px, 38vw, 620px); }
+.managed-hero.text-empty .hero-copy { display: none; }
+@media (max-width: 640px) {
+  .managed-hero.text-position-left { align-items: center; justify-content: flex-start; }
+  .managed-hero.text-position-right { align-items: center; justify-content: flex-end; }
+  .managed-hero.text-position-top,
+  .managed-hero.text-position-bottom { justify-content: center; }
+  .managed-hero.text-position-top .hero-copy,
+  .managed-hero.text-position-bottom .hero-copy { width: 100%; }
+  .managed-hero.text-position-right .hero-copy { text-align: right; }
+  .managed-hero.text-empty { min-height: 360px; padding: 0 0 76px; }
+  .managed-hero.text-empty .hero-copy { display: none; }
 }
