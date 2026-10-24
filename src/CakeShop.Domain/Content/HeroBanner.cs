@@ -8,7 +8,7 @@ public sealed class HeroBanner
     public Guid ClientId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Subtitle { get; private set; } = string.Empty;
-    public string TextPosition { get; private set; } = "CenterLeft";
+    public string TextPosition { get; private set; } = "left";
     public string MediaType { get; private set; } = "Image";
     public string MediaUrl { get; private set; } = string.Empty;
     public string? MobileMediaUrl { get; private set; }
@@ -24,7 +24,7 @@ public sealed class HeroBanner
     public HeroBanner(
         Guid clientId, string title, string subtitle, string mediaType, string mediaUrl,
         string? mobileMediaUrl = null, string? buttonText = null, string? buttonUrl = null,
-        int sortOrder = 0, DateTime? startsUtc = null, DateTime? endsUtc = null, string textPosition = "CenterLeft")
+        int sortOrder = 0, DateTime? startsUtc = null, DateTime? endsUtc = null, string textPosition = "left")
     {
         if (clientId == Guid.Empty) throw new ArgumentException("ClientId is required.", nameof(clientId));
         Id = Guid.NewGuid();
@@ -44,7 +44,7 @@ public sealed class HeroBanner
             throw new ArgumentException("Title must be at most 160 characters.", nameof(title));
         if ((subtitle?.Trim().Length ?? 0) > 500)
             throw new ArgumentException("Subtitle must be at most 500 characters.", nameof(subtitle));
-        if (textPosition is not ("TopLeft" or "CenterLeft" or "BottomLeft" or "TopCenter" or "Center" or "BottomCenter" or "TopRight" or "CenterRight" or "BottomRight"))
+        if (textPosition is not ("top" or "bottom" or "left" or "right"))
             throw new ArgumentException("Invalid text position.", nameof(textPosition));
         if (mediaType is not ("Image" or "Video")) throw new ArgumentException("Media type must be Image or Video.", nameof(mediaType));
         if (string.IsNullOrWhiteSpace(mediaUrl) || mediaUrl.Trim().Length > 2000)
