@@ -8,6 +8,7 @@ public sealed class HeroBanner
     public Guid ClientId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Subtitle { get; private set; } = string.Empty;
+    public string TextPosition { get; private set; } = "CenterLeft";
     public string MediaType { get; private set; } = "Image";
     public string MediaUrl { get; private set; } = string.Empty;
     public string? MobileMediaUrl { get; private set; }
@@ -23,12 +24,12 @@ public sealed class HeroBanner
     public HeroBanner(
         Guid clientId, string title, string subtitle, string mediaType, string mediaUrl,
         string? mobileMediaUrl = null, string? buttonText = null, string? buttonUrl = null,
-        int sortOrder = 0, DateTime? startsUtc = null, DateTime? endsUtc = null)
+        int sortOrder = 0, DateTime? startsUtc = null, DateTime? endsUtc = null, string textPosition = "CenterLeft")
     {
         if (clientId == Guid.Empty) throw new ArgumentException("ClientId is required.", nameof(clientId));
         Id = Guid.NewGuid();
         ClientId = clientId;
-        UpdateContent(title, subtitle, mediaType, mediaUrl, mobileMediaUrl, buttonText, buttonUrl, sortOrder, startsUtc, endsUtc);
+        UpdateContent(title, subtitle, mediaType, mediaUrl, mobileMediaUrl, buttonText, buttonUrl, sortOrder, startsUtc, endsUtc, textPosition);
         IsPublished = false;
         CreatedUtc = DateTime.UtcNow;
         UpdatedUtc = CreatedUtc;
@@ -37,12 +38,14 @@ public sealed class HeroBanner
     public void UpdateContent(
         string title, string subtitle, string mediaType, string mediaUrl,
         string? mobileMediaUrl, string? buttonText, string? buttonUrl,
-        int sortOrder, DateTime? startsUtc, DateTime? endsUtc)
+        int sortOrder, DateTime? startsUtc, DateTime? endsUtc, string textPosition = "CenterLeft")
     {
-        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 160)
-            throw new ArgumentException("Title is required and must be at most 160 characters.", nameof(title));
-        if (string.IsNullOrWhiteSpace(subtitle) || subtitle.Trim().Length > 500)
-            throw new ArgumentException("Subtitle is required and must be at most 500 characters.", nameof(subtitle));
+        if ((title?.Trim().Length ?? 0) > 160)
+            throw new ArgumentException("Title must be at most 160 characters.", nameof(title));
+        if ((subtitle?.Trim().Length ?? 0) > 500)
+            throw new ArgumentException("Subtitle must be at most 500 characters.", nameof(subtitle));
+        if (textPosition is not ("TopLeft" or "CenterLeft" or "BottomLeft" or "TopCenter" or "Center" or "BottomCenter" or "TopRight" or "CenterRight" or "BottomRight"))
+            throw new ArgumentException("Invalid text position.", nameof(textPosition));
         if (mediaType is not ("Image" or "Video")) throw new ArgumentException("Media type must be Image or Video.", nameof(mediaType));
         if (string.IsNullOrWhiteSpace(mediaUrl) || mediaUrl.Trim().Length > 2000)
             throw new ArgumentException("Media URL is required and must be at most 2000 characters.", nameof(mediaUrl));
@@ -51,8 +54,9 @@ public sealed class HeroBanner
         if ((buttonText?.Length ?? 0) > 80 || (buttonUrl?.Length ?? 0) > 2000)
             throw new ArgumentException("Button text or URL exceeds its allowed length.");
 
-        Title = title.Trim();
-        Subtitle = subtitle.Trim();
+        Title = title?.Trim() ?? string.Empty;
+        Subtitle = subtitle?.Trim() ?? string.Empty;
+        TextPosition = textPosition;
         MediaType = mediaType;
         MediaUrl = mediaUrl.Trim();
         MobileMediaUrl = string.IsNullOrWhiteSpace(mobileMediaUrl) ? null : mobileMediaUrl.Trim();
