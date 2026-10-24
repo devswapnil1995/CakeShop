@@ -878,7 +878,7 @@ adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext 
         .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc)
         .Select(x => new HeroBannerDto(
             x.Id, x.Title, x.Subtitle, NormalizeHeroTextPosition(x.TextPosition), x.MediaType, x.MediaUrl, x.MobileMediaUrl,
-            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished)
+            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished))
         .ToListAsync(ct);
     return Results.Ok(banners);
 });
