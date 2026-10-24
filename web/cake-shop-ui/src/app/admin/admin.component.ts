@@ -15,6 +15,7 @@ import {
   AdminProductVariant,
   ProductVariantWrite,
   AdminHeroBanner,
+  HeroBannerTextPosition,
   HeroBannerWrite
 } from './admin-api.service';
 
@@ -48,7 +49,7 @@ export class AdminComponent implements OnInit {
 
   private emptyHeroBanner(): HeroBannerWrite & { startsLocal: string; endsLocal: string } {
     return {
-      title: '', subtitle: '', mediaType: 'Image', mediaUrl: '', mobileMediaUrl: null,
+      title: '', subtitle: '', textPosition: 'left', mediaType: 'Image', mediaUrl: '', mobileMediaUrl: null,
       buttonText: null, buttonUrl: null, sortOrder: 0, startsUtc: null, endsUtc: null,
       startsLocal: '', endsLocal: ''
     };
@@ -266,6 +267,13 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  readonly heroTextPositions: { value: HeroBannerTextPosition; label: string }[] = [
+    { value: 'top', label: 'Top' },
+    { value: 'bottom', label: 'Bottom' },
+    { value: 'left', label: 'Left' },
+    { value: 'right', label: 'Right' }
+  ];
+
   resetHeroBannerForm(): void {
     this.editingHeroBannerId = null;
     this.heroBannerForm = this.emptyHeroBanner();
@@ -276,6 +284,7 @@ export class AdminComponent implements OnInit {
     this.heroBannerForm = {
       title: banner.title,
       subtitle: banner.subtitle,
+      textPosition: banner.textPosition || 'left',
       mediaType: banner.mediaType,
       mediaUrl: banner.mediaUrl,
       mobileMediaUrl: banner.mobileMediaUrl,
@@ -316,6 +325,7 @@ export class AdminComponent implements OnInit {
     const body: HeroBannerWrite = {
       title: form.title.trim(),
       subtitle: form.subtitle.trim(),
+      textPosition: form.textPosition,
       mediaType: form.mediaType,
       mediaUrl: form.mediaUrl.trim(),
       mobileMediaUrl: form.mobileMediaUrl?.trim() || null,
