@@ -1176,11 +1176,11 @@
               } @else {
                 <div class="hero-banner-preview-placeholder">Your banner media preview appears here</div>
               }
-              @if (heroBannerForm.title || heroBannerForm.subtitle || heroBannerForm.buttonText) {
+              @if (heroBannerForm.title || heroBannerForm.subtitle || (heroBannerForm.buttonText && heroBannerForm.buttonUrl)) {
                 <div class="hero-banner-preview-copy">
                   @if (heroBannerForm.title) { <strong>{{ heroBannerForm.title }}</strong> }
                   @if (heroBannerForm.subtitle) { <p>{{ heroBannerForm.subtitle }}</p> }
-                  @if (heroBannerForm.buttonText) { <span class="hero-banner-preview-cta">{{ heroBannerForm.buttonText }}</span> }
+                  @if (heroBannerForm.buttonText && heroBannerForm.buttonUrl) { <span class="hero-banner-preview-cta">{{ heroBannerForm.buttonText }}</span> }
                 </div>
               }
             </div>
