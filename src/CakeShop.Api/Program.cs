@@ -831,6 +831,46 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
 
 
+adminApi.MapPost("/products/images", async (
+    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    if (file is null || file.Length == 0)
+        return Results.BadRequest(new { message = "Choose an image to upload." });
+    if (file.Length > 10 * 1024 * 1024)
+        return Results.BadRequest(new { message = "Product images must be 10 MB or smaller." });
+
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    var allowed = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"] = new[] { "image/jpeg" },
+        [".jpeg"] = new[] { "image/jpeg" },
+        [".png"] = new[] { "image/png" },
+        [".webp"] = new[] { "image/webp" }
+    };
+    if (!allowed.TryGetValue(extension, out var contentTypes) ||
+        !contentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Supported product images: JPG, PNG and WebP. File type must match the extension." });
+
+    var header = new byte[12];
+    await using (var input = file.OpenReadStream())
+    {
+        var read = await input.ReadAsync(header.AsMemory(0, Math.Min(header.Length, (int)file.Length)), ct);
+        if (!IsAllowedHeroFileSignature(extension, header, read))
+            return Results.BadRequest(new { message = "The file contents do not match the selected image type." });
+    }
+
+    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "products", clientId.ToString("N"));
+    Directory.CreateDirectory(uploadRoot);
+    var safeName = $"{Guid.NewGuid():N}{extension}";
+    var fullPath = Path.Combine(uploadRoot, safeName);
+    await using (var output = File.Create(fullPath))
+    await using (var input = file.OpenReadStream())
+        await input.CopyToAsync(output, ct);
+
+    return Results.Ok(new { mediaUrl = $"/uploads/products/{clientId:N}/{safeName}" });
+}).DisableAntiforgery();
+
 adminApi.MapPost("/hero-banners/media", async (
     ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
 {
@@ -1773,7 +1813,17 @@ static string? ValidateProduct(ProductWriteRequest request)
     if (request.Price < 0 || request.Price > 10000000) return "Price must be between 0 and 10,000,000.";
     if ((request.Description?.Length ?? 0) > 2000) return "Description must be at most 2,000 characters.";
     if ((request.Badge?.Length ?? 0) > 80) return "Badge must be at most 80 characters.";
-    if ((request.ImageUrl?.Length ?? 0) > 1000 || (!string.IsNullOrWhiteSpace(request.ImageUrl) && (!Uri.TryCreate(request.ImageUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps))) return "Image URL must be a valid HTTPS URL (or empty).";
+    var imageUrl = request.ImageUrl?.Trim();
+    var isSafeUploadedImage = !string.IsNullOrWhiteSpace(imageUrl) &&
+        imageUrl.StartsWith($"/uploads/products/", StringComparison.Ordinal) &&
+        !imageUrl.StartsWith("//", StringComparison.Ordinal) &&
+        !imageUrl.Contains("..", StringComparison.Ordinal) &&
+        !imageUrl.Contains('\\', StringComparison.Ordinal);
+    var isHttpsImage = !string.IsNullOrWhiteSpace(imageUrl) &&
+        Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri) &&
+        imageUri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(imageUri.UserInfo);
+    if ((imageUrl?.Length ?? 0) > 1000 || (!string.IsNullOrWhiteSpace(imageUrl) && !isSafeUploadedImage && !isHttpsImage))
+        return "Image URL must be an HTTPS URL or an uploaded product image path (or empty).";
     var slug = NormalizeSlug(request.Slug, request.Name);
     if (string.IsNullOrWhiteSpace(slug) || slug.Length > 180) return "Slug is invalid or too long.";
     return null;
