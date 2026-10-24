@@ -253,6 +253,17 @@ export class AppComponent implements OnDestroy, OnInit {
 
     this.orderError = '';
   }
+  startProductOrder(productName: string): void {
+    const product = this.products().find(item => item.name === productName);
+    if (product && product.variants.length === 0) {
+      const message = `Hi ${this.brandName}! I'm interested in ${product.name}. Could you please share the available sizes and current pricing?`;
+      const url = `https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    this.orderOnWhatsApp(productName);
+  }
+
   orderOnWhatsApp(productName?: string): void {
     this.selectedProduct.set(
       this.products().find(product => product.name === productName) ?? null
