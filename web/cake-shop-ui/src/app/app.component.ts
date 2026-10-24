@@ -99,6 +99,22 @@ export class AppComponent implements OnDestroy, OnInit {
     return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
   }
 
+  sanitizeHeroButtonUrl(url: string | null): string | null {
+    const value = url?.trim();
+    if (!value || value.includes('\\')) return null;
+
+    if (value.startsWith('/') && !value.startsWith('//')) return value;
+
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' && !parsed.username && !parsed.password
+        ? parsed.href
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   changeHeroBanner(direction: number): void {
     const count = this.heroBanners().length;
     if (count < 2) return;
