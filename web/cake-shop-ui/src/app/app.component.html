@@ -38,32 +38,33 @@
   @if (heroBanners().length > 0) {
     @for (banner of heroBanners(); track banner.id; let i = $index) {
       @if (i === activeHeroBannerIndex()) {
-        <section class="hero managed-hero" id="home" (mouseenter)="pauseHeroRotation()" (mouseleave)="resumeHeroRotation()" (focusin)="pauseHeroRotation()" (focusout)="resumeHeroRotation()">
+        <section class="hero managed-hero" [ngClass]="['text-position-' + (banner.textPosition || 'left'), (!banner.title && !banner.subtitle && !(banner.buttonText && banner.buttonUrl) ? 'text-empty' : 'text-present')]" id="home" (mouseenter)="pauseHeroRotation()" (mouseleave)="resumeHeroRotation()" (focusin)="pauseHeroRotation()" (focusout)="resumeHeroRotation()">
+          @if (banner.title || banner.subtitle || (banner.buttonText && banner.buttonUrl)) {
           <div class="hero-copy">
-            <p class="eyebrow"><span class="eyebrow-line"></span> THE SWEET PANDA</p>
-            <h1>{{ banner.title }}</h1>
-            <p class="hero-description">{{ banner.subtitle }}</p>
+            @if (banner.title) { <h1>{{ banner.title }}</h1> }
+            @if (banner.subtitle) { <p class="hero-description">{{ banner.subtitle }}</p> }
             @if (banner.buttonText && banner.buttonUrl) {
               <div class="hero-actions">
                 <a class="button button-dark" [href]="banner.buttonUrl">{{ banner.buttonText }} <span aria-hidden="true">↗</span></a>
               </div>
             }
           </div>
+          }
           <div class="hero-visual managed-hero-visual">
             <div class="hero-image-frame">
               @if (banner.mediaType === 'Video') {
                 <video class="managed-hero-media" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [attr.poster]="banner.mobileMediaUrl ? resolveHeroMediaUrl(banner.mobileMediaUrl) : null"
-                  autoplay muted loop playsinline preload="metadata" [attr.aria-label]="banner.title"></video>
+                  autoplay muted loop playsinline preload="metadata" [attr.aria-label]="banner.title || 'Homepage banner video'"></video>
               } @else {
                 <picture>
                   @if (banner.mobileMediaUrl) {
                     <source media="(max-width: 640px)" [srcset]="resolveHeroMediaUrl(banner.mobileMediaUrl)" />
                   }
-                  <img class="managed-hero-media" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title" fetchpriority="high" />
+                  <img class="managed-hero-media" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title || 'Homepage banner'" fetchpriority="high" />
                 </picture>
               }
             </div>
-            <div class="image-stamp"><span>BAKED</span><strong>with love</strong><span>EVERY DAY</span></div>
+
           </div>
           @if (heroBanners().length > 1) {
             <div class="managed-hero-controls" aria-label="Homepage banners">
