@@ -1208,7 +1208,7 @@ adminApi.MapGet("/products", async (ClaimsPrincipal user, CakeShopDbContext db, 
 adminApi.MapPost("/products", async (ClaimsPrincipal user, ProductWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
-    var validation = ValidateProduct(request);
+    var validation = ValidateProduct(request, clientId);
     if (validation is not null) return Results.BadRequest(new { message = validation });
     if (!await db.Categories.AnyAsync(x => x.Id == request.CategoryId && x.ClientId == clientId && x.IsActive, ct)) return Results.BadRequest(new { message = "Choose an active category belonging to this shop." });
     var slug = NormalizeSlug(request.Slug, request.Name);
@@ -1222,7 +1222,7 @@ adminApi.MapPut("/products/{id:guid}", async (Guid id, ClaimsPrincipal user, Pro
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
     var entity = await db.Products.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
     if (entity is null) return Results.NotFound();
-    var validation = ValidateProduct(request);
+    var validation = ValidateProduct(request, clientId);
     if (validation is not null) return Results.BadRequest(new { message = validation });
     if (!await db.Categories.AnyAsync(x => x.Id == request.CategoryId && x.ClientId == clientId && x.IsActive, ct)) return Results.BadRequest(new { message = "Choose an active category belonging to this shop." });
     var slug = NormalizeSlug(request.Slug, request.Name);
@@ -1806,7 +1806,7 @@ static string? NormalizeSlug(string? slug, string? name)
     while (normalized.Contains("--", StringComparison.Ordinal)) normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
     return normalized.Trim('-');
 }
-static string? ValidateProduct(ProductWriteRequest request)
+static string? ValidateProduct(ProductWriteRequest request, Guid clientId)
 {
     if (request.CategoryId == Guid.Empty) return "Category is required.";
     if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 160) return "Product name is required and must be at most 160 characters.";
@@ -1814,8 +1814,9 @@ static string? ValidateProduct(ProductWriteRequest request)
     if ((request.Description?.Length ?? 0) > 2000) return "Description must be at most 2,000 characters.";
     if ((request.Badge?.Length ?? 0) > 80) return "Badge must be at most 80 characters.";
     var imageUrl = request.ImageUrl?.Trim();
+    var expectedTenantPrefix = $"/uploads/products/{clientId:N}/";
     var isSafeUploadedImage = !string.IsNullOrWhiteSpace(imageUrl) &&
-        imageUrl.StartsWith($"/uploads/products/", StringComparison.Ordinal) &&
+        imageUrl.StartsWith(expectedTenantPrefix, StringComparison.Ordinal) &&
         !imageUrl.StartsWith("//", StringComparison.Ordinal) &&
         !imageUrl.Contains("..", StringComparison.Ordinal) &&
         !imageUrl.Contains('\\', StringComparison.Ordinal);
@@ -1823,7 +1824,7 @@ static string? ValidateProduct(ProductWriteRequest request)
         Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri) &&
         imageUri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(imageUri.UserInfo);
     if ((imageUrl?.Length ?? 0) > 1000 || (!string.IsNullOrWhiteSpace(imageUrl) && !isSafeUploadedImage && !isHttpsImage))
-        return "Image URL must be an HTTPS URL or an uploaded product image path (or empty).";
+        return "Image URL must be an HTTPS URL or an uploaded image belonging to this shop (or empty).";
     var slug = NormalizeSlug(request.Slug, request.Name);
     if (string.IsNullOrWhiteSpace(slug) || slug.Length > 180) return "Slug is invalid or too long.";
     return null;
