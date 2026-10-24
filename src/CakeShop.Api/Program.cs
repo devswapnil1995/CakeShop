@@ -112,7 +112,7 @@ app.MapGet("/api/v1/hero-banners", async (CakeShopDbContext db, CancellationToke
         .OrderBy(x => x.SortOrder)
         .ThenBy(x => x.CreatedUtc)
         .Select(x => new HeroBannerDto(
-            x.Id, x.Title, x.Subtitle, x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.Id, x.Title, x.Subtitle, NormalizeHeroTextPosition(x.TextPosition), x.MediaType, x.MediaUrl, x.MobileMediaUrl,
             x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc))
         .ToListAsync(ct);
     return Results.Ok(banners);
@@ -877,8 +877,8 @@ adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext 
         .Where(x => x.ClientId == clientId)
         .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc)
         .Select(x => new HeroBannerDto(
-            x.Id, x.Title, x.Subtitle, x.MediaType, x.MediaUrl, x.MobileMediaUrl,
-            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished))
+            x.Id, x.Title, x.Subtitle, NormalizeHeroTextPosition(x.TextPosition), x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished)
         .ToListAsync(ct);
     return Results.Ok(banners);
 });
@@ -889,13 +889,13 @@ adminApi.MapPost("/hero-banners", async (
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
     var validation = ValidateHeroBanner(request);
     if (validation is not null) return Results.BadRequest(new { message = validation });
-    var banner = new HeroBanner(clientId, request.Title, request.Subtitle, request.MediaType,
+    var banner = new HeroBanner(clientId, request.Title ?? string.Empty, request.Subtitle ?? string.Empty, request.MediaType,
         request.MediaUrl, request.MobileMediaUrl, request.ButtonText, request.ButtonUrl,
-        request.SortOrder, request.StartsUtc, request.EndsUtc);
+        request.SortOrder, request.StartsUtc, request.EndsUtc, NormalizeHeroTextPosition(request.TextPosition));
     db.HeroBanners.Add(banner);
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/v1/admin/hero-banners/{banner.Id}",
-        new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, banner.MediaType,
+        new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, NormalizeHeroTextPosition(banner.TextPosition), banner.MediaType,
             banner.MediaUrl, banner.MobileMediaUrl, banner.ButtonText, banner.ButtonUrl,
             banner.SortOrder, banner.StartsUtc, banner.EndsUtc, banner.IsPublished));
 });
@@ -908,9 +908,9 @@ adminApi.MapPut("/hero-banners/{id:guid}", async (
     if (validation is not null) return Results.BadRequest(new { message = validation });
     var banner = await db.HeroBanners.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
     if (banner is null) return Results.NotFound();
-    banner.UpdateContent(request.Title, request.Subtitle, request.MediaType, request.MediaUrl,
+    banner.UpdateContent(request.Title ?? string.Empty, request.Subtitle ?? string.Empty, request.MediaType, request.MediaUrl,
         request.MobileMediaUrl, request.ButtonText, request.ButtonUrl,
-        request.SortOrder, request.StartsUtc, request.EndsUtc);
+        request.SortOrder, request.StartsUtc, request.EndsUtc, NormalizeHeroTextPosition(request.TextPosition));
     await db.SaveChangesAsync(ct);
     return Results.Ok(new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, banner.MediaType,
         banner.MediaUrl, banner.MobileMediaUrl, banner.ButtonText, banner.ButtonUrl,
@@ -1802,12 +1802,17 @@ static string? ValidateExpense(
     return null;
 }
 
+static string NormalizeHeroTextPosition(string? value) =>
+    value is "top" or "bottom" or "left" or "right" ? value : "left";
+
 static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 {
-    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160)
-        return "Title is required and must be at most 160 characters.";
-    if (string.IsNullOrWhiteSpace(request.Subtitle) || request.Subtitle.Trim().Length > 500)
-        return "Subtitle is required and must be at most 500 characters.";
+    if ((request.Title?.Trim().Length ?? 0) > 160)
+        return "Title must be at most 160 characters.";
+    if ((request.Subtitle?.Trim().Length ?? 0) > 500)
+        return "Subtitle must be at most 500 characters.";
+    if (request.TextPosition is not (null or "top" or "bottom" or "left" or "right"))
+        return "TextPosition must be top, bottom, left, or right.";
     if (request.MediaType is not ("Image" or "Video"))
         return "MediaType must be Image or Video.";
     if (!IsAllowedHeroMediaUrl(request.MediaUrl) ||
@@ -1911,8 +1916,8 @@ public sealed record VerifyRazorpayPaymentRequest(
     string RazorpaySignature);
 
 public sealed record HeroBannerWriteRequest(
-    string Title,
-    string Subtitle,
+    string? Title,
+    string? Subtitle,
     string MediaType,
     string MediaUrl,
     string? MobileMediaUrl,
@@ -1920,12 +1925,14 @@ public sealed record HeroBannerWriteRequest(
     string? ButtonUrl,
     int SortOrder,
     DateTime? StartsUtc,
-    DateTime? EndsUtc);
+    DateTime? EndsUtc,
+    string? TextPosition = null);
 
 public sealed record HeroBannerDto(
     Guid Id,
     string Title,
     string Subtitle,
+    string TextPosition,
     string MediaType,
     string MediaUrl,
     string? MobileMediaUrl,
