@@ -15,6 +15,7 @@ interface CakeProduct {
   tag?: string;
   image: string;
   category: string;
+  featured: boolean;
   variants: ProductVariantDto[];
 }
 
@@ -29,6 +30,9 @@ interface CakeProduct {
 export class AppComponent implements OnDestroy, OnInit {
   readonly isAdminRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  );
+  readonly isShopRoute = signal(
+    typeof window !== 'undefined' && window.location.pathname.replace(/\\/+$/, '') === '/shop'
   );
   private readonly catalogApi = inject(CatalogApiService);
 
@@ -193,10 +197,11 @@ export class AppComponent implements OnDestroy, OnInit {
           id: item.id,
           name: item.name,
           description: item.description,
-          price: `From ₹${startingPrice}`,
+          price: `From ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(startingPrice)}`,
           tag: item.badge ?? undefined,
-          image: item.imageUrl ?? '',
+          image: this.resolveProductImageUrl(item.imageUrl),
           category: this.toDisplayCategory(item.categoryName),
+          featured: item.isFeatured,
           variants
         };
       }));
@@ -205,14 +210,33 @@ export class AppComponent implements OnDestroy, OnInit {
     });
   }
 
+  resolveProductImageUrl(url: string | null): string {
+    if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
+    if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+    return url;
+  }
+
+  onProductImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    image.onerror = null;
+    image.src = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
+  }
+
   private toDisplayCategory(name: string): string {
     return name;
   }
 
+  get homeProducts(): CakeProduct[] {
+    return this.products().filter(product =>
+      product.featured || Boolean(product.tag?.trim())
+    );
+  }
+
   get visibleProducts(): CakeProduct[] {
+    const catalogue = this.isShopRoute() ? this.products() : this.homeProducts;
     return this.activeCategory === 'All'
-      ? this.products()
-      : this.products().filter((product) => product.category === this.activeCategory);
+      ? catalogue
+      : catalogue.filter(product => product.category === this.activeCategory);
   }
 
   setCategory(category: string): void {
@@ -241,14 +265,25 @@ export class AppComponent implements OnDestroy, OnInit {
 
     this.orderError = '';
   }
+  startProductOrder(productName: string): void {
+    const product = this.products().find(item => item.name === productName);
+    if (product && product.variants.length === 0) {
+      const message = `Hi ${this.brandName}! I'm interested in ${product.name}. Could you please share the available sizes and current pricing?`;
+      const url = `https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    this.orderOnWhatsApp(productName);
+  }
+
   orderOnWhatsApp(productName?: string): void {
     this.selectedProduct.set(
       this.products().find(product => product.name === productName) ?? null
     );
 
     this.orderQuantity = 1;
-    this.selectedVariantId = this.selectedProduct()?.variants[0]?.id ?? '';
-    this.orderSize = this.selectedProduct()?.variants[0]?.sizeLabel ?? '1 kg';
+    this.selectedVariantId = this.selectedProduct()?.variants.find(v => v.isAvailable)?.id ?? '';
+    this.orderSize = this.selectedProduct()?.variants.find(v => v.isAvailable)?.sizeLabel ?? '';
     this.preferredDate = '';
     this.cakeMessage = '';
     this.customerName = '';

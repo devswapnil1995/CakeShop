@@ -223,6 +223,11 @@ export class AdminApiService {
   }
 
   getProducts(): Observable<AdminProduct[]> { return this.http.get<AdminProduct[]>(`${this.base}/products`, this.options); }
+  uploadProductImage(file: File): Observable<{ mediaUrl: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ mediaUrl: string }>(`${this.base}/products/images`, form, this.options);
+  }
   createProduct(body: ProductWrite): Observable<AdminProduct> {
     return this.http.post<AdminProduct>(
       `${this.base}/products`,

@@ -63,6 +63,10 @@ export class AdminComponent implements OnInit {
   password = '';
   readonly products = signal<AdminProduct[]>([]);
   readonly categories = signal<AdminCategory[]>([]);
+  productSearch = '';
+  productCategoryFilter = 'All';
+  productAvailabilityFilter: 'All' | 'Available' | 'Unavailable' = 'All';
+  readonly productImageUploading = signal(false);
   editingProductId: string | null = null;
   editingCategoryId: string | null = null;
 
@@ -477,6 +481,46 @@ export class AdminComponent implements OnInit {
       });
   }
 
+
+  get filteredProducts(): AdminProduct[] {
+    const search = this.productSearch.trim().toLowerCase();
+    return this.products().filter(product => {
+      const matchesSearch = !search ||
+        product.name.toLowerCase().includes(search) ||
+        product.slug.toLowerCase().includes(search) ||
+        product.description.toLowerCase().includes(search) ||
+        (product.badge ?? '').toLowerCase().includes(search);
+      const matchesCategory = this.productCategoryFilter === 'All' ||
+        product.categoryId === this.productCategoryFilter;
+      const matchesAvailability = this.productAvailabilityFilter === 'All' ||
+        (this.productAvailabilityFilter === 'Available' ? product.isAvailable : !product.isAvailable);
+      return matchesSearch && matchesCategory && matchesAvailability;
+    });
+  }
+
+  resolveProductImageUrl(url: string | null): string {
+    if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80';
+    if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+    return url;
+  }
+
+  uploadProductImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.error.set('');
+    this.productImageUploading.set(true);
+    this.api.uploadProductImage(file).pipe(finalize(() => {
+      this.productImageUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.productForm.imageUrl = result.mediaUrl;
+        this.notice = 'Product image uploaded. Save the product to keep this change.';
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
 
   editProduct(product: AdminProduct): void {
     this.productVariants = [];
