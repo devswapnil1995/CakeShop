@@ -38,6 +38,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.HasKey(x => x.Id);
             e.Property(x => x.Title).HasMaxLength(160).IsRequired();
             e.Property(x => x.Subtitle).HasMaxLength(500).IsRequired();
+            e.Property(x => x.TextPosition).HasMaxLength(20).IsRequired();
             e.Property(x => x.MediaType).HasMaxLength(20).IsRequired();
             e.Property(x => x.MediaUrl).HasMaxLength(2000).IsRequired();
             e.Property(x => x.MobileMediaUrl).HasMaxLength(2000);
