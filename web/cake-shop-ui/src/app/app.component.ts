@@ -15,6 +15,7 @@ interface CakeProduct {
   tag?: string;
   image: string;
   category: string;
+  featured: boolean;
   variants: ProductVariantDto[];
 }
 
@@ -29,6 +30,9 @@ interface CakeProduct {
 export class AppComponent implements OnDestroy, OnInit {
   readonly isAdminRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  );
+  readonly isShopRoute = signal(
+    typeof window !== 'undefined' && window.location.pathname.replace(/\\/+$/, '') === '/shop'
   );
   private readonly catalogApi = inject(CatalogApiService);
 
@@ -197,6 +201,7 @@ export class AppComponent implements OnDestroy, OnInit {
           tag: item.badge ?? undefined,
           image: this.resolveProductImageUrl(item.imageUrl),
           category: this.toDisplayCategory(item.categoryName),
+          featured: item.isFeatured,
           variants
         };
       }));
@@ -221,10 +226,17 @@ export class AppComponent implements OnDestroy, OnInit {
     return name;
   }
 
+  get homeProducts(): CakeProduct[] {
+    return this.products().filter(product =>
+      product.featured || Boolean(product.tag?.trim())
+    );
+  }
+
   get visibleProducts(): CakeProduct[] {
+    const catalogue = this.isShopRoute() ? this.products() : this.homeProducts;
     return this.activeCategory === 'All'
-      ? this.products()
-      : this.products().filter((product) => product.category === this.activeCategory);
+      ? catalogue
+      : catalogue.filter(product => product.category === this.activeCategory);
   }
 
   setCategory(category: string): void {
