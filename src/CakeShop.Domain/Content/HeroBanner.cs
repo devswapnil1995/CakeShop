@@ -38,7 +38,7 @@ public sealed class HeroBanner
     public void UpdateContent(
         string title, string subtitle, string mediaType, string mediaUrl,
         string? mobileMediaUrl, string? buttonText, string? buttonUrl,
-        int sortOrder, DateTime? startsUtc, DateTime? endsUtc, string textPosition = "CenterLeft")
+        int sortOrder, DateTime? startsUtc, DateTime? endsUtc, string textPosition = "left")
     {
         if ((title?.Trim().Length ?? 0) > 160)
             throw new ArgumentException("Title must be at most 160 characters.", nameof(title));
