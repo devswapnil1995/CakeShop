@@ -7,6 +7,7 @@ export interface HeroBannerDto {
   id: string;
   title: string;
   subtitle: string;
+  textPosition: 'top' | 'bottom' | 'left' | 'right';
   mediaType: 'Image' | 'Video';
   mediaUrl: string;
   mobileMediaUrl: string | null;
