@@ -38,14 +38,14 @@
   @if (heroBanners().length > 0) {
     @for (banner of heroBanners(); track banner.id; let i = $index) {
       @if (i === activeHeroBannerIndex()) {
-        <section class="hero managed-hero" [ngClass]="['text-position-' + (banner.textPosition || 'left'), (!banner.title && !banner.subtitle && !(banner.buttonText && banner.buttonUrl) ? 'text-empty' : 'text-present')]" id="home" (mouseenter)="pauseHeroRotation()" (mouseleave)="resumeHeroRotation()" (focusin)="pauseHeroRotation()" (focusout)="resumeHeroRotation()">
-          @if (banner.title || banner.subtitle || (banner.buttonText && banner.buttonUrl)) {
+        <section class="hero managed-hero" [ngClass]="['text-position-' + (banner.textPosition || 'left'), (!banner.title && !banner.subtitle && !(banner.buttonText && sanitizeHeroButtonUrl(banner.buttonUrl)) ? 'text-empty' : 'text-present')]" id="home" (mouseenter)="pauseHeroRotation()" (mouseleave)="resumeHeroRotation()" (focusin)="pauseHeroRotation()" (focusout)="resumeHeroRotation()">
+          @if (banner.title || banner.subtitle || (banner.buttonText && sanitizeHeroButtonUrl(banner.buttonUrl))) {
           <div class="hero-copy">
             @if (banner.title) { <h1>{{ banner.title }}</h1> }
             @if (banner.subtitle) { <p class="hero-description">{{ banner.subtitle }}</p> }
-            @if (banner.buttonText && banner.buttonUrl) {
+            @if (banner.buttonText && sanitizeHeroButtonUrl(banner.buttonUrl); as safeButtonUrl) {
               <div class="hero-actions">
-                <a class="button button-dark" [href]="banner.buttonUrl">{{ banner.buttonText }} <span aria-hidden="true">↗</span></a>
+                <a class="button button-dark" [href]="safeButtonUrl">{{ banner.buttonText }} <span aria-hidden="true">↗</span></a>
               </div>
             }
           </div>
