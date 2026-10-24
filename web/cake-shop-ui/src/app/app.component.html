@@ -183,8 +183,9 @@
       </button>
       }
     </div>
+    }
 
-    <!-- Product Grid -->
+    <!-- Product Grid: curated tagged items on Home, every available product on Shop/Menu. -->
     <div class="product-grid">
       @for (product of visibleProducts; track product.id ?? product.name) {
       <article class="product-card">
@@ -268,6 +269,8 @@
       </div>
     </div>
   </section>
+
+  }
 
   <!-- Customer Order Modal -->
   @if (orderFormOpen()) {
@@ -433,6 +436,7 @@
   </div>
   }
 
+  @if (!isShopRoute()) {
   <!-- Visit Us -->
   <section class="visit-section section-wrap" id="visit">
     <div>
