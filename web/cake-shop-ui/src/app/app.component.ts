@@ -193,9 +193,9 @@ export class AppComponent implements OnDestroy, OnInit {
           id: item.id,
           name: item.name,
           description: item.description,
-          price: `From ₹${startingPrice}`,
+          price: `From ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(startingPrice)}`,
           tag: item.badge ?? undefined,
-          image: item.imageUrl ?? '',
+          image: this.resolveProductImageUrl(item.imageUrl),
           category: this.toDisplayCategory(item.categoryName),
           variants
         };
@@ -203,6 +203,18 @@ export class AppComponent implements OnDestroy, OnInit {
       const categoryNames = [...new Set(items.map((item) => this.toDisplayCategory(item.categoryName)))];
       this.categories.set(['All', ...categoryNames]);
     });
+  }
+
+  resolveProductImageUrl(url: string | null): string {
+    if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
+    if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+    return url;
+  }
+
+  onProductImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    image.onerror = null;
+    image.src = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
   }
 
   private toDisplayCategory(name: string): string {
@@ -247,8 +259,8 @@ export class AppComponent implements OnDestroy, OnInit {
     );
 
     this.orderQuantity = 1;
-    this.selectedVariantId = this.selectedProduct()?.variants[0]?.id ?? '';
-    this.orderSize = this.selectedProduct()?.variants[0]?.sizeLabel ?? '1 kg';
+    this.selectedVariantId = this.selectedProduct()?.variants.find(v => v.isAvailable)?.id ?? '';
+    this.orderSize = this.selectedProduct()?.variants.find(v => v.isAvailable)?.sizeLabel ?? '';
     this.preferredDate = '';
     this.cakeMessage = '';
     this.customerName = '';
