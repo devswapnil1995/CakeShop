@@ -294,8 +294,21 @@
               <div class="field span-two"><label for="productDescription">Description</label><textarea
                   id="productDescription" name="productDescription" rows="3" [(ngModel)]="productForm.description"
                   maxlength="2000" placeholder="Describe the layers, flavours and finish…"></textarea></div>
-              <div class="field span-two"><label for="productImage">Image URL (HTTPS)</label><input id="productImage"
-                  name="productImage" type="url" [(ngModel)]="productForm.imageUrl" placeholder="https://…" /></div>
+              <div class="field span-two">
+                <label for="productImage">Product image</label>
+                <input id="productImage" name="productImage" type="url" [(ngModel)]="productForm.imageUrl"
+                  placeholder="Paste an HTTPS image URL or upload an image below" />
+                <p class="form-hint">Use JPG, PNG or WebP up to 10 MB. Uploaded files are stored by this API; external image URLs must use HTTPS.</p>
+                <div class="product-image-tools">
+                  <input id="productImageFile" name="productImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    (change)="uploadProductImage($event)" [disabled]="productImageUploading()" />
+                  @if (productImageUploading()) { <span class="form-hint">Uploading image…</span> }
+                </div>
+                @if (productForm.imageUrl) {
+                  <img class="product-image-preview" [src]="resolveProductImageUrl(productForm.imageUrl)"
+                    alt="Product image preview" />
+                }
+              </div>
               <div class="field"><label for="productBadge">Badge</label><input id="productBadge" name="productBadge"
                   [(ngModel)]="productForm.badge" maxlength="80" placeholder="Bestseller, New…" /></div>
             </div>
@@ -314,28 +327,54 @@
           </form>
 
           <div class="list-heading">
-            <h3>All products <span>{{ products().length }}</span></h3><button class="text-btn" type="button"
-              (click)="loadData()">↻ Refresh</button>
+            <h3>Product catalogue <span>{{ filteredProducts.length }} / {{ products().length }}</span></h3>
+            <button class="text-btn" type="button" (click)="loadData()">↻ Refresh</button>
+          </div>
+          <div class="catalog-filters">
+            <div class="field">
+              <label for="productSearch">Search products</label>
+              <input id="productSearch" name="productSearch" type="search" [(ngModel)]="productSearch"
+                placeholder="Name, description, badge or slug" />
+            </div>
+            <div class="field">
+              <label for="productCategoryFilter">Category</label>
+              <select id="productCategoryFilter" name="productCategoryFilter" [(ngModel)]="productCategoryFilter">
+                <option value="All">All categories</option>
+                @for (category of categories(); track category.id) {
+                  <option [value]="category.id">{{ category.name }}{{ category.isActive ? '' : ' (inactive)' }}</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label for="productAvailabilityFilter">Availability</label>
+              <select id="productAvailabilityFilter" name="productAvailabilityFilter" [(ngModel)]="productAvailabilityFilter">
+                <option value="All">All products</option>
+                <option value="Available">Available to order</option>
+                <option value="Unavailable">Unavailable</option>
+              </select>
+            </div>
           </div>
           @if (loading()) {
-          <div class="empty-state">Refreshing your catalogue…</div>
+            <div class="empty-state">Refreshing your catalogue…</div>
           }
           @if (!loading() && !products().length) {
-          <div class="empty-state">No products yet. Add your first sweet creation
-            above.</div>
+            <div class="empty-state">No products yet. Add your first sweet creation above.</div>
+          } @else if (!loading() && products().length && !filteredProducts.length) {
+            <div class="empty-state">No products match these filters. Try another search or clear a filter.</div>
           }
-          @for (product of products(); track product.id) {
-          <article class="product-row"><img
-              [src]="product.imageUrl || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80'"
-              [alt]="product.name" />
-            <div class="product-info"><strong>{{ product.name }}</strong><span>{{ product.categoryName }} · ₹{{
-                product.price | number:'1.0-2' }}</span><small>{{ product.isAvailable ? '● Available' : '○ Unavailable'
-                }}{{ product.isFeatured ? ' · ✦ Featured' : '' }}</small></div><button class="edit-btn" type="button"
-              (click)="editProduct(product)">Edit ↗</button>
-            <button type="button" class="quiet-btn" (click)="manageProductSizes(product)">
-              Manage sizes
-            </button>
-          </article>
+          @for (product of filteredProducts; track product.id) {
+            <article class="product-row">
+              <img [src]="resolveProductImageUrl(product.imageUrl)" [alt]="product.name"
+                (error)="$any($event.target).src='https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80'" />
+              <div class="product-info">
+                <strong>{{ product.name }}</strong>
+                <span>{{ product.categoryName }} · ₹{{ product.price | number:'1.2-2' }}</span>
+                <small>{{ product.isAvailable ? '● Available' : '○ Unavailable' }}{{ product.isFeatured ? ' · ✦ Featured' : '' }}</small>
+                @if (product.badge) { <small class="product-badge">{{ product.badge }}</small> }
+              </div>
+              <button class="edit-btn" type="button" (click)="editProduct(product)">Edit ↗</button>
+              <button type="button" class="quiet-btn" (click)="manageProductSizes(product)">Manage sizes</button>
+            </article>
           }
         </div>
         }
