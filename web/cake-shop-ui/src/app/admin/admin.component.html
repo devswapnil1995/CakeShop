@@ -81,6 +81,11 @@
           Profit report
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'hero-banners'" (click)="selectTab('hero-banners')">
+          <span>▣</span>
+          Homepage banners <b>{{ heroBanners().length }}</b>
+        </button>
+
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
@@ -1114,6 +1119,133 @@
             }
             }
           </section>
+        </div>
+        }
+
+
+        @if (activeTab === 'hero-banners') {
+        <div class="panel-layout">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">HOMEPAGE CONTENT</span>
+              <h2>Hero banners</h2>
+              <p class="muted">Manage the first message customers see. New banners start as drafts.</p>
+            </div>
+            <button class="text-btn" type="button" (click)="loadHeroBanners()" [disabled]="heroBannersLoading()">↻ Refresh</button>
+          </div>
+          @if (heroBannersLoading()) {
+            <p class="muted">Loading banners…</p>
+          } @else if (heroBanners().length === 0) {
+            <div class="empty-state">No banners yet. Create your first homepage banner below.</div>
+          }
+          @for (banner of heroBanners(); track banner.id) {
+            <article class="category-row hero-banner-row">
+              <div class="category-info">
+                <strong>{{ banner.title || 'Image-only banner' }}</strong>
+                <small>{{ banner.mediaType }} · order {{ banner.sortOrder }}</small>
+                <small>{{ banner.isPublished ? 'Published' : 'Draft / unpublished' }}</small>
+                <small>{{ banner.mediaUrl }}</small>
+                @if (banner.mediaType === 'Image') {
+                  <img class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title || 'Homepage banner'" loading="lazy" />
+                } @else {
+                  <video class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" muted controls preload="metadata"></video>
+                }
+                @if (banner.startsUtc || banner.endsUtc) {
+                  <small>Schedule: {{ banner.startsUtc || 'Immediately' }} — {{ banner.endsUtc || 'No end date' }}</small>
+                }
+              </div>
+              <div class="hero-banner-actions">
+                <button type="button" class="quiet-btn" (click)="editHeroBanner(banner)">Edit</button>
+                <button type="button" class="quiet-btn" (click)="toggleHeroBannerPublication(banner)">{{ banner.isPublished ? 'Unpublish' : 'Publish' }}</button>
+                <button type="button" class="quiet-btn danger-btn" (click)="deleteHeroBanner(banner)">Delete</button>
+              </div>
+            </article>
+          }
+          <form class="form-grid hero-banner-form" (ngSubmit)="saveHeroBanner()">
+            <h3 class="span-two">{{ editingHeroBannerId ? 'Edit banner' : 'Create banner' }}</h3>
+            <p class="form-hint span-two">Heading, subtitle and CTA are optional. To create an image-only banner, leave the text fields blank.</p>
+            <div class="hero-banner-preview span-two" [ngClass]="'preview-position-' + (heroBannerForm.textPosition || 'left')" aria-label="Live hero banner preview">
+              @if (heroBannerForm.mediaUrl) {
+                <div class="hero-banner-preview-media">
+                  @if (heroBannerForm.mediaType === 'Video') {
+                    <video [src]="resolveHeroMediaUrl(heroBannerForm.mediaUrl)" muted loop autoplay playsinline></video>
+                  } @else {
+                    <img [src]="resolveHeroMediaUrl(heroBannerForm.mediaUrl)" alt="" />
+                  }
+                </div>
+              } @else {
+                <div class="hero-banner-preview-placeholder">Your banner media preview appears here</div>
+              }
+              @if (heroBannerForm.title || heroBannerForm.subtitle || (heroBannerForm.buttonText && heroBannerForm.buttonUrl)) {
+                <div class="hero-banner-preview-copy">
+                  @if (heroBannerForm.title) { <strong>{{ heroBannerForm.title }}</strong> }
+                  @if (heroBannerForm.subtitle) { <p>{{ heroBannerForm.subtitle }}</p> }
+                  @if (heroBannerForm.buttonText && heroBannerForm.buttonUrl) { <span class="hero-banner-preview-cta">{{ heroBannerForm.buttonText }}</span> }
+                </div>
+              }
+            </div>
+            <div class="field">
+              <label for="heroTitle">Heading (optional)</label>
+              <input id="heroTitle" name="heroTitle" [(ngModel)]="heroBannerForm.title" maxlength="160" placeholder="Optional headline" />
+            </div>
+            <div class="field">
+              <label for="heroSubtitle">Subtitle (optional)</label>
+              <input id="heroSubtitle" name="heroSubtitle" [(ngModel)]="heroBannerForm.subtitle" maxlength="500" placeholder="Optional supporting copy" />
+            </div>
+            <div class="field">
+              <label for="heroTextPosition">Text position</label>
+              <select id="heroTextPosition" name="heroTextPosition" [(ngModel)]="heroBannerForm.textPosition" required>
+                @for (position of heroTextPositions; track position.value) {
+                  <option [value]="position.value">{{ position.label }}</option>
+                }
+              </select>
+              <small class="form-hint">Top and bottom center the copy horizontally; left and right align it to the side. Image-only banners need no copy.</small>
+            </div>
+            <div class="field">
+              <label for="heroMediaType">Media type *</label>
+              <select id="heroMediaType" name="heroMediaType" [(ngModel)]="heroBannerForm.mediaType" required>
+                <option value="Image">Image</option><option value="Video">Video</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="heroMediaUrl">Media URL (HTTPS or uploaded file) *</label>
+              <input id="heroMediaUrl" name="heroMediaUrl" type="text" [(ngModel)]="heroBannerForm.mediaUrl" maxlength="2000" placeholder="https://… or /uploads/heroes/…" required />
+            </div>
+            <div class="field">
+              <label for="heroMobileMediaUrl">Mobile media URL (optional)</label>
+              <input id="heroMobileMediaUrl" name="heroMobileMediaUrl" type="text" [(ngModel)]="heroBannerForm.mobileMediaUrl" maxlength="2000" placeholder="HTTPS URL or uploaded path" />
+            </div>
+            <div class="field">
+              <label for="heroMediaUpload">Upload image or video (optional)</label>
+              <input id="heroMediaUpload" name="heroMediaUpload" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,image/jpeg,image/png,image/webp,video/mp4,video/webm" (change)="uploadHeroMedia($event)" />
+              <small class="form-hint">{{ heroMediaUploading() ? 'Uploading media…' : 'JPG, PNG, WebP, MP4 or WebM; max 20 MB.' }}</small>
+            </div>
+            <div class="field">
+              <label for="heroSortOrder">Display order</label>
+              <input id="heroSortOrder" name="heroSortOrder" type="number" min="0" max="10000" [(ngModel)]="heroBannerForm.sortOrder" required />
+            </div>
+            <div class="field">
+              <label for="heroButtonText">CTA button text (optional)</label>
+              <input id="heroButtonText" name="heroButtonText" [(ngModel)]="heroBannerForm.buttonText" maxlength="80" placeholder="Explore our cakes" />
+            </div>
+            <div class="field">
+              <label for="heroButtonUrl">CTA destination (HTTPS or site path, optional)</label>
+              <input id="heroButtonUrl" name="heroButtonUrl" [(ngModel)]="heroBannerForm.buttonUrl" maxlength="2000" placeholder="/collections or https://…" />
+            </div>
+            <div class="field">
+              <label for="heroStartsUtc">Schedule start (local time)</label>
+              <input id="heroStartsUtc" name="heroStartsUtc" type="datetime-local" [(ngModel)]="heroBannerForm.startsLocal" />
+            </div>
+            <div class="field">
+              <label for="heroEndsUtc">Schedule end (local time)</label>
+              <input id="heroEndsUtc" name="heroEndsUtc" type="datetime-local" [(ngModel)]="heroBannerForm.endsLocal" />
+            </div>
+            <div class="span-two form-actions">
+              <button type="submit" class="primary-btn" [disabled]="heroBannerSaving() || heroMediaUploading()">{{ heroBannerSaving() ? 'Saving…' : (editingHeroBannerId ? 'Save banner' : 'Create draft') }}</button>
+              @if (editingHeroBannerId) { <button type="button" class="quiet-btn" (click)="resetHeroBannerForm()">Cancel edit</button> }
+            </div>
+            <p class="form-hint span-two">Local uploads are stored under the API wwwroot folder. Configure persistent cloud object storage before production deployment.</p>
+          </form>
         </div>
         }
 

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { environment } from '../../environments/environment';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
   CustomerOrderStatus,
@@ -12,7 +13,10 @@ import {
   ProfitReport,
   ExpenseCategoryBreakdown,
   AdminProductVariant,
-  ProductVariantWrite
+  ProductVariantWrite,
+  AdminHeroBanner,
+  HeroBannerTextPosition,
+  HeroBannerWrite
 } from './admin-api.service';
 
 @Component({
@@ -33,7 +37,24 @@ export class AdminComponent implements OnInit {
     | 'categories'
     | 'orders'
     | 'expenses'
-    | 'reports' = 'dashboard';
+    | 'reports'
+    | 'hero-banners' = 'dashboard';
+
+  readonly heroBanners = signal<AdminHeroBanner[]>([]);
+  readonly heroBannersLoading = signal(false);
+  readonly heroBannerSaving = signal(false);
+  readonly heroMediaUploading = signal(false);
+  editingHeroBannerId: string | null = null;
+  heroBannerForm: HeroBannerWrite & { startsLocal: string; endsLocal: string } = this.emptyHeroBanner();
+
+  private emptyHeroBanner(): HeroBannerWrite & { startsLocal: string; endsLocal: string } {
+    return {
+      title: '', subtitle: '', textPosition: 'left', mediaType: 'Image', mediaUrl: '', mobileMediaUrl: null,
+      buttonText: null, buttonUrl: null, sortOrder: 0, startsUtc: null, endsUtc: null,
+      startsLocal: '', endsLocal: ''
+    };
+  }
+
   readonly dashboard = signal<AdminDashboardSummary | null>(null);
   readonly dashboardLoading = signal(false);
   error = signal('');
@@ -142,6 +163,7 @@ export class AdminComponent implements OnInit {
       this.loadData();
       this.loadDashboard();
       this.loadOrders();
+      this.loadHeroBanners();
     }
   }
 
@@ -157,6 +179,7 @@ export class AdminComponent implements OnInit {
         this.loadData();
         this.loadDashboard();
         this.loadOrders();
+        this.loadHeroBanners();
       },
       error: err => {
         this.error.set(err.status === 401 ? 'Email or password is incorrect.' : (err.error?.message ?? 'Unable to sign in. Check that the API is running and the admin account has been seeded.'));
@@ -202,7 +225,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -223,6 +246,139 @@ export class AdminComponent implements OnInit {
     if (tab === 'reports') {
       this.loadProfitReport();
     }
+    if (tab === 'hero-banners') {
+      this.loadHeroBanners();
+    }
+  }
+
+
+  resolveHeroMediaUrl(url: string | null): string {
+    if (!url) return '';
+    if (!url.startsWith('/')) return url;
+    return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+  }
+
+  loadHeroBanners(): void {
+    if (!this.loggedIn()) return;
+    this.heroBannersLoading.set(true);
+    this.api.getHeroBanners().pipe(finalize(() => this.heroBannersLoading.set(false))).subscribe({
+      next: rows => this.heroBanners.set(rows),
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  readonly heroTextPositions: { value: HeroBannerTextPosition; label: string }[] = [
+    { value: 'top', label: 'Top' },
+    { value: 'bottom', label: 'Bottom' },
+    { value: 'left', label: 'Left' },
+    { value: 'right', label: 'Right' }
+  ];
+
+  resetHeroBannerForm(): void {
+    this.editingHeroBannerId = null;
+    this.heroBannerForm = this.emptyHeroBanner();
+  }
+
+  editHeroBanner(banner: AdminHeroBanner): void {
+    this.editingHeroBannerId = banner.id;
+    this.heroBannerForm = {
+      title: banner.title,
+      subtitle: banner.subtitle,
+      textPosition: banner.textPosition || 'left',
+      mediaType: banner.mediaType,
+      mediaUrl: banner.mediaUrl,
+      mobileMediaUrl: banner.mobileMediaUrl,
+      buttonText: banner.buttonText,
+      buttonUrl: banner.buttonUrl,
+      sortOrder: banner.sortOrder,
+      startsUtc: banner.startsUtc,
+      endsUtc: banner.endsUtc,
+      startsLocal: banner.startsUtc ? this.toLocalDateTimeInput(banner.startsUtc) : '',
+      endsLocal: banner.endsUtc ? this.toLocalDateTimeInput(banner.endsUtc) : ''
+    };
+  }
+
+
+  uploadHeroMedia(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.error.set('');
+    this.heroMediaUploading.set(true);
+    this.api.uploadHeroBannerMedia(file).pipe(finalize(() => {
+      this.heroMediaUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.heroBannerForm.mediaUrl = result.mediaUrl;
+        this.heroBannerForm.mediaType = result.mediaType;
+        this.notice = 'Media uploaded. Save the banner to keep this change.';
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  saveHeroBanner(): void {
+    this.error.set('');
+    this.notice = '';
+    const form = this.heroBannerForm;
+    const body: HeroBannerWrite = {
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim(),
+      textPosition: form.textPosition,
+      mediaType: form.mediaType,
+      mediaUrl: form.mediaUrl.trim(),
+      mobileMediaUrl: form.mobileMediaUrl?.trim() || null,
+      buttonText: form.buttonText?.trim() || null,
+      buttonUrl: form.buttonUrl?.trim() || null,
+      sortOrder: Number(form.sortOrder),
+      startsUtc: form.startsLocal ? new Date(form.startsLocal).toISOString() : null,
+      endsUtc: form.endsLocal ? new Date(form.endsLocal).toISOString() : null
+    };
+    this.heroBannerSaving.set(true);
+    const request = this.editingHeroBannerId
+      ? this.api.updateHeroBanner(this.editingHeroBannerId, body)
+      : this.api.createHeroBanner(body);
+    request.pipe(finalize(() => this.heroBannerSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = this.editingHeroBannerId ? 'Hero banner updated.' : 'Hero banner created as draft.';
+        this.resetHeroBannerForm();
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  toggleHeroBannerPublication(banner: AdminHeroBanner): void {
+    this.error.set('');
+    const request = banner.isPublished
+      ? this.api.unpublishHeroBanner(banner.id)
+      : this.api.publishHeroBanner(banner.id);
+    request.subscribe({
+      next: () => {
+        this.notice = banner.isPublished ? 'Hero banner unpublished.' : 'Hero banner published.';
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  deleteHeroBanner(banner: AdminHeroBanner): void {
+    if (!confirm(`Delete hero banner "${banner.title}"? This cannot be undone.`)) return;
+    this.api.deleteHeroBanner(banner.id).subscribe({
+      next: () => {
+        this.notice = 'Hero banner deleted.';
+        if (this.editingHeroBannerId === banner.id) this.resetHeroBannerForm();
+        this.loadHeroBanners();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  private toLocalDateTimeInput(value: string): string {
+    const date = new Date(value);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
   }
 
   loadOrders(): void {

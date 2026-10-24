@@ -1,9 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../environments/environment';
 import { OrderApiService, CustomerOrderResponse, CreatePaymentResponse, VerifyPaymentRequest } from './order-api.service';
 
 interface CakeProduct {
@@ -25,7 +26,7 @@ interface CakeProduct {
   styleUrl: './app.component.css',
 })
 
-export class AppComponent implements OnInit {
+export class AppComponent implements OnDestroy, OnInit {
   readonly isAdminRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   );
@@ -63,6 +64,10 @@ export class AppComponent implements OnInit {
 
 
   readonly products = signal<CakeProduct[]>([]);
+  readonly heroBanners = signal<HeroBannerDto[]>([]);
+  readonly activeHeroBannerIndex = signal(0);
+  private heroRotationTimer: ReturnType<typeof setInterval> | undefined;
+  readonly heroRotationPaused = signal(false);
 
   selectedVariantId = '';
 
@@ -87,7 +92,79 @@ export class AppComponent implements OnInit {
   readonly paymentAvailable = signal(false);
 
 
+
+  resolveHeroMediaUrl(url: string | null): string {
+    if (!url) return '';
+    if (!url.startsWith('/')) return url;
+    return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+  }
+
+  sanitizeHeroButtonUrl(url: string | null): string | null {
+    const value = url?.trim();
+    if (!value || value.includes('\\')) return null;
+
+    if (value.startsWith('/') && !value.startsWith('//')) return value;
+
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' && !parsed.username && !parsed.password
+        ? parsed.href
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  changeHeroBanner(direction: number): void {
+    const count = this.heroBanners().length;
+    if (count < 2) return;
+    this.activeHeroBannerIndex.update(index => (index + direction + count) % count);
+    this.restartHeroRotation();
+  }
+
+  setHeroBanner(index: number): void {
+    if (index < 0 || index >= this.heroBanners().length) return;
+    this.activeHeroBannerIndex.set(index);
+    this.restartHeroRotation();
+  }
+
+  pauseHeroRotation(): void {
+    this.heroRotationPaused.set(true);
+    this.clearHeroRotation();
+  }
+
+  resumeHeroRotation(): void {
+    this.heroRotationPaused.set(false);
+    this.startHeroRotation();
+  }
+
+  private startHeroRotation(): void {
+    this.clearHeroRotation();
+    if (this.heroRotationPaused() || this.heroBanners().length < 2) return;
+    this.heroRotationTimer = setInterval(() => {
+      this.activeHeroBannerIndex.update(index => (index + 1) % this.heroBanners().length);
+    }, 6000);
+  }
+
+  private restartHeroRotation(): void {
+    if (!this.heroRotationPaused()) this.startHeroRotation();
+  }
+
+  private clearHeroRotation(): void {
+    if (this.heroRotationTimer) clearInterval(this.heroRotationTimer);
+    this.heroRotationTimer = undefined;
+  }
+
+  ngOnDestroy(): void {
+    this.clearHeroRotation();
+  }
+
   ngOnInit(): void {
+    this.catalogApi.getHeroBanners().pipe(catchError(() => of([] as HeroBannerDto[]))).subscribe(banners => {
+      this.heroBanners.set(banners);
+      this.activeHeroBannerIndex.set(0);
+      this.startHeroRotation();
+    });
     this.orderApi.getPaymentAvailability().subscribe({
       next: (response) => {
         this.paymentAvailable.set(response.available);

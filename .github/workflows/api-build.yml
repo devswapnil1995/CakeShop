@@ -1,0 +1,36 @@
+name: CakeShop API Build
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "CakeShop.sln"
+      - ".github/workflows/api-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "CakeShop.sln"
+      - ".github/workflows/api-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore CakeShop.sln
+
+      - name: Build
+        run: dotnet build CakeShop.sln --configuration Release --no-restore

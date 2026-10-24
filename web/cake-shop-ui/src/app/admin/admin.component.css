@@ -1404,3 +1404,16 @@
     background: #f1ece7;
     border-color: #e2d8cf;
 }
+
+/* Homepage hero banner management */
+.hero-banner-row { gap: 16px; align-items: center; }
+.hero-banner-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hero-banner-form { margin-top: 24px; padding: 24px; border: 1px solid #eadfd4; border-radius: 16px; background: #fffdf8; }
+.danger-btn { color: #9f2d25; }
+@media (max-width: 700px) {
+  .hero-banner-row { align-items: flex-start; flex-direction: column; }
+  .hero-banner-actions { width: 100%; }
+  .hero-banner-form { padding: 16px; }
+}
+
+.hero-banner-thumbnail { display: block; width: min(100%, 240px); max-height: 150px; object-fit: cover; border-radius: 10px; margin-top: 8px; background: #f3e9df; }
