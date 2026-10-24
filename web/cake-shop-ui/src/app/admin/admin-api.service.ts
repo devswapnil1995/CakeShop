@@ -8,6 +8,7 @@ export interface AdminHeroBanner {
   id: string;
   title: string;
   subtitle: string;
+  textPosition: HeroBannerTextPosition;
   mediaType: 'Image' | 'Video';
   mediaUrl: string;
   mobileMediaUrl: string | null;
@@ -19,9 +20,12 @@ export interface AdminHeroBanner {
   isPublished: boolean;
 }
 
+export type HeroBannerTextPosition = 'top' | 'bottom' | 'left' | 'right';
+
 export interface HeroBannerWrite {
   title: string;
   subtitle: string;
+  textPosition: HeroBannerTextPosition;
   mediaType: 'Image' | 'Video';
   mediaUrl: string;
   mobileMediaUrl: string | null;
