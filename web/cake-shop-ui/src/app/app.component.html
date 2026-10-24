@@ -193,7 +193,7 @@
           } @else {
             <span class="product-size-count product-size-count-muted">Ask us for sizes</span>
           }
-          <button class="quick-order" type="button" (click)="orderOnWhatsApp(product.name)"
+          <button class="quick-order" type="button" (click)="startProductOrder(product.name)"
             [attr.aria-label]="'Ask about ' + product.name">
             ↗
           </button>
@@ -207,7 +207,7 @@
           <strong class="product-price">{{ product.price }}</strong>
         </div>
 
-        <button class="product-order" type="button" (click)="orderOnWhatsApp(product.name)">
+        <button class="product-order" type="button" (click)="startProductOrder(product.name)">
           Ask about this cake <span>→</span>
         </button>
       </article>
