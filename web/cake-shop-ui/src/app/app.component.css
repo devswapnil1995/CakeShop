@@ -4339,3 +4339,32 @@ h2 em {
   .managed-hero .image-stamp { top: auto; bottom: 78px; right: 20px; width: 70px; height: 70px; }
   .managed-hero-controls { left: 22px; bottom: 18px; }
 }
+
+
+/* Final hero refinement: remove text-side wash and move copy further left.
+   Keep the source image full-bleed and unobstructed. */
+.managed-hero::before {
+  background: none !important;
+}
+.managed-hero {
+  padding-left: 3.5%;
+  padding-right: 3.5%;
+}
+.managed-hero .hero-copy {
+  margin-left: 0;
+  width: min(47%, 620px);
+}
+.managed-hero .hero-copy .eyebrow,
+.managed-hero .hero-copy h1,
+.managed-hero .hero-copy .hero-description,
+.managed-hero .hero-copy .hero-actions {
+  text-shadow: 0 1px 10px rgba(255, 253, 248, .16);
+}
+@media (max-width: 900px) {
+  .managed-hero { padding-left: 4%; padding-right: 4%; }
+  .managed-hero .hero-copy { width: min(57%, 560px); }
+}
+@media (max-width: 640px) {
+  .managed-hero { padding-left: 20px; padding-right: 20px; }
+  .managed-hero .hero-copy { width: 100%; }
+}
