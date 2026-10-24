@@ -4236,3 +4236,12 @@ h2 em {
   .product-image { height: 340px; }
   .product-size-count { font-size: 10px; }
 }
+
+
+/* Store navigation and homepage/menu separation */
+.main-nav a.active { color: var(--brown); font-weight: 700; }
+.main-nav a { text-decoration: none; }
+.catalog-note a { display: inline-block; margin-left: 6px; color: #6f5145; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 680px) {
+  .main-nav a.active { padding-left: 10px; border-left: 2px solid #ac7d6b; }
+}
