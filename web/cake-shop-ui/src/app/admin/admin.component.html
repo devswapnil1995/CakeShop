@@ -1141,12 +1141,12 @@
           @for (banner of heroBanners(); track banner.id) {
             <article class="category-row hero-banner-row">
               <div class="category-info">
-                <strong>{{ banner.title }}</strong>
+                <strong>{{ banner.title || 'Image-only banner' }}</strong>
                 <small>{{ banner.mediaType }} · order {{ banner.sortOrder }}</small>
                 <small>{{ banner.isPublished ? 'Published' : 'Draft / unpublished' }}</small>
                 <small>{{ banner.mediaUrl }}</small>
                 @if (banner.mediaType === 'Image') {
-                  <img class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title" loading="lazy" />
+                  <img class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" [alt]="banner.title || 'Homepage banner'" loading="lazy" />
                 } @else {
                   <video class="hero-banner-thumbnail" [src]="resolveHeroMediaUrl(banner.mediaUrl)" muted controls preload="metadata"></video>
                 }
@@ -1163,13 +1163,43 @@
           }
           <form class="form-grid hero-banner-form" (ngSubmit)="saveHeroBanner()">
             <h3 class="span-two">{{ editingHeroBannerId ? 'Edit banner' : 'Create banner' }}</h3>
-            <div class="field">
-              <label for="heroTitle">Heading *</label>
-              <input id="heroTitle" name="heroTitle" [(ngModel)]="heroBannerForm.title" maxlength="160" required />
+            <p class="form-hint span-two">Heading, subtitle and CTA are optional. To create an image-only banner, leave the text fields blank.</p>
+            <div class="hero-banner-preview span-two" [ngClass]="'preview-position-' + (heroBannerForm.textPosition || 'left')" aria-label="Live hero banner preview">
+              @if (heroBannerForm.mediaUrl) {
+                <div class="hero-banner-preview-media">
+                  @if (heroBannerForm.mediaType === 'Video') {
+                    <video [src]="resolveHeroMediaUrl(heroBannerForm.mediaUrl)" muted loop autoplay playsinline></video>
+                  } @else {
+                    <img [src]="resolveHeroMediaUrl(heroBannerForm.mediaUrl)" alt="" />
+                  }
+                </div>
+              } @else {
+                <div class="hero-banner-preview-placeholder">Your banner media preview appears here</div>
+              }
+              @if (heroBannerForm.title || heroBannerForm.subtitle || heroBannerForm.buttonText) {
+                <div class="hero-banner-preview-copy">
+                  @if (heroBannerForm.title) { <strong>{{ heroBannerForm.title }}</strong> }
+                  @if (heroBannerForm.subtitle) { <p>{{ heroBannerForm.subtitle }}</p> }
+                  @if (heroBannerForm.buttonText) { <span class="hero-banner-preview-cta">{{ heroBannerForm.buttonText }}</span> }
+                </div>
+              }
             </div>
             <div class="field">
-              <label for="heroSubtitle">Subtitle *</label>
-              <input id="heroSubtitle" name="heroSubtitle" [(ngModel)]="heroBannerForm.subtitle" maxlength="500" required />
+              <label for="heroTitle">Heading (optional)</label>
+              <input id="heroTitle" name="heroTitle" [(ngModel)]="heroBannerForm.title" maxlength="160" placeholder="Optional headline" />
+            </div>
+            <div class="field">
+              <label for="heroSubtitle">Subtitle (optional)</label>
+              <input id="heroSubtitle" name="heroSubtitle" [(ngModel)]="heroBannerForm.subtitle" maxlength="500" placeholder="Optional supporting copy" />
+            </div>
+            <div class="field">
+              <label for="heroTextPosition">Text position</label>
+              <select id="heroTextPosition" name="heroTextPosition" [(ngModel)]="heroBannerForm.textPosition" required>
+                @for (position of heroTextPositions; track position.value) {
+                  <option [value]="position.value">{{ position.label }}</option>
+                }
+              </select>
+              <small class="form-hint">Top and bottom center the copy horizontally; left and right align it to the side. Image-only banners need no copy.</small>
             </div>
             <div class="field">
               <label for="heroMediaType">Media type *</label>
@@ -1195,11 +1225,11 @@
               <input id="heroSortOrder" name="heroSortOrder" type="number" min="0" max="10000" [(ngModel)]="heroBannerForm.sortOrder" required />
             </div>
             <div class="field">
-              <label for="heroButtonText">CTA button text</label>
+              <label for="heroButtonText">CTA button text (optional)</label>
               <input id="heroButtonText" name="heroButtonText" [(ngModel)]="heroBannerForm.buttonText" maxlength="80" placeholder="Explore our cakes" />
             </div>
             <div class="field">
-              <label for="heroButtonUrl">CTA destination (HTTPS or site path)</label>
+              <label for="heroButtonUrl">CTA destination (HTTPS or site path, optional)</label>
               <input id="heroButtonUrl" name="heroButtonUrl" [(ngModel)]="heroBannerForm.buttonUrl" maxlength="2000" placeholder="/collections or https://…" />
             </div>
             <div class="field">
