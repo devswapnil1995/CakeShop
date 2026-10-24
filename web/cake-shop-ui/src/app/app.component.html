@@ -164,7 +164,11 @@
     <div class="section-heading">
       <div>
         <p class="eyebrow">{{ isShopRoute() ? 'THE COMPLETE COLLECTION' : 'CUSTOMER FAVOURITES' }}</p>
-        <h2>{{ isShopRoute() ? 'Shop our full menu.' : 'Our most-loved<br /><em>sweet treats.</em>' }}</h2>
+        @if (isShopRoute()) {
+          <h2>Shop our full menu.</h2>
+        } @else {
+          <h2>Our most-loved<br /><em>sweet treats.</em></h2>
+        }
       </div>
 
       <p class="section-intro">
