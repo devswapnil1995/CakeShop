@@ -112,7 +112,7 @@ app.MapGet("/api/v1/hero-banners", async (CakeShopDbContext db, CancellationToke
         .OrderBy(x => x.SortOrder)
         .ThenBy(x => x.CreatedUtc)
         .Select(x => new HeroBannerDto(
-            x.Id, x.Title, x.Subtitle, NormalizeHeroTextPosition(x.TextPosition), x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.Id, x.Title, x.Subtitle, (x.TextPosition == "top" || x.TextPosition == "bottom" || x.TextPosition == "left" || x.TextPosition == "right") ? x.TextPosition : "left", x.MediaType, x.MediaUrl, x.MobileMediaUrl,
             x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc))
         .ToListAsync(ct);
     return Results.Ok(banners);
@@ -877,7 +877,7 @@ adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext 
         .Where(x => x.ClientId == clientId)
         .OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc)
         .Select(x => new HeroBannerDto(
-            x.Id, x.Title, x.Subtitle, NormalizeHeroTextPosition(x.TextPosition), x.MediaType, x.MediaUrl, x.MobileMediaUrl,
+            x.Id, x.Title, x.Subtitle, (x.TextPosition == "top" || x.TextPosition == "bottom" || x.TextPosition == "left" || x.TextPosition == "right") ? x.TextPosition : "left", x.MediaType, x.MediaUrl, x.MobileMediaUrl,
             x.ButtonText, x.ButtonUrl, x.SortOrder, x.StartsUtc, x.EndsUtc, x.IsPublished))
         .ToListAsync(ct);
     return Results.Ok(banners);
@@ -912,7 +912,7 @@ adminApi.MapPut("/hero-banners/{id:guid}", async (
         request.MobileMediaUrl, request.ButtonText, request.ButtonUrl,
         request.SortOrder, request.StartsUtc, request.EndsUtc, NormalizeHeroTextPosition(request.TextPosition));
     await db.SaveChangesAsync(ct);
-    return Results.Ok(new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, banner.MediaType,
+    return Results.Ok(new HeroBannerDto(banner.Id, banner.Title, banner.Subtitle, NormalizeHeroTextPosition(banner.TextPosition), banner.MediaType,
         banner.MediaUrl, banner.MobileMediaUrl, banner.ButtonText, banner.ButtonUrl,
         banner.SortOrder, banner.StartsUtc, banner.EndsUtc, banner.IsPublished));
 });
