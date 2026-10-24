@@ -2,99 +2,32 @@
 *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:20px}body{margin:0;background:#fffdf8;font-family:'DM Sans',Arial,sans-serif;-webkit-font-smoothing:antialiased}button,a{font:inherit}button:focus-visible,a:focus-visible{outline:2px solid #b57f70;outline-offset:3px}img{display:block;max-width:100%}::selection{background:#e8cfc1;color:#3e2b24}
 
 
-/* Managed hero banner styles. Global placement keeps Angular component-style budgets intact. */
-/* Admin-managed homepage hero media */
-.managed-hero .hero-copy h1 { white-space: pre-line; }
-.managed-hero-visual .hero-image-frame { overflow: hidden; }
-.managed-hero-media { display: block; width: 100%; height: 100%; min-height: 360px; object-fit: cover; }
-.managed-hero-visual picture { display: block; width: 100%; height: 100%; }
-.managed-hero-controls { position: absolute; right: 6.2%; bottom: 26px; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 999px; background: rgba(255,253,248,.94); color: #3e2b24; }
-.managed-hero-controls button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 4px 8px; }
-@media (max-width: 640px) {
-  .managed-hero-media { min-height: 240px; }
-  .managed-hero-controls { right: 16px; bottom: 12px; }
-}
-
-
-/* Refined admin-managed storefront hero */
-.managed-hero {
-  min-height: clamp(560px, 42vw, 690px);
-  grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
-  gap: clamp(28px, 4vw, 72px);
-  padding: clamp(46px, 5vw, 76px) 6.2% 82px;
-  isolation: isolate;
-  transition: background-color .35s ease;
-}
-.managed-hero::before {
-  content: ''; position: absolute; inset: 0 auto 0 0; width: 48%; pointer-events: none;
-  background: radial-gradient(ellipse at 10% 90%, rgba(215,166,137,.12), transparent 55%); z-index: -1;
-}
-.managed-hero .hero-copy { padding: 12px 0 24px; max-width: 590px; }
-.managed-hero .eyebrow { margin-bottom: 25px; }
-.managed-hero .hero-copy h1 { font-size: clamp(44px, 5vw, 76px); line-height: .99; letter-spacing: -.06em; text-wrap: balance; white-space: pre-line; }
-.managed-hero .hero-description { max-width: 440px; margin: 24px 0 28px; font-size: clamp(14px, 1.1vw, 16px); line-height: 1.75; }
-.managed-hero .hero-actions { gap: 18px; }
-.managed-hero .button { min-height: 54px; padding: 0 24px; font-size: 12px; }
-.managed-hero-visual { max-width: none; min-width: 0; padding: 0 0 10px; }
-.managed-hero-visual .hero-image-frame { height: clamp(390px, 36vw, 560px); border-radius: 44% 44% 3px 3px; box-shadow: 0 22px 60px rgba(62,43,36,.10); }
-.managed-hero-media { display: block; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: center; }
-.managed-hero-visual picture { display: block; width: 100%; height: 100%; }
-.managed-hero .image-stamp { left: -34px; top: 32px; width: 102px; height: 102px; }
-.managed-hero-controls { position: absolute; left: 6.2%; right: auto; bottom: 25px; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid rgba(62,43,36,.08); border-radius: 999px; background: rgba(255,253,248,.94); color: #3e2b24; box-shadow: 0 8px 26px rgba(62,43,36,.06); backdrop-filter: blur(10px); }
-.managed-hero-controls > button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: inherit; font: inherit; font-size: 19px; cursor: pointer; transition: background .2s ease, transform .2s ease; }
-.managed-hero-controls > button:hover { background: #f0e4d8; transform: scale(1.04); }
-.managed-hero-dots { display: flex; align-items: center; gap: 7px; }
-.managed-hero-dots .managed-hero-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: #dfd0c3; cursor: pointer; transition: background .2s ease, transform .2s ease; }
-.managed-hero-dots .managed-hero-dot.active { background: #b95535; transform: scale(1.18); }
-.managed-hero-count { min-width: 38px; color: #8d7465; font-size: 11px; font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .managed-hero *, .managed-hero { transition: none !important; animation: none !important; } }
-@media (max-width: 900px) {
-  .managed-hero { grid-template-columns: minmax(0, 1fr) minmax(0, .95fr); gap: 24px; padding: 48px 5.5% 90px; min-height: 560px; }
-  .managed-hero .hero-copy h1 { font-size: clamp(40px, 5.4vw, 58px); }
-  .managed-hero-visual .hero-image-frame { height: 410px; }
-  .managed-hero-controls { left: 5.5%; bottom: 22px; }
-}
-@media (max-width: 640px) {
-  .managed-hero { display: flex; flex-direction: column; align-items: stretch; gap: 22px; padding: 38px 22px 86px; min-height: auto; }
-  .managed-hero .hero-copy { padding: 0; }
-  .managed-hero .eyebrow { margin-bottom: 16px; font-size: 8px; }
-  .managed-hero .hero-copy h1 { font-size: clamp(39px, 11vw, 54px); line-height: 1.02; }
-  .managed-hero .hero-description { margin: 17px 0 21px; font-size: 14px; line-height: 1.65; }
-  .managed-hero .hero-actions { gap: 14px; }
-  .managed-hero .button { min-height: 48px; padding: 0 17px; }
-  .managed-hero-visual { width: 90%; align-self: center; padding: 0 0 8px; }
-  .managed-hero-visual .hero-image-frame { height: clamp(270px, 78vw, 390px); border-radius: 46% 46% 3px 3px; }
-  .managed-hero .image-stamp { width: 78px; height: 78px; left: -22px; top: 20px; }
-  .managed-hero .image-stamp strong { font-size: 16px; }
-  .managed-hero-controls { left: 22px; bottom: 18px; gap: 8px; padding: 7px 9px; }
-  .managed-hero-controls > button { width: 27px; height: 27px; }
-}
-
-
-/* Full-bleed, storefront-style banner: the media fills the complete hero box */
-.managed-hero {
+/* Admin-managed storefront hero.
+   Keep the media full-bleed; copy is an optional overlay, never a layout column. */
+.hero.managed-hero {
   position: relative;
-  display: flex;
+  display: flex !important;
+  flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
+  grid-template-columns: none !important;
+  gap: 0;
+  width: 100%;
   min-height: clamp(500px, 43vw, 660px);
-  padding: clamp(44px, 6vw, 88px) 7% 96px;
+  padding: clamp(44px, 6vw, 88px) 3.5% 96px;
   overflow: hidden;
   isolation: isolate;
   background: #ead9c8;
 }
-.managed-hero::before {
-  content: '';
+.hero.managed-hero::before {
+  content: none !important;
+  display: none !important;
+}
+.hero.managed-hero .hero-visual.managed-hero-visual {
   position: absolute;
   inset: 0;
   z-index: 0;
-  width: auto;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(247,242,234,.98) 0%, rgba(247,242,234,.92) 31%, rgba(247,242,234,.62) 48%, rgba(247,242,234,.08) 72%, rgba(247,242,234,0) 100%);
-}
-.managed-hero-visual {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
+  display: block;
   width: 100%;
   height: 100%;
   max-width: none;
@@ -102,43 +35,55 @@
   padding: 0;
   margin: 0;
 }
-.managed-hero-visual .hero-image-frame {
+.hero.managed-hero .managed-hero-visual .hero-image-frame {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: 0;
+  min-height: 0;
+  margin: 0;
   overflow: hidden;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
-.managed-hero-visual picture,
-.managed-hero-media {
+.hero.managed-hero .managed-hero-visual picture,
+.hero.managed-hero .managed-hero-media {
   display: block;
   width: 100%;
   height: 100%;
 }
-.managed-hero-media {
+.hero.managed-hero .managed-hero-media {
   min-height: 0;
   object-fit: cover;
   object-position: center;
 }
-.managed-hero .hero-copy {
+.hero.managed-hero .hero-copy {
   position: relative;
   z-index: 1;
-  width: min(48%, 620px);
+  width: min(47%, 620px);
   max-width: 620px;
+  margin: 0;
   padding: 0;
 }
-.managed-hero .hero-copy h1 {
+.hero.managed-hero .hero-copy h1 {
+  margin: 0;
   font-size: clamp(44px, 5.2vw, 78px);
   line-height: .98;
   letter-spacing: -.055em;
   text-wrap: balance;
+  white-space: pre-line;
 }
-.managed-hero .hero-description {
+.hero.managed-hero .hero-description {
   max-width: 450px;
+  margin: 24px 0 28px;
+  font-size: clamp(14px, 1.1vw, 16px);
+  line-height: 1.75;
 }
-.managed-hero .image-stamp {
+.hero.managed-hero .hero-actions { gap: 18px; }
+.hero.managed-hero .button { min-height: 54px; padding: 0 24px; font-size: 12px; }
+.hero.managed-hero .image-stamp {
+  position: absolute;
   z-index: 2;
   left: auto;
   right: 5%;
@@ -146,94 +91,89 @@
   width: 94px;
   height: 94px;
 }
-.managed-hero-controls {
-  left: 7%;
+.hero.managed-hero .managed-hero-controls {
+  position: absolute;
+  left: 3.5%;
+  right: auto;
   bottom: 26px;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(62,43,36,.08);
+  border-radius: 999px;
+  background: rgba(255,253,248,.94);
+  color: #3e2b24;
+  box-shadow: 0 8px 26px rgba(62,43,36,.06);
 }
+.hero.managed-hero .managed-hero-controls > button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 19px;
+  cursor: pointer;
+}
+.hero.managed-hero .managed-hero-controls > button:hover { background: #f0e4d8; }
+.hero.managed-hero .managed-hero-dots { display: flex; align-items: center; gap: 7px; }
+.hero.managed-hero .managed-hero-dots .managed-hero-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #dfd0c3;
+  cursor: pointer;
+}
+.hero.managed-hero .managed-hero-dots .managed-hero-dot.active { background: #b95535; }
+.hero.managed-hero .managed-hero-count { min-width: 38px; color: #8d7465; font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* Text placement changes only the overlay, never the image dimensions. */
+.hero.managed-hero.text-position-left { justify-content: flex-start; align-items: center; }
+.hero.managed-hero.text-position-left .hero-copy { margin-left: 0; text-align: left; }
+.hero.managed-hero.text-position-right { justify-content: flex-end; align-items: center; }
+.hero.managed-hero.text-position-right .hero-copy { margin-left: auto; text-align: right; }
+.hero.managed-hero.text-position-right .hero-description { margin-left: auto; }
+.hero.managed-hero.text-position-right .hero-actions { justify-content: flex-end; }
+.hero.managed-hero.text-position-top { justify-content: center; align-items: flex-start; }
+.hero.managed-hero.text-position-top .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
+.hero.managed-hero.text-position-top .hero-description { margin-inline: auto; }
+.hero.managed-hero.text-position-top .hero-actions { justify-content: center; }
+.hero.managed-hero.text-position-bottom { justify-content: center; align-items: flex-end; }
+.hero.managed-hero.text-position-bottom .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
+.hero.managed-hero.text-position-bottom .hero-description { margin-inline: auto; }
+.hero.managed-hero.text-position-bottom .hero-actions { justify-content: center; }
+.hero.managed-hero.text-empty { justify-content: flex-start; align-items: flex-end; }
+.hero.managed-hero.text-empty .hero-copy { display: none; }
 @media (max-width: 900px) {
-  .managed-hero {
+  .hero.managed-hero { min-height: 540px; padding: 52px 4% 94px; }
+  .hero.managed-hero .hero-copy { width: min(57%, 560px); }
+  .hero.managed-hero .hero-copy h1 { font-size: clamp(40px, 6vw, 60px); }
+  .hero.managed-hero .image-stamp { right: 4%; top: 5%; width: 78px; height: 78px; }
+  .hero.managed-hero .managed-hero-controls { left: 4%; bottom: 22px; }
+}
+@media (max-width: 640px) {
+  .hero.managed-hero {
     min-height: 540px;
-    padding: 52px 5.5% 94px;
+    padding: 38px 20px 86px;
   }
-  .managed-hero::before {
-    background: linear-gradient(90deg, rgba(247,242,234,.98) 0%, rgba(247,242,234,.89) 43%, rgba(247,242,234,.38) 75%, rgba(247,242,234,.12) 100%);
-  }
-  .managed-hero .hero-copy { width: min(58%, 560px); }
-  .managed-hero .hero-copy h1 { font-size: clamp(40px, 6vw, 60px); }
-  .managed-hero .image-stamp { right: 4%; top: 5%; width: 78px; height: 78px; }
+  .hero.managed-hero .hero-copy { width: 100%; max-width: 520px; }
+  .hero.managed-hero .hero-copy h1 { font-size: clamp(38px, 10vw, 52px); }
+  .hero.managed-hero .hero-description { max-width: 94%; margin: 17px 0 21px; font-size: 14px; line-height: 1.65; }
+  .hero.managed-hero .image-stamp { top: auto; bottom: 78px; right: 20px; width: 70px; height: 70px; }
+  .hero.managed-hero .managed-hero-controls { left: 20px; bottom: 18px; gap: 8px; padding: 7px 9px; }
+  .hero.managed-hero .managed-hero-controls > button { width: 27px; height: 27px; }
+  .hero.managed-hero.text-position-top .hero-copy,
+  .hero.managed-hero.text-position-bottom .hero-copy { width: 100%; }
 }
-@media (max-width: 640px) {
-  .managed-hero {
-    display: flex;
-    align-items: flex-start;
-    min-height: 640px;
-    padding: 38px 22px 88px;
-    justify-content: flex-start;
-  }
-  .managed-hero::before {
-    background: linear-gradient(180deg, rgba(247,242,234,.97) 0%, rgba(247,242,234,.91) 38%, rgba(247,242,234,.30) 70%, rgba(247,242,234,.10) 100%);
-  }
-  .managed-hero .hero-copy {
-    width: 100%;
-    max-width: 520px;
-  }
-  .managed-hero .hero-copy h1 { font-size: clamp(38px, 10vw, 52px); }
-  .managed-hero .hero-description { max-width: 94%; }
-  .managed-hero .image-stamp { top: auto; bottom: 78px; right: 20px; width: 70px; height: 70px; }
-  .managed-hero-controls { left: 22px; bottom: 18px; }
-}
-
-
-/* Final hero refinement: remove text-side wash and move copy further left.
-   Keep the source image full-bleed and unobstructed. */
-.managed-hero::before {
-  background: none !important;
-}
-.managed-hero {
-  padding-left: 3.5%;
-  padding-right: 3.5%;
-}
-.managed-hero .hero-copy {
-  margin-left: 0;
-  width: min(47%, 620px);
-}
-@media (max-width: 900px) {
-  .managed-hero { padding-left: 4%; padding-right: 4%; }
-  .managed-hero .hero-copy { width: min(57%, 560px); }
-}
-@media (max-width: 640px) {
-  .managed-hero { padding-left: 20px; padding-right: 20px; }
-  .managed-hero .hero-copy { width: 100%; }
-}
-
-
-/* Optional copy placement for full-bleed managed banners. */
-.managed-hero.text-position-left { align-items: center; justify-content: flex-start; }
-.managed-hero.text-position-right { align-items: center; justify-content: flex-end; }
-.managed-hero.text-position-right .hero-copy { text-align: right; margin-left: auto; }
-.managed-hero.text-position-right .hero-description { margin-left: auto; }
-.managed-hero.text-position-right .hero-actions { justify-content: flex-end; }
-.managed-hero.text-position-top { align-items: flex-start; justify-content: center; }
-.managed-hero.text-position-top .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
-.managed-hero.text-position-top .hero-description { margin-inline: auto; }
-.managed-hero.text-position-top .hero-actions { justify-content: center; }
-.managed-hero.text-position-bottom { align-items: flex-end; justify-content: center; }
-.managed-hero.text-position-bottom .hero-copy { width: min(70%, 850px); margin-inline: auto; text-align: center; }
-.managed-hero.text-position-bottom .hero-description { margin-inline: auto; }
-.managed-hero.text-position-bottom .hero-actions { justify-content: center; }
-.managed-hero.text-empty { justify-content: flex-start; align-items: flex-end; min-height: clamp(440px, 38vw, 620px); }
-.managed-hero.text-empty .hero-copy { display: none; }
-@media (max-width: 640px) {
-  .managed-hero.text-position-left { align-items: center; justify-content: flex-start; }
-  .managed-hero.text-position-right { align-items: center; justify-content: flex-end; }
-  .managed-hero.text-position-top,
-  .managed-hero.text-position-bottom { justify-content: center; }
-  .managed-hero.text-position-top .hero-copy,
-  .managed-hero.text-position-bottom .hero-copy { width: 100%; }
-  .managed-hero.text-position-right .hero-copy { text-align: right; }
-  .managed-hero.text-empty { min-height: 360px; padding: 0 0 76px; }
-  .managed-hero.text-empty .hero-copy { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hero.managed-hero, .hero.managed-hero * { transition: none !important; animation: none !important; }
 }
 
 /* Hero banner authoring preview */
