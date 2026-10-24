@@ -182,27 +182,28 @@
     <div class="product-grid">
       @for (product of visibleProducts; track product.id ?? product.name) {
       <article class="product-card">
-        <!-- <div class="product-image">
-            <img [src]="product.image" [alt]="product.name" loading="lazy" />
-
-            @if (product.tag) {
-              <span class="product-tag">
-                {{ product.tag }}
-              </span>
-            }
-
-            <button class="quick-order" type="button" (click)="orderOnWhatsApp(product.name)"
-              [attr.aria-label]="'Ask about ' + product.name">
-              ↗
-            </button>
-          </div> -->
+        <div class="product-image">
+          <img [src]="product.image" [alt]="product.name" loading="lazy"
+            (error)="onProductImageError($event)" />
+          @if (product.tag) {
+            <span class="product-tag">{{ product.tag }}</span>
+          }
+          @if (product.variants.length > 0) {
+            <span class="product-size-count">{{ product.variants.length }} size{{ product.variants.length === 1 ? '' : 's' }} available</span>
+          } @else {
+            <span class="product-size-count product-size-count-muted">Ask us for sizes</span>
+          }
+          <button class="quick-order" type="button" (click)="orderOnWhatsApp(product.name)"
+            [attr.aria-label]="'Ask about ' + product.name">
+            ↗
+          </button>
+        </div>
 
         <div class="product-details">
-          <div>
+          <div class="product-copy">
             <h3>{{ product.name }}</h3>
-            <p>{{ product.description }}</p>
+            <p>{{ product.description || 'Freshly made with care for your special moments.' }}</p>
           </div>
-
           <strong class="product-price">{{ product.price }}</strong>
         </div>
 
@@ -210,6 +211,14 @@
           Ask about this cake <span>→</span>
         </button>
       </article>
+      }
+      @empty {
+        <div class="catalog-empty">
+          <span aria-hidden="true">✿</span>
+          <h3>No cakes in this collection yet</h3>
+          <p>Please choose another category or message us for a custom cake.</p>
+          <button class="product-order" type="button" (click)="orderOnWhatsApp()">Ask about a custom cake <span>→</span></button>
+        </div>
       }
     </div>
 
