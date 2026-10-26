@@ -366,6 +366,8 @@ export class AppComponent implements OnDestroy, OnInit {
     this.addToCartProduct.set(null);
   }
 
+  clearCartNotice(): void { this.cartNotice.set(''); }
+
   openCart(): void {
     this.cartDrawerOpen.set(true);
     this.cartNotice.set('');
@@ -409,7 +411,11 @@ export class AppComponent implements OnDestroy, OnInit {
       const valid = parsed.filter((item): item is CartEntry =>
         !!item && typeof item.productId === 'string' &&
         typeof item.variantId === 'string' &&
-        Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 100);
+        Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 100)
+        .filter(item => {
+          const product = this.products().find(candidate => candidate.id === item.productId);
+          return !!product?.variants.some(variant => variant.id === item.variantId && variant.isAvailable);
+        });
       this.cartEntries.set(valid);
       // Product availability and variant prices are always resolved from the fresh API response.
       this.persistCart();
