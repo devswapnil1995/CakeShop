@@ -1,4 +1,5 @@
 using CakeShop.Api.Contracts;
+using CakeShop.Api.Checkout;
 using CakeShop.Application.Catalog;
 using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Content;
@@ -90,6 +91,7 @@ builder.Services.AddSwaggerGen(options =>
         });
 });
 builder.Services.AddHttpClient<RazorpayPaymentService>();
+builder.Services.AddSingleton<CheckoutOtpService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -98,6 +100,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
+app.MapCheckoutEndpoints(defaultClientId);
 app.UseSwagger();
 app.UseSwaggerUI();
 
