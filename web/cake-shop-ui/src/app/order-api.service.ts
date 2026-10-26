@@ -13,6 +13,7 @@ export interface CreateCustomerOrderRequest {
   preferredDate: string | null;
   customization: string | null;
   variantId?: string | null;
+  verificationToken?: string;
 }
 
 export interface CustomerOrderResponse {
