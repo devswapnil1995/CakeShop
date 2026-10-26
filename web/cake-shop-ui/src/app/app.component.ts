@@ -7,6 +7,21 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../environments/environment';
 import { OrderApiService, CustomerOrderResponse, CreatePaymentResponse, VerifyPaymentRequest } from './order-api.service';
 
+interface CartEntry {
+  productId: string;
+  variantId: string;
+  quantity: number;
+}
+
+interface CartLine {
+  key: string;
+  product: CakeProduct;
+  variant: ProductVariantDto;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 interface CakeProduct {
   id?: string;
   name: string;
@@ -46,6 +61,14 @@ export class AppComponent implements OnDestroy, OnInit {
   readonly brandName = 'The Sweet Panda';
   // Replace with the shop's WhatsApp number in international format, digits only.
   private readonly WHATSAPP_NUMBER = '8456057904';
+
+  readonly cartEntries = signal<CartEntry[]>([]);
+  readonly cartDrawerOpen = signal(false);
+  readonly addToCartOpen = signal(false);
+  readonly addToCartProduct = signal<CakeProduct | null>(null);
+  addToCartVariantId = '';
+  addToCartQuantity = 1;
+  readonly cartNotice = signal('');
 
   activeCategory = 'All';
   readonly mobileMenuOpen = signal(false);
@@ -205,6 +228,7 @@ export class AppComponent implements OnDestroy, OnInit {
           variants
         };
       }));
+      this.restoreCart();
       const categoryNames = [...new Set(items.map((item) => this.toDisplayCategory(item.categoryName)))];
       this.categories.set(['All', ...categoryNames]);
     });
@@ -237,6 +261,145 @@ export class AppComponent implements OnDestroy, OnInit {
     return this.activeCategory === 'All'
       ? catalogue
       : catalogue.filter(product => product.category === this.activeCategory);
+  }
+
+  get cartLines(): CartLine[] {
+    return this.cartEntries().flatMap(entry => {
+      const product = this.products().find(item => item.id === entry.productId);
+      const variant = product?.variants.find(item => item.id === entry.variantId && item.isAvailable);
+      if (!product || !variant) return [];
+      return [{
+        key: `${entry.productId}:${entry.variantId}`,
+        product,
+        variant,
+        quantity: entry.quantity,
+        unitPrice: variant.price,
+        lineTotal: Math.round(variant.price * entry.quantity * 100) / 100
+      }];
+    });
+  }
+
+  get cartSubtotal(): number {
+    return Math.round(this.cartLines.reduce((total, line) => total + line.lineTotal, 0) * 100) / 100;
+  }
+
+  get cartItemCount(): number {
+    return this.cartEntries().reduce((total, item) => total + item.quantity, 0);
+  }
+
+  formatPrice(amount: number): string {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+  }
+
+  beginAddToCart(productName: string): void {
+    const product = this.products().find(item => item.name === productName);
+    if (!product?.id) {
+      this.cartNotice.set('This product is not available right now. Please refresh and try again.');
+      return;
+    }
+    const availableVariants = product.variants.filter(item => item.isAvailable);
+    if (!availableVariants.length) {
+      this.cartNotice.set('Please contact us to confirm sizes and pricing for this cake.');
+      return;
+    }
+    this.addToCartProduct.set(product);
+    this.addToCartVariantId = availableVariants[0].id;
+    this.addToCartQuantity = 1;
+    this.addToCartOpen.set(true);
+    this.cartNotice.set('');
+  }
+
+  confirmAddToCart(): void {
+    const product = this.addToCartProduct();
+    const variantId = this.addToCartVariantId;
+    const variant = product?.variants.find(item => item.id === variantId && item.isAvailable);
+    if (!product?.id || !variant) {
+      this.cartNotice.set('Please choose an available size before adding this cake.');
+      return;
+    }
+    if (!Number.isInteger(this.addToCartQuantity) || this.addToCartQuantity < 1 || this.addToCartQuantity > 100) {
+      this.cartNotice.set('Choose a quantity between 1 and 100.');
+      return;
+    }
+    const key = `${product.id}:${variant.id}`;
+    const existing = this.cartEntries().find(item => `${item.productId}:${item.variantId}` === key);
+    const nextQuantity = (existing?.quantity ?? 0) + this.addToCartQuantity;
+    if (nextQuantity > 100) {
+      this.cartNotice.set('A maximum of 100 of the same size can be added.');
+      return;
+    }
+    this.cartEntries.update(entries => existing
+      ? entries.map(item => `${item.productId}:${item.variantId}` === key ? { ...item, quantity: nextQuantity } : item)
+      : [...entries, { productId: product.id!, variantId: variant.id, quantity: this.addToCartQuantity }]);
+    this.persistCart();
+    this.addToCartOpen.set(false);
+    this.cartNotice.set(`${product.name} added to your bag.`);
+  }
+
+  closeAddToCart(): void {
+    this.addToCartOpen.set(false);
+    this.addToCartProduct.set(null);
+  }
+
+  openCart(): void {
+    this.cartDrawerOpen.set(true);
+    this.cartNotice.set('');
+  }
+
+  closeCart(): void {
+    this.cartDrawerOpen.set(false);
+  }
+
+  updateCartQuantity(key: string, delta: number): void {
+    this.cartEntries.update(entries => entries.flatMap(item => {
+      if (`${item.productId}:${item.variantId}` !== key) return [item];
+      const quantity = item.quantity + delta;
+      return quantity < 1 ? [] : [{ ...item, quantity: Math.min(100, quantity) }];
+    }));
+    this.persistCart();
+  }
+
+  removeCartLine(key: string): void {
+    this.cartEntries.update(entries => entries.filter(item => `${item.productId}:${item.variantId}` !== key));
+    this.persistCart();
+  }
+
+  private persistCart(): void {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('sweet-panda-cart-v1', JSON.stringify(this.cartEntries()));
+      }
+    } catch {
+      // The cart remains usable for this session if browser storage is unavailable.
+    }
+  }
+
+  private restoreCart(): void {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = window.localStorage.getItem('sweet-panda-cart-v1');
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const valid = parsed.filter((item): item is CartEntry =>
+        !!item && typeof item.productId === 'string' &&
+        typeof item.variantId === 'string' &&
+        Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 100);
+      this.cartEntries.set(valid);
+      // Product availability and variant prices are always resolved from the fresh API response.
+      this.persistCart();
+    } catch {
+      this.cartEntries.set([]);
+    }
+  }
+
+  startCartCheckout(): void {
+    if (!this.cartLines.length) {
+      this.cartNotice.set('Add at least one available cake to your bag before checkout.');
+      return;
+    }
+    this.cartDrawerOpen.set(false);
+    this.cartNotice.set('Your cart is ready. Mobile OTP verification will be required before checkout can be completed.');
   }
 
   setCategory(category: string): void {
