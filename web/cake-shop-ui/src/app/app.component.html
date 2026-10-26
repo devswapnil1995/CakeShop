@@ -7,7 +7,7 @@
 
 <!-- Header -->
 <header class="site-header">
-  <a class="brand" href="#home" aria-label="The Sweet Panda home">
+  <a class="brand" href="/" aria-label="The Sweet Panda home">
     <span class="brand-mark" aria-hidden="true">
       <img src="assets/images/logo.jpeg" alt="" />
     </span>
@@ -23,9 +23,10 @@
   </button>
 
   <nav class="main-nav" [class.open]="mobileMenuOpen()" aria-label="Main navigation">
-    <a href="#collections" (click)="closeMobileMenu()">Our Cakes</a>
-    <a href="#story" (click)="closeMobileMenu()">Our Story</a>
-    <a href="#visit" (click)="closeMobileMenu()">Visit Us</a>
+    <a href="/" (click)="closeMobileMenu()" [class.active]="!isShopRoute()">Home</a>
+    <a href="/shop" (click)="closeMobileMenu()" [class.active]="isShopRoute()">Shop / Menu</a>
+    <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
+    <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
     <button class="button button-dark nav-cta" type="button" (click)="orderOnWhatsApp()">
       Order on WhatsApp <span aria-hidden="true">↗</span>
@@ -34,6 +35,8 @@
 </header>
 
 <main>
+  @if (!isShopRoute()) {
+  <!-- Homepage-only hero and introduction. -->
   <!-- Admin-managed hero section; retain the existing design as fallback until a banner is published. -->
   @if (heroBanners().length > 0) {
     @for (banner of heroBanners(); track banner.id; let i = $index) {
@@ -154,22 +157,29 @@
     <span>✳</span>
     <p>MADE TO MAKE YOU SMILE</p>
   </section>
+  }
 
   <!-- Cake Collection -->
   <section class="collection section-wrap" id="collections">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">A LITTLE SOMETHING FOR EVERYONE</p>
-        <h2>Meet your new<br /><em>favourite</em> cake.</h2>
+        <p class="eyebrow">{{ isShopRoute() ? 'THE COMPLETE COLLECTION' : 'CUSTOMER FAVOURITES' }}</p>
+        @if (isShopRoute()) {
+          <h2>Shop our full menu.</h2>
+        } @else {
+          <h2>Our most-loved<br /><em>sweet treats.</em></h2>
+        }
       </div>
 
       <p class="section-intro">
-        From timeless classics to a little extra indulgence, every cake
-        has its own way of making a moment memorable.
+        {{ isShopRoute()
+          ? 'Explore every cake, browse by category, and choose the size that suits your celebration.'
+          : 'A curated selection of bestsellers and specially tagged treats, chosen by our bakery team.' }}
       </p>
     </div>
 
-    <!-- Category Filters -->
+    <!-- Full category filters belong on the Shop/Menu page. -->
+    @if (isShopRoute()) {
     <div class="category-filters" aria-label="Filter cakes">
       @for (category of categories(); track category) {
       <button type="button" [class.active]="activeCategory === category" (click)="setCategory(category)">
@@ -177,48 +187,61 @@
       </button>
       }
     </div>
+    }
 
-    <!-- Product Grid -->
+    <!-- Product Grid: curated tagged items on Home, every available product on Shop/Menu. -->
     <div class="product-grid">
       @for (product of visibleProducts; track product.id ?? product.name) {
       <article class="product-card">
-        <!-- <div class="product-image">
-            <img [src]="product.image" [alt]="product.name" loading="lazy" />
-
-            @if (product.tag) {
-              <span class="product-tag">
-                {{ product.tag }}
-              </span>
-            }
-
-            <button class="quick-order" type="button" (click)="orderOnWhatsApp(product.name)"
-              [attr.aria-label]="'Ask about ' + product.name">
-              ↗
-            </button>
-          </div> -->
+        <div class="product-image">
+          <img [src]="product.image" [alt]="product.name" loading="lazy"
+            (error)="onProductImageError($event)" />
+          @if (product.tag) {
+            <span class="product-tag">{{ product.tag }}</span>
+          }
+          @if (product.variants.length > 0) {
+            <span class="product-size-count">{{ product.variants.length }} size{{ product.variants.length === 1 ? '' : 's' }} available</span>
+          } @else {
+            <span class="product-size-count product-size-count-muted">Ask us for sizes</span>
+          }
+          <button class="quick-order" type="button" (click)="startProductOrder(product.name)"
+            [attr.aria-label]="'Ask about ' + product.name">
+            ↗
+          </button>
+        </div>
 
         <div class="product-details">
-          <div>
+          <div class="product-copy">
             <h3>{{ product.name }}</h3>
-            <p>{{ product.description }}</p>
+            <p>{{ product.description || 'Freshly made with care for your special moments.' }}</p>
           </div>
-
           <strong class="product-price">{{ product.price }}</strong>
         </div>
 
-        <button class="product-order" type="button" (click)="orderOnWhatsApp(product.name)">
+        <button class="product-order" type="button" (click)="startProductOrder(product.name)">
           Ask about this cake <span>→</span>
         </button>
       </article>
       }
+      @empty {
+        <div class="catalog-empty">
+          <span aria-hidden="true">✿</span>
+          <h3>No cakes in this collection yet</h3>
+          <p>Please choose another category or message us for a custom cake.</p>
+          <button class="product-order" type="button" (click)="orderOnWhatsApp()">Ask about a custom cake <span>→</span></button>
+        </div>
+      }
     </div>
 
     <p class="catalog-note">
-      Our cakes are made fresh. Message us for available sizes, flavours
-      and custom designs.
+      {{ isShopRoute()
+        ? 'Need a custom design or a size not listed? Message us and we will help.'
+        : 'Looking for something else? Explore the full menu for more cakes, flavours and sizes.' }}
+      @if (!isShopRoute()) { <a href="/shop">Browse the full menu →</a> }
     </p>
   </section>
 
+  @if (!isShopRoute()) {
   <!-- Our Story -->
   <section class="story-section" id="story">
     <div class="story-image">
@@ -250,6 +273,8 @@
       </div>
     </div>
   </section>
+
+  }
 
   <!-- Customer Order Modal -->
   @if (orderFormOpen()) {
@@ -415,6 +440,7 @@
   </div>
   }
 
+  @if (!isShopRoute()) {
   <!-- Visit Us -->
   <section class="visit-section section-wrap" id="visit">
     <div>
@@ -457,6 +483,7 @@
       </button>
     </div>
   </section>
+}
 </main>
 
 <!-- Footer -->
@@ -481,6 +508,7 @@
   </div>
 </footer>
 }
+
 
 <!-- Admin routes -->
 @if (isAdminRoute()) {

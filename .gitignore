@@ -153,3 +153,5 @@ SqlScript
 CakeShop.Api.zip
 cake-shop-api.zip
 publish-api
+.angular/cache/
+wwwroot

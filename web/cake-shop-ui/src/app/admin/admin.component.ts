@@ -63,6 +63,11 @@ export class AdminComponent implements OnInit {
   password = '';
   readonly products = signal<AdminProduct[]>([]);
   readonly categories = signal<AdminCategory[]>([]);
+  productSearch = '';
+  productCategoryFilter = 'All';
+  productAvailabilityFilter: 'All' | 'Available' | 'Unavailable' = 'All';
+  productHomepageFilter: 'All' | 'Homepage' | 'Featured' | 'Tagged' | 'NotOnHomepage' = 'All';
+  readonly productImageUploading = signal(false);
   editingProductId: string | null = null;
   editingCategoryId: string | null = null;
 
@@ -478,6 +483,77 @@ export class AdminComponent implements OnInit {
   }
 
 
+  get filteredProducts(): AdminProduct[] {
+    const search = this.productSearch.trim().toLowerCase();
+    return this.products().filter(product => {
+      const matchesSearch = !search ||
+        product.name.toLowerCase().includes(search) ||
+        product.slug.toLowerCase().includes(search) ||
+        product.description.toLowerCase().includes(search) ||
+        (product.badge ?? '').toLowerCase().includes(search);
+      const matchesCategory = this.productCategoryFilter === 'All' ||
+        product.categoryId === this.productCategoryFilter;
+      const matchesAvailability = this.productAvailabilityFilter === 'All' ||
+        (this.productAvailabilityFilter === 'Available' ? product.isAvailable : !product.isAvailable);
+      const hasTag = Boolean(product.badge?.trim());
+      const appearsOnHomepage = product.isFeatured || hasTag;
+      const matchesHomepage = this.productHomepageFilter === 'All' ||
+        (this.productHomepageFilter === 'Homepage' && appearsOnHomepage) ||
+        (this.productHomepageFilter === 'Featured' && product.isFeatured) ||
+        (this.productHomepageFilter === 'Tagged' && hasTag) ||
+        (this.productHomepageFilter === 'NotOnHomepage' && !appearsOnHomepage);
+      return matchesSearch && matchesCategory && matchesAvailability && matchesHomepage;
+    });
+  }
+
+  resolveProductImageUrl(url: string | null): string {
+    if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80';
+    if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+    return url;
+  }
+
+  uploadProductImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.error.set('');
+    this.notice = '';
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!extension || !allowedExtensions.includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
+      this.error.set('Choose a JPG, PNG or WebP image.');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set('Image must be 10 MB or smaller.');
+      input.value = '';
+      return;
+    }
+
+    this.productImageUploading.set(true);
+    this.api.uploadProductImage(file).pipe(finalize(() => {
+      this.productImageUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.productForm.imageUrl = result.mediaUrl;
+        this.notice = 'Product image uploaded. Save the product to keep this change.';
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  clearProductImage(): void {
+    this.productForm.imageUrl = null;
+    this.notice = 'Image removed from this product. Save the product to keep this change.';
+    this.error.set('');
+  }
+
   editProduct(product: AdminProduct): void {
     this.productVariants = [];
     this.resetVariantForm();
@@ -508,10 +584,12 @@ export class AdminComponent implements OnInit {
       !this.productForm.categoryId ||
       !this.productForm.name.trim() ||
       !Number.isFinite(Number(this.productForm.price)) ||
-      Number(this.productForm.price) < 0
+      Number(this.productForm.price) < 0 ||
+      Number(this.productForm.price) > 10000000 ||
+      Math.round(Number(this.productForm.price) * 100) !== Number(this.productForm.price) * 100
     ) {
       this.error.set(
-        'Add a name, select a category and enter a valid price.'
+        'Add a name, select a category and enter a price between ₹0 and ₹10,000,000 with at most two decimal places.'
       );
       return;
     }
