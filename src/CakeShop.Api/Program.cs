@@ -92,18 +92,6 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddHttpClient<RazorpayPaymentService>();
 
 var app = builder.Build();
-
-// Ensure the web root exists before static-file middleware or upload endpoints use it.
-// This prevents DirectoryNotFoundException on fresh local checkouts where wwwroot
-// has not been created yet.
-var webRootPath = app.Environment.WebRootPath;
-if (string.IsNullOrWhiteSpace(webRootPath))
-{
-    webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
-    app.Environment.WebRootPath = webRootPath;
-}
-Directory.CreateDirectory(webRootPath);
-
 app.UseExceptionHandler();
 app.UseCors("AngularDev");
 app.UseStaticFiles();
@@ -1310,3 +1298,698 @@ adminApi.MapGet("/dashboard/summary", async (
 
 
 adminApi.MapPost("/expenses", async (
+    ClaimsPrincipal user,
+    CreateExpenseRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var validation = ValidateExpense(
+        request.Category, request.Amount, request.Description);
+
+    if (validation is not null)
+        return Results.BadRequest(new { message = validation });
+
+    var expense = new Expense(
+        Guid.NewGuid(),
+        clientId,
+        request.Category,
+        request.Amount,
+        request.ExpenseDate,
+        request.Description);
+
+    db.Expenses.Add(expense);
+    await db.SaveChangesAsync(ct);
+
+    return Results.Created(
+        $"/api/v1/admin/expenses/{expense.Id}",
+        new
+        {
+            expense.Id,
+            expense.Category,
+            expense.Amount,
+            expense.ExpenseDate,
+            expense.Description,
+            expense.CreatedUtc,
+            expense.UpdatedUtc
+        });
+})
+.WithName("CreateAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapGet("/expenses", async (
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    DateOnly? fromDate,
+    DateOnly? toDate,
+    string? category,
+    int page = 1,
+    int pageSize = 10,
+    CancellationToken ct = default) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    if (fromDate.HasValue && toDate.HasValue &&
+        fromDate.Value > toDate.Value)
+    {
+        return Results.BadRequest(new
+        {
+            message = "From date cannot be after to date."
+        });
+    }
+
+    if (page < 1 || pageSize < 1 || pageSize > 100)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Page must be at least 1 and page size must be between 1 and 100."
+        });
+    }
+
+    var query = db.Expenses
+        .AsNoTracking()
+        .Where(x => x.ClientId == clientId);
+
+    if (fromDate.HasValue)
+        query = query.Where(x => x.ExpenseDate >= fromDate.Value);
+
+    if (toDate.HasValue)
+        query = query.Where(x => x.ExpenseDate <= toDate.Value);
+
+    if (!string.IsNullOrWhiteSpace(category))
+    {
+        var normalizedCategory = category.Trim();
+        query = query.Where(x => x.Category == normalizedCategory);
+    }
+
+    var totalCount = await query.CountAsync(ct);
+
+    var items = await query
+        .OrderByDescending(x => x.ExpenseDate)
+        .ThenByDescending(x => x.CreatedUtc)
+        .ThenByDescending(x => x.Id)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(x => new
+        {
+            x.Id,
+            x.Category,
+            x.Amount,
+            x.ExpenseDate,
+            x.Description,
+            x.CreatedUtc,
+            x.UpdatedUtc
+        })
+        .ToListAsync(ct);
+
+    return Results.Ok(new
+    {
+        items,
+        page,
+        pageSize,
+        totalCount,
+        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+    });
+})
+.WithName("GetAdminExpenses")
+.WithTags("Admin Expenses");
+
+
+
+adminApi.MapGet("/reports/profit", async (
+    DateOnly fromDate,
+    DateOnly toDate,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new
+        {
+            message = "From date must be on or before the to date."
+        });
+    }
+
+    if (toDate == DateOnly.MaxValue)
+    {
+        return Results.BadRequest(new
+        {
+            message = "The selected end date is outside the supported reporting range."
+        });
+    }
+
+    if (toDate.DayNumber - fromDate.DayNumber > 366)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Select a date range of no more than 367 calendar days."
+        });
+    }
+
+    var indiaZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows()
+            ? "India Standard Time"
+            : "Asia/Kolkata");
+
+    var localStart = DateTime.SpecifyKind(
+        fromDate.ToDateTime(TimeOnly.MinValue),
+        DateTimeKind.Unspecified);
+
+    var localEndExclusive = DateTime.SpecifyKind(
+        toDate.AddDays(1).ToDateTime(TimeOnly.MinValue),
+        DateTimeKind.Unspecified);
+
+    var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, indiaZone);
+    var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEndExclusive, indiaZone);
+
+    var completedOrders = db.CustomerOrders
+        .AsNoTracking()
+        .Where(x =>
+            x.ClientId == clientId &&
+            x.Status == CustomerOrderStatus.Completed &&
+            x.CompletedUtc >= utcStart &&
+            x.CompletedUtc < utcEnd);
+
+    var completedOrderCount = await completedOrders.CountAsync(ct);
+
+    var missingPriceCount = await completedOrders
+        .CountAsync(x => x.TotalAmount == null, ct);
+
+    var revenue = await completedOrders
+        .Where(x => x.TotalAmount != null)
+        .SumAsync(x => (decimal?)x.TotalAmount, ct) ?? 0m;
+
+    var expenseQuery = db.Expenses
+        .AsNoTracking()
+        .Where(x =>
+            x.ClientId == clientId &&
+            x.ExpenseDate >= fromDate &&
+            x.ExpenseDate <= toDate);
+
+    var expenseCount = await expenseQuery.CountAsync(ct);
+
+    var expenses = await expenseQuery
+        .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+
+    var expenseBreakdown = await expenseQuery
+    .GroupBy(x => x.Category)
+    .Select(group => new
+    {
+        category = group.Key,
+        amount = group.Sum(x => x.Amount),
+        count = group.Count()
+    })
+    .OrderByDescending(x => x.amount)
+    .ToListAsync(ct);
+
+    return Results.Ok(new
+    {
+        fromDate = fromDate.ToString("yyyy-MM-dd"),
+        toDate = toDate.ToString("yyyy-MM-dd"),
+        completedOrderCount,
+        completedOrdersMissingPrice = missingPriceCount,
+        revenue,
+        expenseCount,
+        expenses,
+        expenseBreakdown,
+        estimatedOperatingResult = revenue - expenses,
+        revenueComplete = missingPriceCount == 0
+    });
+})
+.WithName("GetAdminProfitReport")
+.WithTags("Admin Reports");
+
+
+
+adminApi.MapGet("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var expense = await db.Expenses
+        .AsNoTracking()
+        .Where(x => x.Id == id && x.ClientId == clientId)
+        .Select(x => new
+        {
+            x.Id,
+            x.Category,
+            x.Amount,
+            x.ExpenseDate,
+            x.Description,
+            x.CreatedUtc,
+            x.UpdatedUtc
+        })
+        .SingleOrDefaultAsync(ct);
+
+    return expense is null
+        ? Results.NotFound(new { message = "Expense not found." })
+        : Results.Ok(expense);
+})
+.WithName("GetAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapPut("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    UpdateExpenseRequest request,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var validation = ValidateExpense(
+        request.Category, request.Amount, request.Description);
+
+    if (validation is not null)
+        return Results.BadRequest(new { message = validation });
+
+    var expense = await db.Expenses
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (expense is null)
+        return Results.NotFound(new { message = "Expense not found." });
+
+    expense.Update(
+        request.Category,
+        request.Amount,
+        request.ExpenseDate,
+        request.Description);
+
+    await db.SaveChangesAsync(ct);
+
+    return Results.Ok(new
+    {
+        expense.Id,
+        expense.Category,
+        expense.Amount,
+        expense.ExpenseDate,
+        expense.Description,
+        expense.CreatedUtc,
+        expense.UpdatedUtc
+    });
+})
+.WithName("UpdateAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapDelete("/expenses/{id:guid}", async (
+    Guid id,
+    ClaimsPrincipal user,
+    CakeShopDbContext db,
+    CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId))
+        return Results.Forbid();
+
+    var expense = await db.Expenses
+        .SingleOrDefaultAsync(
+            x => x.Id == id && x.ClientId == clientId,
+            ct);
+
+    if (expense is null)
+        return Results.NotFound(new { message = "Expense not found." });
+
+    db.Expenses.Remove(expense);
+    await db.SaveChangesAsync(ct);
+
+    return Results.NoContent();
+})
+.WithName("DeleteAdminExpense")
+.WithTags("Admin Expenses");
+
+
+adminApi.MapGet("/products/{productId:guid}/variants",
+    async (Guid productId, ClaimsPrincipal user,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var productExists = await db.Products.AnyAsync(
+            x => x.Id == productId && x.ClientId == clientId, ct);
+
+        if (!productExists)
+            return Results.NotFound();
+
+        var variants = await db.ProductVariants
+            .AsNoTracking()
+            .Where(x => x.ProductId == productId && x.ClientId == clientId)
+            .OrderBy(x => x.WeightInGrams)
+            .Select(x => new ProductVariantDto(
+                x.Id, x.SizeLabel, x.WeightInGrams, x.Price, x.IsAvailable))
+            .ToListAsync(ct);
+
+        return Results.Ok(variants);
+    });
+
+adminApi.MapPost("/products/{productId:guid}/variants",
+    async (Guid productId, ClaimsPrincipal user,
+        ProductVariantWriteRequest request,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var productExists = await db.Products.AnyAsync(
+            x => x.Id == productId && x.ClientId == clientId, ct);
+
+        if (!productExists)
+            return Results.NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.SizeLabel) ||
+            request.SizeLabel.Trim().Length > 30 ||
+            request.WeightInGrams <= 0 || request.WeightInGrams > 100000 ||
+            request.Price <= 0 || request.Price > 9999999999999999m ||
+            request.Price != decimal.Round(request.Price, 2, MidpointRounding.AwayFromZero))
+        {
+            return Results.BadRequest(new
+            {
+                message = "Enter a valid size, weight and price."
+            });
+        }
+
+        var weightExists = await db.ProductVariants.AnyAsync(
+            x => x.ClientId == clientId &&
+                 x.ProductId == productId &&
+                 x.WeightInGrams == request.WeightInGrams, ct);
+
+        if (weightExists)
+            return Results.Conflict(new
+            {
+                message = "A variant for this weight already exists."
+            });
+
+        var variant = new ProductVariant(
+            Guid.NewGuid(),
+            clientId,
+            productId,
+            request.SizeLabel,
+            request.WeightInGrams,
+            request.Price,
+            request.IsAvailable);
+
+        db.ProductVariants.Add(variant);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/api/v1/admin/products/{productId}/variants/{variant.Id}",
+            new ProductVariantDto(
+                variant.Id, variant.SizeLabel, variant.WeightInGrams,
+                variant.Price, variant.IsAvailable));
+    });
+
+adminApi.MapPut("/products/{productId:guid}/variants/{variantId:guid}",
+    async (Guid productId, Guid variantId, ClaimsPrincipal user,
+        ProductVariantWriteRequest request,
+        CakeShopDbContext db, CancellationToken ct) =>
+    {
+        if (!TryGetClientId(user, out var clientId))
+            return Results.Forbid();
+
+        var variant = await db.ProductVariants.SingleOrDefaultAsync(
+            x => x.Id == variantId &&
+                 x.ProductId == productId &&
+                 x.ClientId == clientId, ct);
+
+        if (variant is null)
+            return Results.NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.SizeLabel) ||
+            request.SizeLabel.Trim().Length > 30 ||
+            request.WeightInGrams <= 0 || request.WeightInGrams > 100000 ||
+            request.Price <= 0 || request.Price > 9999999999999999m ||
+            request.Price != decimal.Round(request.Price, 2, MidpointRounding.AwayFromZero))
+        {
+            return Results.BadRequest(new
+            {
+                message = "Enter a valid size, weight and price."
+            });
+        }
+
+        var duplicateWeight = await db.ProductVariants.AnyAsync(
+            x => x.ClientId == clientId &&
+                 x.ProductId == productId &&
+                 x.WeightInGrams == request.WeightInGrams &&
+                 x.Id != variantId, ct);
+
+        if (duplicateWeight)
+            return Results.Conflict(new
+            {
+                message = "A variant for this weight already exists."
+            });
+
+        variant.Update(
+            request.SizeLabel,
+            request.WeightInGrams,
+            request.Price,
+            request.IsAvailable);
+
+        await db.SaveChangesAsync(ct);
+
+        return Results.Ok(new ProductVariantDto(
+            variant.Id, variant.SizeLabel, variant.WeightInGrams,
+            variant.Price, variant.IsAvailable));
+    });
+
+if (args.Any(arg => string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase)))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<CakeShopDbContext>();
+    await DevelopmentSeed.SeedAsync(db);
+    var adminEmail = Environment.GetEnvironmentVariable("CAKESHOP_ADMIN_EMAIL");
+    var adminPassword = Environment.GetEnvironmentVariable("CAKESHOP_ADMIN_PASSWORD");
+    if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
+    {
+        if (adminPassword.Length < 12) throw new InvalidOperationException("CAKESHOP_ADMIN_PASSWORD must be at least 12 characters.");
+        var normalizedEmail = adminEmail.Trim().ToUpperInvariant();
+        if (!await db.AdminUsers.AnyAsync(x => x.ClientId == defaultClientId && x.NormalizedEmail == normalizedEmail))
+        {
+            var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AdminUser>>();
+            var temporaryUser = new AdminUser(Guid.NewGuid(), defaultClientId, adminEmail, "temporary-hash-not-used");
+            var hash = hasher.HashPassword(temporaryUser, adminPassword);
+            db.AdminUsers.Add(new AdminUser(temporaryUser.Id, defaultClientId, adminEmail, hash, "ShopOwner"));
+            await db.SaveChangesAsync();
+            Console.WriteLine($"Development admin created for {adminEmail}. Store the password securely and remove it from your shell history.");
+        }
+        else Console.WriteLine("Admin user already exists; seed did not reset its password.");
+    }
+    else Console.WriteLine("CAKESHOP_ADMIN_EMAIL / CAKESHOP_ADMIN_PASSWORD not set; skipped admin user creation.");
+    Console.WriteLine("Development seed completed. Ensure EF migrations were applied first.");
+    return;
+}
+
+app.Run();
+
+static bool TryGetClientId(ClaimsPrincipal user, out Guid clientId) => Guid.TryParse(user.FindFirstValue("client_id"), out clientId) && clientId != Guid.Empty;
+static string? NormalizeSlug(string? slug, string? name)
+{
+    var source = string.IsNullOrWhiteSpace(slug) ? name : slug;
+    if (string.IsNullOrWhiteSpace(source)) return null;
+    var chars = source.Trim().ToLowerInvariant().Select(ch => char.IsLetterOrDigit(ch) ? ch : '-').ToArray();
+    var normalized = new string(chars);
+    while (normalized.Contains("--", StringComparison.Ordinal)) normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+    return normalized.Trim('-');
+}
+static string? ValidateProduct(ProductWriteRequest request, Guid clientId)
+{
+    if (request.CategoryId == Guid.Empty) return "Category is required.";
+    if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 160) return "Product name is required and must be at most 160 characters.";
+    if (request.Price < 0 || request.Price > 10000000) return "Price must be between 0 and 10,000,000.";
+    if ((request.Description?.Length ?? 0) > 2000) return "Description must be at most 2,000 characters.";
+    if ((request.Badge?.Length ?? 0) > 80) return "Badge must be at most 80 characters.";
+    var imageUrl = request.ImageUrl?.Trim();
+    var expectedTenantPrefix = $"/uploads/products/{clientId:N}/";
+    var isSafeUploadedImage = !string.IsNullOrWhiteSpace(imageUrl) &&
+        imageUrl.StartsWith(expectedTenantPrefix, StringComparison.Ordinal) &&
+        !imageUrl.StartsWith("//", StringComparison.Ordinal) &&
+        !imageUrl.Contains("..", StringComparison.Ordinal) &&
+        !imageUrl.Contains('\\', StringComparison.Ordinal);
+    var isHttpsImage = !string.IsNullOrWhiteSpace(imageUrl) &&
+        Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri) &&
+        imageUri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(imageUri.UserInfo);
+    if ((imageUrl?.Length ?? 0) > 1000 || (!string.IsNullOrWhiteSpace(imageUrl) && !isSafeUploadedImage && !isHttpsImage))
+        return "Image URL must be an HTTPS URL or an uploaded image belonging to this shop (or empty).";
+    var slug = NormalizeSlug(request.Slug, request.Name);
+    if (string.IsNullOrWhiteSpace(slug) || slug.Length > 180) return "Slug is invalid or too long.";
+    return null;
+}
+
+static string? ValidateExpense(
+    string? category,
+    decimal amount,
+    string? description)
+{
+    if (string.IsNullOrWhiteSpace(category) ||
+        category.Trim().Length > 80)
+    {
+        return "Category is required and must be at most 80 characters.";
+    }
+
+    if (amount <= 0 || amount > 9999999999999999m)
+        return "Amount must be greater than zero and within the supported limit.";
+
+    if (amount != decimal.Round(amount, 2, MidpointRounding.AwayFromZero))
+        return "Amount cannot have more than two decimal places.";
+
+    if (description?.Trim().Length > 500)
+        return "Description must be at most 500 characters.";
+
+    return null;
+}
+
+static string NormalizeHeroTextPosition(string? value) =>
+    value is "top" or "bottom" or "left" or "right" ? value : "left";
+
+static string? ValidateHeroBanner(HeroBannerWriteRequest request)
+{
+    if ((request.Title?.Trim().Length ?? 0) > 160)
+        return "Title must be at most 160 characters.";
+    if ((request.Subtitle?.Trim().Length ?? 0) > 500)
+        return "Subtitle must be at most 500 characters.";
+    if (request.TextPosition is not (null or "top" or "bottom" or "left" or "right"))
+        return "TextPosition must be top, bottom, left, or right.";
+    if (request.MediaType is not ("Image" or "Video"))
+        return "MediaType must be Image or Video.";
+    if (!IsAllowedHeroMediaUrl(request.MediaUrl) ||
+        (!string.IsNullOrWhiteSpace(request.MobileMediaUrl) && !IsAllowedHeroMediaUrl(request.MobileMediaUrl)))
+        return "Media URLs must be valid HTTPS URLs.";
+    if (request.ButtonText?.Length > 80 || request.ButtonUrl?.Length > 2000)
+        return "Button text or URL exceeds its allowed length.";
+    if (!string.IsNullOrWhiteSpace(request.ButtonUrl) && !IsAllowedHeroDestination(request.ButtonUrl))
+        return "Button destination must be a relative path or HTTPS URL.";
+    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc)
+        return "End date must be after start date.";
+    if (request.SortOrder < 0 || request.SortOrder > 10000)
+        return "Sort order must be between 0 and 10000.";
+    return null;
+}
+
+static bool IsAllowedHeroMediaUrl(string value) =>
+    (value.StartsWith("/uploads/heroes/", StringComparison.Ordinal) &&
+     !value.StartsWith("//", StringComparison.Ordinal) &&
+     !value.Contains("..", StringComparison.Ordinal) &&
+     !value.Contains('\\', StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
+static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
+{
+    if (extension is ".jpg" or ".jpeg")
+        return read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+    if (extension == ".png")
+        return read >= 8 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+               header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A;
+    if (extension == ".webp")
+        return read >= 12 && header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
+               header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P';
+    if (extension == ".mp4")
+        return read >= 8 && header[4] == (byte)'f' && header[5] == (byte)'t' && header[6] == (byte)'y' && header[7] == (byte)'p';
+    if (extension == ".webm")
+        return read >= 4 && header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3;
+    return false;
+}
+
+static bool IsAllowedHeroDestination(string value) =>
+    (value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) ||
+    (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+     uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
+
+public sealed record LoginRequest(string? Email, string? Password);
+public sealed record LoginResponse(string AccessToken, DateTime ExpiresUtc, string Email, string Role);
+public sealed record CategoryWriteRequest(string? Name, string? Slug, int SortOrder = 0, bool IsActive = true);
+public sealed record AdminCategoryDto(Guid Id, string Name, string Slug, int SortOrder, bool IsActive);
+public sealed record ProductWriteRequest(Guid CategoryId, string? Name, string? Slug, string? Description, decimal Price, string? ImageUrl, string? Badge, bool IsFeatured, bool IsAvailable = true);
+public sealed record AdminProductDto(Guid Id, Guid CategoryId, string Name, string Slug, string Description, decimal Price, string? ImageUrl, string? Badge, bool IsFeatured, bool IsAvailable, string CategoryName);
+
+public sealed record CreateCustomerOrderRequest(
+    Guid ProductId,
+    string? CustomerName,
+    string? CustomerPhone,
+    int Quantity,
+    string? CakeSize,
+    DateOnly? PreferredDate,
+    string? Customization,
+    Guid? VariantId);
+
+public sealed record UpdateCustomerOrderStatusRequest(
+    string? Status);
+
+public partial class Program { }
+
+
+public sealed record CreateExpenseRequest(
+    string? Category,
+    decimal Amount,
+    DateOnly ExpenseDate,
+    string? Description);
+
+public sealed record UpdateExpenseRequest(
+    string? Category,
+    decimal Amount,
+    DateOnly ExpenseDate,
+    string? Description);
+
+
+
+public sealed record ProductVariantDto(
+    Guid Id,
+    string SizeLabel,
+    int WeightInGrams,
+    decimal Price,
+    bool IsAvailable);
+
+public sealed record ProductVariantWriteRequest(
+    string? SizeLabel,
+    int WeightInGrams,
+    decimal Price,
+    bool IsAvailable);
+
+
+public sealed record VerifyRazorpayPaymentRequest(
+    Guid PaymentTransactionId,
+    string RazorpayPaymentId,
+    string RazorpaySignature);
+
+public sealed record HeroBannerWriteRequest(
+    string? Title,
+    string? Subtitle,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc,
+    string? TextPosition = null);
+
+public sealed record HeroBannerDto(
+    Guid Id,
+    string Title,
+    string Subtitle,
+    string TextPosition,
+    string MediaType,
+    string MediaUrl,
+    string? MobileMediaUrl,
+    string? ButtonText,
+    string? ButtonUrl,
+    int SortOrder,
+    DateTime? StartsUtc,
+    DateTime? EndsUtc,
+    bool IsPublished = false);
