@@ -436,7 +436,7 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   requestCheckoutOtp(): void {
-    const phone = this.checkoutPhone.replace(/\\D/g, '');
+    const phone = this.checkoutPhone.replace(/\D/g, '');
     if (phone.length < 10 || phone.length > 15) {
       this.checkoutError.set('Enter a valid mobile number with 10 to 15 digits.');
       return;
@@ -458,7 +458,7 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   verifyCheckoutOtp(): void {
-    const phone = this.checkoutPhone.replace(/\\D/g, '');
+    const phone = this.checkoutPhone.replace(/\D/g, '');
     if (!/^[0-9]{6}$/.test(this.checkoutOtp)) {
       this.checkoutError.set('Enter the 6-digit OTP.');
       return;
@@ -502,7 +502,7 @@ export class AppComponent implements OnDestroy, OnInit {
     this.completedCartLines.set(lines);
     this.orderApi.createCartOrder({
       customerName: this.checkoutCustomerName.trim(),
-      customerPhone: this.checkoutPhone.replace(/\\D/g, ''),
+      customerPhone: this.checkoutPhone.replace(/\D/g, ''),
       verificationToken: this.checkoutVerificationToken(),
       items: lines.map(line => ({
         productId: line.product.id!,
@@ -542,11 +542,11 @@ export class AppComponent implements OnDestroy, OnInit {
       ...items,
       `Order total: ${this.formatPrice(total)}`,
       `Customer: ${this.checkoutCustomerName.trim()}`,
-      `Verified mobile: ${this.checkoutPhone.replace(/\\D/g, '')}`,
+      `Verified mobile: ${this.checkoutPhone.replace(/\D/g, '')}`,
       ...(this.checkoutPreferredDate ? [`Preferred date: ${this.checkoutPreferredDate}`] : []),
       ...(this.checkoutCustomization.trim() ? [`Customisation: ${this.checkoutCustomization.trim()}`] : []),
       'Please confirm availability and any delivery charges.'
-    ].join('\\n');
+    ].join('\n');
     window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   }
 
