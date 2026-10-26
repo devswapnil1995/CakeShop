@@ -295,6 +295,15 @@ export class AppComponent implements OnDestroy, OnInit {
     });
   }
 
+  get checkoutPhoneDigits(): string {
+    return this.checkoutPhone.replace(/\D/g, '');
+  }
+
+  get savedOrderTotal(): number {
+    const order = this.savedOrder() as (CustomerOrderResponse & { totalAmount?: number }) | null;
+    return order?.totalAmount ?? this.completedCartLines().reduce((sum, line) => sum + line.lineTotal, 0);
+  }
+
   get cartSubtotal(): number {
     return Math.round(this.cartLines.reduce((total, line) => total + line.lineTotal, 0) * 100) / 100;
   }
