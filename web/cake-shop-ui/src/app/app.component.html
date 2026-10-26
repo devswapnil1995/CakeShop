@@ -28,6 +28,9 @@
     <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
     <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
+    <button class="cart-nav-button" type="button" (click)="openCart()" [attr.aria-label]="'Open shopping bag, ' + cartItemCount + ' items'">
+      <span aria-hidden="true">♡</span> Bag <span class="cart-nav-count">{{ cartItemCount }}</span>
+    </button>
     <button class="button button-dark nav-cta" type="button" (click)="orderOnWhatsApp()">
       Order on WhatsApp <span aria-hidden="true">↗</span>
     </button>
@@ -204,7 +207,7 @@
           } @else {
             <span class="product-size-count product-size-count-muted">Ask us for sizes</span>
           }
-          <button class="quick-order" type="button" (click)="startProductOrder(product.name)"
+          <button class="quick-order" type="button" (click)="beginAddToCart(product.name)"
             [attr.aria-label]="'Ask about ' + product.name">
             ↗
           </button>
@@ -485,6 +488,89 @@
   </section>
 }
 </main>
+
+
+<!-- Cart selection modal -->
+@if (addToCartOpen()) {
+  <div class="cart-overlay" (click)="closeAddToCart()">
+    <section class="cart-selection-modal" role="dialog" aria-modal="true" aria-labelledby="add-to-cart-title" (click)="$event.stopPropagation()">
+      <button class="cart-close-button" type="button" aria-label="Close product selection" (click)="closeAddToCart()">×</button>
+      @if (addToCartProduct(); as product) {
+        <p class="cart-eyebrow">MADE FRESH FOR YOU</p>
+        <h2 id="add-to-cart-title">Add a little sweetness</h2>
+        <div class="cart-selected-product">
+          <img [src]="product.image" [alt]="product.name" (error)="onProductImageError($event)" />
+          <div><h3>{{ product.name }}</h3><p>{{ product.description }}</p></div>
+        </div>
+        <label for="cartVariant">Choose your size</label>
+        <select id="cartVariant" name="cartVariant" [(ngModel)]="addToCartVariantId">
+          @for (variant of product.variants; track variant.id) {
+            @if (variant.isAvailable) {
+              <option [value]="variant.id">{{ variant.sizeLabel }} · {{ formatPrice(variant.price) }}</option>
+            }
+          }
+        </select>
+        <label for="cartAddQuantity">Quantity</label>
+        <div class="cart-quantity-stepper">
+          <button type="button" aria-label="Decrease quantity" [disabled]="addToCartQuantity <= 1" (click)="addToCartQuantity = addToCartQuantity - 1">−</button>
+          <span aria-live="polite">{{ addToCartQuantity }}</span>
+          <button type="button" aria-label="Increase quantity" [disabled]="addToCartQuantity >= 100" (click)="addToCartQuantity = addToCartQuantity + 1">＋</button>
+        </div>
+        @if (cartNotice()) { <p class="cart-inline-notice" role="status">{{ cartNotice() }}</p> }
+        <button class="cart-primary-button" type="button" (click)="confirmAddToCart()">Add to bag <span>→</span></button>
+      }
+    </section>
+  </div>
+}
+
+<!-- Shopping bag drawer -->
+@if (cartDrawerOpen()) {
+  <div class="cart-overlay cart-drawer-overlay" (click)="closeCart()">
+    <aside class="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title" (click)="$event.stopPropagation()">
+      <header class="cart-drawer-header">
+        <div><p class="cart-eyebrow">YOUR SWEET SELECTION</p><h2 id="cart-drawer-title">Your bag <span>({{ cartItemCount }})</span></h2></div>
+        <button class="cart-close-button" type="button" aria-label="Close shopping bag" (click)="closeCart()">×</button>
+      </header>
+      @if (cartLines.length) {
+        <div class="cart-lines">
+          @for (line of cartLines; track line.key) {
+            <article class="cart-line">
+              <img [src]="line.product.image" [alt]="line.product.name" (error)="onProductImageError($event)" />
+              <div class="cart-line-content">
+                <div class="cart-line-title-row">
+                  <div><h3>{{ line.product.name }}</h3><p>{{ line.variant.sizeLabel }}</p></div>
+                  <button class="cart-remove-button" type="button" (click)="removeCartLine(line.key)" [attr.aria-label]="'Remove ' + line.product.name">Remove</button>
+                </div>
+                <div class="cart-line-bottom">
+                  <div class="cart-quantity-stepper compact">
+                    <button type="button" [disabled]="line.quantity <= 1" [attr.aria-label]="'Decrease ' + line.product.name + ' quantity'" (click)="updateCartQuantity(line.key, -1)">−</button>
+                    <span aria-live="polite">{{ line.quantity }}</span>
+                    <button type="button" [disabled]="line.quantity >= 100" [attr.aria-label]="'Increase ' + line.product.name + ' quantity'" (click)="updateCartQuantity(line.key, 1)">＋</button>
+                  </div>
+                  <strong>{{ formatPrice(line.lineTotal) }}</strong>
+                </div>
+                <p class="cart-unit-price">{{ formatPrice(line.unitPrice) }} each</p>
+              </div>
+            </article>
+          }
+        </div>
+        <div class="cart-drawer-footer">
+          <div class="cart-subtotal-row"><span>Subtotal</span><strong>{{ formatPrice(cartSubtotal) }}</strong></div>
+          <p class="cart-footnote">Delivery or customisation charges, if any, will be confirmed before payment.</p>
+          @if (cartNotice()) { <p class="cart-inline-notice" role="status">{{ cartNotice() }}</p> }
+          <button class="cart-primary-button" type="button" (click)="startCartCheckout()">Continue to checkout <span>→</span></button>
+          <button class="cart-continue-button" type="button" (click)="closeCart()">Continue shopping</button>
+        </div>
+      } @else {
+        <div class="cart-empty-state">
+          <span aria-hidden="true">♡</span><h3>Your bag is waiting for something sweet</h3>
+          <p>Choose your favourite cake, select a size, and it will appear here.</p>
+          <button class="cart-primary-button" type="button" (click)="closeCart()">Explore the menu <span>→</span></button>
+        </div>
+      }
+    </aside>
+  </div>
+}
 
 <!-- Footer -->
 <footer class="site-footer">
