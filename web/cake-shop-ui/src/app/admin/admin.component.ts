@@ -66,6 +66,7 @@ export class AdminComponent implements OnInit {
   productSearch = '';
   productCategoryFilter = 'All';
   productAvailabilityFilter: 'All' | 'Available' | 'Unavailable' = 'All';
+  productHomepageFilter: 'All' | 'Homepage' | 'Featured' | 'Tagged' | 'NotOnHomepage' = 'All';
   readonly productImageUploading = signal(false);
   editingProductId: string | null = null;
   editingCategoryId: string | null = null;
@@ -494,7 +495,14 @@ export class AdminComponent implements OnInit {
         product.categoryId === this.productCategoryFilter;
       const matchesAvailability = this.productAvailabilityFilter === 'All' ||
         (this.productAvailabilityFilter === 'Available' ? product.isAvailable : !product.isAvailable);
-      return matchesSearch && matchesCategory && matchesAvailability;
+      const hasTag = Boolean(product.badge?.trim());
+      const appearsOnHomepage = product.isFeatured || hasTag;
+      const matchesHomepage = this.productHomepageFilter === 'All' ||
+        (this.productHomepageFilter === 'Homepage' && appearsOnHomepage) ||
+        (this.productHomepageFilter === 'Featured' && product.isFeatured) ||
+        (this.productHomepageFilter === 'Tagged' && hasTag) ||
+        (this.productHomepageFilter === 'NotOnHomepage' && !appearsOnHomepage);
+      return matchesSearch && matchesCategory && matchesAvailability && matchesHomepage;
     });
   }
 

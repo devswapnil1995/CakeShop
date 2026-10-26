@@ -309,12 +309,15 @@
                     alt="Product image preview" />
                 }
               </div>
-              <div class="field"><label for="productBadge">Badge</label><input id="productBadge" name="productBadge"
-                  [(ngModel)]="productForm.badge" maxlength="80" placeholder="Bestseller, New…" /></div>
+              <div class="field"><label for="productBadge">Homepage tag / badge</label><input id="productBadge" name="productBadge"
+                  [(ngModel)]="productForm.badge" maxlength="80" placeholder="Bestseller, New, Diwali special…" />
+                <p class="form-hint">A non-empty tag makes this product eligible for homepage curated picks. Leave it blank if it should appear only in Shop / Menu, unless Featured is enabled.</p>
+              </div>
             </div>
             <div class="toggle-row"><label><input type="checkbox" name="featured"
-                  [(ngModel)]="productForm.isFeatured" /> Featured item</label><label><input type="checkbox"
+                  [(ngModel)]="productForm.isFeatured" /> Featured on homepage</label><label><input type="checkbox"
                   name="available" [(ngModel)]="productForm.isAvailable" /> Available to order</label></div>
+            <p class="form-hint">Homepage rule: a product appears in curated picks when it is Featured or has a homepage tag. Availability controls ordering, not whether the product is listed.</p>
             <div class="form-actions"><button class="primary-btn" type="submit"
                 [disabled]="saving() || !categories().length">{{ saving() ? 'Saving…' : editingProductId ? 'Save
                 changes' :
@@ -351,6 +354,16 @@
                 <option value="All">All products</option>
                 <option value="Available">Available to order</option>
                 <option value="Unavailable">Unavailable</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="productHomepageFilter">Homepage visibility</label>
+              <select id="productHomepageFilter" name="productHomepageFilter" [(ngModel)]="productHomepageFilter">
+                <option value="All">All visibility states</option>
+                <option value="Homepage">Shown on homepage</option>
+                <option value="Featured">Featured products</option>
+                <option value="Tagged">Tagged products</option>
+                <option value="NotOnHomepage">Shop / Menu only</option>
               </select>
             </div>
           </div>
