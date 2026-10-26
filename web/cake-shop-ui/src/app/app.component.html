@@ -221,8 +221,8 @@
           <strong class="product-price">{{ product.price }}</strong>
         </div>
 
-        <button class="product-order" type="button" (click)="startProductOrder(product.name)">
-          Ask about this cake <span>→</span>
+        <button class="product-order add-to-bag-button" type="button" (click)="beginAddToCart(product.name)">
+          Add to bag <span aria-hidden="true">＋</span>
         </button>
       </article>
       }
