@@ -376,9 +376,27 @@
         <input id="customerName" name="customerName" type="text" [(ngModel)]="customerName" autocomplete="name"
           required />
 
-        <label for="customerPhone">Mobile number *</label>
-        <input id="customerPhone" name="customerPhone" [(ngModel)]="customerPhone" type="tel" inputmode="numeric"
-          autocomplete="tel" pattern="[0-9]{10}" maxlength="10" minlength="10" required />
+        <label for="customerPhone">Mobile number * <span class="checkout-required-note">OTP verification required</span></label>
+        <div class="checkout-phone-row">
+          <input id="customerPhone" name="customerPhone" [(ngModel)]="customerPhone" (ngModelChange)="resetLegacyVerification()" type="tel" inputmode="numeric"
+            autocomplete="tel" pattern="[0-9]{10}" maxlength="10" minlength="10" required />
+          <button class="checkout-otp-button" type="button" [disabled]="isRequestingLegacyOtp() || customerPhone.length !== 10" (click)="requestLegacyOtp()">
+            {{ isRequestingLegacyOtp() ? 'Sending…' : 'Get OTP' }}
+          </button>
+        </div>
+        @if (legacyTestOtp()) {
+          <div class="checkout-test-code" role="status"><strong>Local test OTP: {{ legacyTestOtp() }}</strong><span>No SMS was sent. Local Development test mode only.</span></div>
+        }
+        @if (legacyOtpMessage()) { <p class="checkout-status" role="status">{{ legacyOtpMessage() }}</p> }
+        <label for="legacyOtp">One-time password *</label>
+        <div class="checkout-phone-row">
+          <input id="legacyOtp" name="legacyOtp" [(ngModel)]="legacyOtp" type="text" inputmode="numeric" autocomplete="one-time-code"
+            pattern="[0-9]{6}" maxlength="6" [disabled]="legacyOtpVerified()" required />
+          <button class="checkout-otp-button" type="button" [disabled]="isVerifyingLegacyOtp() || legacyOtpVerified() || legacyOtp.length !== 6" (click)="verifyLegacyOtp()">
+            {{ legacyOtpVerified() ? 'Verified ✓' : (isVerifyingLegacyOtp() ? 'Checking…' : 'Verify OTP') }}
+          </button>
+        </div>
+        @if (legacyOtpVerified()) { <p class="checkout-verified" role="status"><span aria-hidden="true">✓</span> Mobile number verified</p> }
 
         <label for="orderQuantity">Quantity *</label>
         <div class="quantity-control">
@@ -439,6 +457,8 @@
         <button type="submit" class="order-submit-button" [disabled]="
   !selectedProduct()?.id ||
   !selectedVariant ||
+  !legacyOtpVerified() ||
+  !legacyVerificationToken() ||
   isSubmittingOrder() ||
   !orderForm.valid
 ">
