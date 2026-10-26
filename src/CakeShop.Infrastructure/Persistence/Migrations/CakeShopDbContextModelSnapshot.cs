@@ -49,6 +49,8 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("ClientId", "Id");
+
                     b.HasIndex("ClientId", "Slug")
                         .IsUnique();
 
@@ -101,6 +103,8 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(180)");
 
                     b.HasKey("Id");
+
+                    b.HasAlternateKey("ClientId", "Id");
 
                     b.HasIndex("ClientId", "CategoryId");
 
@@ -372,6 +376,8 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasAlternateKey("ClientId", "Id");
 
                     b.HasIndex("ClientId", "OrderNumber")
                         .IsUnique();
