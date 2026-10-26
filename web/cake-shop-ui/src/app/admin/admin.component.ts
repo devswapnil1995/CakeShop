@@ -523,7 +523,7 @@ export class AdminComponent implements OnInit {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     const extension = file.name.split('.').pop()?.toLowerCase();
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-    if (!allowedTypes.includes(file.type) || !extension || !allowedExtensions.includes(extension)) {
+    if (!extension || !allowedExtensions.includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
       this.error.set('Choose a JPG, PNG or WebP image.');
       input.value = '';
       return;
