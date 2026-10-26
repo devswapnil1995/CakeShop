@@ -53,6 +53,35 @@ export interface VerifyPaymentResponse {
   status: string;
 }
 
+export interface CheckoutOtpRequestResponse {
+  message: string;
+  testCode?: string;
+  expiresInSeconds: number;
+  retryAfterSeconds: number;
+}
+
+export interface CheckoutOtpVerifyResponse {
+  verified: boolean;
+  verificationToken: string;
+  expiresInSeconds: number;
+  message: string;
+}
+
+export interface CartCheckoutItemRequest {
+  productId: string;
+  variantId: string;
+  quantity: number;
+}
+
+export interface CartCheckoutRequest {
+  customerName: string;
+  customerPhone: string;
+  verificationToken: string;
+  items: CartCheckoutItemRequest[];
+  preferredDate: string | null;
+  customization: string | null;
+}
+
 export interface PaymentAvailabilityResponse {
   available: boolean;
 }
@@ -67,6 +96,21 @@ export class OrderApiService {
   ): Observable<CustomerOrderResponse> {
     return this.http.post<CustomerOrderResponse>(
       `${this.baseUrl}/orders`,
+      request
+    );
+  }
+
+  requestCheckoutOtp(phone: string): Observable<CheckoutOtpRequestResponse> {
+    return this.http.post<CheckoutOtpRequestResponse>(`${this.baseUrl}/checkout/otp/request`, { phone });
+  }
+
+  verifyCheckoutOtp(phone: string, code: string): Observable<CheckoutOtpVerifyResponse> {
+    return this.http.post<CheckoutOtpVerifyResponse>(`${this.baseUrl}/checkout/otp/verify`, { phone, code });
+  }
+
+  createCartOrder(request: CartCheckoutRequest): Observable<CustomerOrderResponse & { totalAmount: number; items: Array<{ productName: string; sizeLabel: string; quantity: number; unitPrice: number; lineTotal: number }> }> {
+    return this.http.post<CustomerOrderResponse & { totalAmount: number; items: Array<{ productName: string; sizeLabel: string; quantity: number; unitPrice: number; lineTotal: number }> }>(
+      `${this.baseUrl}/checkout/orders`,
       request
     );
   }
