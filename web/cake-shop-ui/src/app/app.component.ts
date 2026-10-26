@@ -637,6 +637,7 @@ export class AppComponent implements OnDestroy, OnInit {
     this.cakeMessage = '';
     this.customerName = '';
     this.customerPhone = '';
+    this.resetLegacyVerification();
     this.orderError = '';
 
     this.orderFormOpen.set(true);
