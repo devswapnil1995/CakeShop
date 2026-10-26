@@ -14,6 +14,11 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddUniqueConstraint(
+                name: "AK_ProductVariants_ClientId_Id",
+                table: "ProductVariants",
+                columns: new[] { "ClientId", "Id" });
+
             migrationBuilder.CreateTable(
                 name: "CustomerOrderItems",
                 columns: table => new
@@ -72,6 +77,9 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(name: "CustomerOrderItems");
+            migrationBuilder.DropUniqueConstraint(
+                name: "AK_ProductVariants_ClientId_Id",
+                table: "ProductVariants");
         }
     }
 }
