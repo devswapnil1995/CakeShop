@@ -379,6 +379,26 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("CustomerOrders", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Orders.CustomerOrderItem", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("OrderId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("ProductId").HasColumnType("uniqueidentifier");
+                    b.Property<Guid>("ProductVariantId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ProductName").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
+                    b.Property<string>("SizeLabel").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<int>("WeightInGrams").HasColumnType("int");
+                    b.Property<int>("Quantity").HasColumnType("int");
+                    b.Property<decimal>("UnitPrice").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.Property<decimal>("LineTotal").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.HasKey("Id");
+                    b.HasIndex("ClientId", "OrderId");
+                    b.HasIndex("ClientId", "ProductId");
+                    b.HasIndex("ClientId", "ProductVariantId");
+                    b.ToTable("CustomerOrderItems", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Orders.OrderStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -649,6 +669,19 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Orders.CustomerOrderItem", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Orders.CustomerOrder", null)
+                        .WithMany().HasForeignKey("ClientId", "OrderId")
+                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("CakeShop.Domain.Catalog.Product", null)
+                        .WithMany().HasForeignKey("ClientId", "ProductId")
+                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("CakeShop.Domain.Catalog.ProductVariant", null)
+                        .WithMany().HasForeignKey("ClientId", "ProductVariantId")
+                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
                 });
 
             modelBuilder.Entity("CakeShop.Domain.Orders.OrderStatusHistory", b =>
