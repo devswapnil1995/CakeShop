@@ -624,7 +624,7 @@
           <label for="checkoutPhone">Mobile number * <span class="checkout-required-note">OTP verification required</span></label>
           <div class="checkout-phone-row">
             <input id="checkoutPhone" name="checkoutPhone" type="tel" inputmode="numeric" autocomplete="tel" [(ngModel)]="checkoutPhone" (ngModelChange)="resetCheckoutVerification()" maxlength="16" placeholder="10-digit mobile number" required />
-            <button class="checkout-otp-button" type="button" [disabled]="isRequestingCheckoutOtp() || checkoutPhone.replace(/\D/g, '').length < 10" (click)="requestCheckoutOtp()">
+            <button class="checkout-otp-button" type="button" [disabled]="isRequestingCheckoutOtp() || checkoutPhoneDigits.length < 10" (click)="requestCheckoutOtp()">
               {{ isRequestingCheckoutOtp() ? 'Sending…' : 'Get OTP' }}
             </button>
           </div>
