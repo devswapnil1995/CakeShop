@@ -4388,3 +4388,10 @@ h2 em {
   .checkout-phone-row { gap: 6px; }
   .checkout-otp-button { min-width: 88px; padding: 0 9px; font-size: 11px; }
 }
+
+.cart-toast { position: fixed; z-index: 10500; top: 96px; right: 22px; display: flex; align-items: center; gap: 11px; max-width: min(420px, calc(100vw - 28px)); padding: 13px 15px; border: 1px solid #e4d2c1; border-radius: 14px; background: #fffaf4; color: #603b2d; box-shadow: 0 15px 45px #3e2b2426; animation: cartModalIn .25s ease both; }
+.cart-toast > span { display: grid; place-items: center; flex: 0 0 auto; width: 25px; height: 25px; border-radius: 50%; background: #e1f2e5; color: #28704a; font-weight: 700; }
+.cart-toast p { margin: 0; font-size: 12px; line-height: 1.4; }
+.cart-toast button { border: 0; background: transparent; color: #8b7668; font-size: 20px; cursor: pointer; }
+@media(max-width:680px) { .cart-toast { top: 84px; right: 12px; } }
+@media(prefers-reduced-motion: reduce) { .cart-toast { animation: none !important; } }
