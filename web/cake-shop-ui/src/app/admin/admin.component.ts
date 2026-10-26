@@ -516,7 +516,25 @@ export class AdminComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+
     this.error.set('');
+    this.notice = '';
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!allowedTypes.includes(file.type) || !extension || !allowedExtensions.includes(extension)) {
+      this.error.set('Choose a JPG, PNG or WebP image.');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set('Image must be 10 MB or smaller.');
+      input.value = '';
+      return;
+    }
+
     this.productImageUploading.set(true);
     this.api.uploadProductImage(file).pipe(finalize(() => {
       this.productImageUploading.set(false);
@@ -528,6 +546,12 @@ export class AdminComponent implements OnInit {
       },
       error: err => this.handleApiError(err)
     });
+  }
+
+  clearProductImage(): void {
+    this.productForm.imageUrl = null;
+    this.notice = 'Image removed from this product. Save the product to keep this change.';
+    this.error.set('');
   }
 
   editProduct(product: AdminProduct): void {
