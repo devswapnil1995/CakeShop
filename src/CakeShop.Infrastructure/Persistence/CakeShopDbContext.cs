@@ -17,6 +17,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
+    public DbSet<CustomerOrderItem> CustomerOrderItems => Set<CustomerOrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories
     => Set<OrderStatusHistory>();
 
@@ -129,6 +130,29 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.HasAlternateKey(x => new { x.ClientId, x.Id });
+        });
+
+        modelBuilder.Entity<CustomerOrderItem>(e =>
+        {
+            e.ToTable("CustomerOrderItems");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProductName).HasMaxLength(160).IsRequired();
+            e.Property(x => x.SizeLabel).HasMaxLength(30).IsRequired();
+            e.Property(x => x.UnitPrice).HasPrecision(18, 2);
+            e.Property(x => x.LineTotal).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.ClientId, x.OrderId });
+            e.HasOne<CustomerOrder>().WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.OrderId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Product>().WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.ProductId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ProductVariant>().WithMany()
+                .HasForeignKey(x => new { x.ClientId, x.ProductVariantId })
+                .HasPrincipalKey(x => new { x.ClientId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OrderStatusHistory>(e =>
