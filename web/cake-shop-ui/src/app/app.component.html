@@ -37,6 +37,13 @@
   </nav>
 </header>
 
+@if (cartNotice() && !addToCartOpen() && !cartDrawerOpen() && !checkoutOpen()) {
+  <div class="cart-toast" role="status">
+    <span aria-hidden="true">✓</span><p>{{ cartNotice() }}</p>
+    <button type="button" aria-label="Dismiss message" (click)="clearCartNotice()">×</button>
+  </div>
+}
+
 <main>
   @if (!isShopRoute()) {
   <!-- Homepage-only hero and introduction. -->
