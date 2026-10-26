@@ -69,6 +69,22 @@ export class AppComponent implements OnDestroy, OnInit {
   addToCartVariantId = '';
   addToCartQuantity = 1;
   readonly cartNotice = signal('');
+  readonly checkoutOpen = signal(false);
+  readonly checkoutSuccess = signal(false);
+  readonly checkoutOtpVerified = signal(false);
+  readonly checkoutTestOtp = signal('');
+  readonly checkoutOtpMessage = signal('');
+  readonly checkoutError = signal('');
+  readonly checkoutVerificationToken = signal('');
+  readonly isRequestingCheckoutOtp = signal(false);
+  readonly isVerifyingCheckoutOtp = signal(false);
+  readonly isSubmittingCartOrder = signal(false);
+  readonly completedCartLines = signal<CartLine[]>([]);
+  checkoutCustomerName = '';
+  checkoutPhone = '';
+  checkoutOtp = '';
+  checkoutPreferredDate = '';
+  checkoutCustomization = '';
 
   activeCategory = 'All';
   readonly mobileMenuOpen = signal(false);
@@ -394,6 +410,147 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   startCartCheckout(): void {
+    if (!this.cartLines.length) {
+      this.cartNotice.set('Add at least one available cake to your bag before checkout.');
+      return;
+    }
+    this.cartDrawerOpen.set(false);
+    this.checkoutOpen.set(true);
+    this.checkoutSuccess.set(false);
+    this.checkoutOtpVerified.set(false);
+    this.checkoutTestOtp.set('');
+    this.checkoutOtpMessage.set('');
+    this.checkoutError.set('');
+    this.checkoutVerificationToken.set('');
+    this.checkoutOtp = '';
+    this.checkoutPreferredDate = '';
+    this.checkoutCustomization = '';
+    this.savedOrder.set(null);
+    this.paymentMessage.set('');
+    this.paymentError.set('');
+  }
+
+  closeCheckout(): void {
+    this.checkoutOpen.set(false);
+    this.checkoutError.set('');
+  }
+
+  requestCheckoutOtp(): void {
+    const phone = this.checkoutPhone.replace(/\\D/g, '');
+    if (phone.length < 10 || phone.length > 15) {
+      this.checkoutError.set('Enter a valid mobile number with 10 to 15 digits.');
+      return;
+    }
+    if (this.isRequestingCheckoutOtp()) return;
+    this.checkoutError.set('');
+    this.checkoutOtpMessage.set('');
+    this.checkoutTestOtp.set('');
+    this.isRequestingCheckoutOtp.set(true);
+    this.orderApi.requestCheckoutOtp(phone).pipe(finalize(() => this.isRequestingCheckoutOtp.set(false))).subscribe({
+      next: response => {
+        this.checkoutOtpMessage.set(response.message + (response.retryAfterSeconds ? ` You can request another code in ${response.retryAfterSeconds}s.` : ''));
+        this.checkoutTestOtp.set(response.testCode ?? '');
+        this.checkoutOtpVerified.set(false);
+        this.checkoutVerificationToken.set('');
+      },
+      error: error => this.checkoutError.set(error?.error?.detail ?? error?.error?.message ?? 'We could not request a verification code. Please try again.')
+    });
+  }
+
+  verifyCheckoutOtp(): void {
+    const phone = this.checkoutPhone.replace(/\\D/g, '');
+    if (!/^[0-9]{6}$/.test(this.checkoutOtp)) {
+      this.checkoutError.set('Enter the 6-digit OTP.');
+      return;
+    }
+    if (this.isVerifyingCheckoutOtp()) return;
+    this.checkoutError.set('');
+    this.isVerifyingCheckoutOtp.set(true);
+    this.orderApi.verifyCheckoutOtp(phone, this.checkoutOtp).pipe(finalize(() => this.isVerifyingCheckoutOtp.set(false))).subscribe({
+      next: response => {
+        this.checkoutOtpVerified.set(response.verified);
+        this.checkoutVerificationToken.set(response.verificationToken);
+        this.checkoutOtpMessage.set(response.message);
+        this.checkoutTestOtp.set('');
+        this.checkoutError.set('');
+      },
+      error: error => {
+        this.checkoutOtpVerified.set(false);
+        this.checkoutVerificationToken.set('');
+        this.checkoutError.set(error?.error?.message ?? 'OTP verification failed. Request a new code if it has expired.');
+      }
+    });
+  }
+
+  placeCartOrder(): void {
+    if (!this.checkoutOtpVerified() || !this.checkoutVerificationToken()) {
+      this.checkoutError.set('Verify your mobile number before placing the order.');
+      return;
+    }
+    if (!this.checkoutCustomerName.trim() || this.checkoutCustomerName.trim().length > 120) {
+      this.checkoutError.set('Enter your name (maximum 120 characters).');
+      return;
+    }
+    const lines = this.cartLines;
+    if (!lines.length) {
+      this.checkoutError.set('Your cart no longer contains available items. Please review it again.');
+      return;
+    }
+    if (this.isSubmittingCartOrder()) return;
+    this.checkoutError.set('');
+    this.isSubmittingCartOrder.set(true);
+    this.completedCartLines.set(lines);
+    this.orderApi.createCartOrder({
+      customerName: this.checkoutCustomerName.trim(),
+      customerPhone: this.checkoutPhone.replace(/\\D/g, ''),
+      verificationToken: this.checkoutVerificationToken(),
+      items: lines.map(line => ({
+        productId: line.product.id!,
+        variantId: line.variant.id,
+        quantity: line.quantity
+      })),
+      preferredDate: this.checkoutPreferredDate || null,
+      customization: this.checkoutCustomization.trim() || null
+    }).pipe(finalize(() => this.isSubmittingCartOrder.set(false))).subscribe({
+      next: response => {
+        this.savedOrder.set(response);
+        this.checkoutSuccess.set(true);
+        this.cartEntries.set([]);
+        this.persistCart();
+        this.checkoutVerificationToken.set('');
+        this.checkoutOtpVerified.set(false);
+      },
+      error: error => {
+        this.checkoutError.set(error?.error?.message ?? 'We could not place your order. Please review your cart and try again.');
+        if (error?.status === 400 && String(error?.error?.message ?? '').toLowerCase().includes('verification')) {
+          this.checkoutOtpVerified.set(false);
+          this.checkoutVerificationToken.set('');
+        }
+      }
+    });
+  }
+
+  continueCartToWhatsApp(): void {
+    const order = this.savedOrder();
+    if (!order) return;
+    const items = this.completedCartLines().map(line =>
+      `• ${line.product.name} — ${line.variant.sizeLabel} × ${line.quantity} = ${this.formatPrice(line.lineTotal)}`);
+    const total = (order as CustomerOrderResponse & { totalAmount?: number }).totalAmount ?? this.completedCartLines().reduce((sum, line) => sum + line.lineTotal, 0);
+    const message = [
+      `Hi ${this.brandName}! I've submitted my cart order.`,
+      `Order number: ${order.orderNumber}`,
+      ...items,
+      `Order total: ${this.formatPrice(total)}`,
+      `Customer: ${this.checkoutCustomerName.trim()}`,
+      `Verified mobile: ${this.checkoutPhone.replace(/\\D/g, '')}`,
+      ...(this.checkoutPreferredDate ? [`Preferred date: ${this.checkoutPreferredDate}`] : []),
+      ...(this.checkoutCustomization.trim() ? [`Customisation: ${this.checkoutCustomization.trim()}`] : []),
+      'Please confirm availability and any delivery charges.'
+    ].join('\\n');
+    window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  }
+
+
     if (!this.cartLines.length) {
       this.cartNotice.set('Add at least one available cake to your bag before checkout.');
       return;
