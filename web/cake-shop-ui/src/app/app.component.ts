@@ -32,7 +32,7 @@ export class AppComponent implements OnDestroy, OnInit {
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   );
   readonly isShopRoute = signal(
-    typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/shop'
+    typeof window !== 'undefined' && window.location.pathname.replace(/\\/+$/, '') === '/shop'
   );
   private readonly catalogApi = inject(CatalogApiService);
 
