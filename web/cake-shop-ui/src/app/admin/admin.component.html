@@ -305,8 +305,12 @@
                   @if (productImageUploading()) { <span class="form-hint">Uploading image…</span> }
                 </div>
                 @if (productForm.imageUrl) {
-                  <img class="product-image-preview" [src]="resolveProductImageUrl(productForm.imageUrl)"
-                    alt="Product image preview" />
+                  <div class="product-image-preview-wrap">
+                    <img class="product-image-preview" [src]="resolveProductImageUrl(productForm.imageUrl)"
+                      alt="Product image preview" />
+                    <button class="quiet-btn" type="button" (click)="clearProductImage()"
+                      [disabled]="productImageUploading()">Clear image</button>
+                  </div>
                 }
               </div>
               <div class="field"><label for="productBadge">Homepage tag / badge</label><input id="productBadge" name="productBadge"
