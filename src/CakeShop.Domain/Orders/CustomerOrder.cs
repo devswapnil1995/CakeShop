@@ -80,6 +80,20 @@ namespace CakeShop.Domain.Orders
         }
 
 
+        public void SetCartSummary(int distinctProducts, int totalQuantity, decimal totalAmount)
+        {
+            if (distinctProducts < 1 || totalQuantity < 1 || totalAmount <= 0 ||
+                totalAmount != decimal.Round(totalAmount, 2, MidpointRounding.AwayFromZero))
+                throw new ArgumentOutOfRangeException(nameof(totalAmount));
+
+            CakeName = $"Cart order ({distinctProducts} items)";
+            Quantity = totalQuantity;
+            CakeSize = "Multiple";
+            UnitPrice = null;
+            TotalAmount = totalAmount;
+            UpdatedUtc = DateTime.UtcNow;
+        }
+
         public bool CanTransitionTo(CustomerOrderStatus nextStatus)
         {
             return Status switch
