@@ -452,6 +452,27 @@ export class AppComponent implements OnDestroy, OnInit {
     this.paymentError.set('');
   }
 
+  startCartCheckout(): void {
+    if (!this.cartLines.length) {
+      this.cartNotice.set('Add at least one available cake to your bag before checkout.');
+      return;
+    }
+    this.cartDrawerOpen.set(false);
+    this.checkoutOpen.set(true);
+    this.checkoutSuccess.set(false);
+    this.checkoutOtpVerified.set(false);
+    this.checkoutTestOtp.set('');
+    this.checkoutOtpMessage.set('');
+    this.checkoutError.set('');
+    this.checkoutVerificationToken.set('');
+    this.checkoutOtp = '';
+    this.checkoutPreferredDate = '';
+    this.checkoutCustomization = '';
+    this.savedOrder.set(null);
+    this.paymentMessage.set('');
+    this.paymentError.set('');
+  }
+
   closeCheckout(): void {
     this.checkoutOpen.set(false);
     this.checkoutError.set('');
@@ -579,14 +600,6 @@ export class AppComponent implements OnDestroy, OnInit {
     window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   }
 
-
-    if (!this.cartLines.length) {
-      this.cartNotice.set('Add at least one available cake to your bag before checkout.');
-      return;
-    }
-    this.cartDrawerOpen.set(false);
-    this.cartNotice.set('Your cart is ready. Mobile OTP verification will be required before checkout can be completed.');
-  }
 
   setCategory(category: string): void {
     this.activeCategory = category;
