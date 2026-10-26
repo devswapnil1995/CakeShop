@@ -435,6 +435,13 @@ export class AppComponent implements OnDestroy, OnInit {
     this.checkoutError.set('');
   }
 
+  resetCheckoutVerification(): void {
+    this.checkoutOtpVerified.set(false);
+    this.checkoutVerificationToken.set('');
+    this.checkoutTestOtp.set('');
+    this.checkoutOtpMessage.set('');
+  }
+
   requestCheckoutOtp(): void {
     const phone = this.checkoutPhone.replace(/\D/g, '');
     if (phone.length < 10 || phone.length > 15) {
