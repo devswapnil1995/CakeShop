@@ -452,27 +452,6 @@ export class AppComponent implements OnDestroy, OnInit {
     this.paymentError.set('');
   }
 
-  startCartCheckout(): void {
-    if (!this.cartLines.length) {
-      this.cartNotice.set('Add at least one available cake to your bag before checkout.');
-      return;
-    }
-    this.cartDrawerOpen.set(false);
-    this.checkoutOpen.set(true);
-    this.checkoutSuccess.set(false);
-    this.checkoutOtpVerified.set(false);
-    this.checkoutTestOtp.set('');
-    this.checkoutOtpMessage.set('');
-    this.checkoutError.set('');
-    this.checkoutVerificationToken.set('');
-    this.checkoutOtp = '';
-    this.checkoutPreferredDate = '';
-    this.checkoutCustomization = '';
-    this.savedOrder.set(null);
-    this.paymentMessage.set('');
-    this.paymentError.set('');
-  }
-
   closeCheckout(): void {
     this.checkoutOpen.set(false);
     this.checkoutError.set('');
