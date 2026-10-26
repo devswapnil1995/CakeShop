@@ -275,7 +275,7 @@
                   name="productName" [(ngModel)]="productForm.name" required maxlength="160"
                   placeholder="e.g. Velvet Rose Cake" /></div>
               <div class="field"><label for="productSlug">URL slug</label><input id="productSlug" name="productSlug"
-                  [(ngModel)]="productForm.slug" placeholder="velvet-rose-cake (optional)" /></div>
+                  [(ngModel)]="productForm.slug" maxlength="180" placeholder="velvet-rose-cake (optional)" /></div>
               <div class="field"><label for="productCategory">Category *</label><select id="productCategory"
                   name="productCategory" [(ngModel)]="productForm.categoryId" required>
                   <option value="">Choose a category</option>
@@ -285,7 +285,7 @@
                   }
                 </select></div>
               <div class="field"><label for="productPrice">Base price / fallback (₹) *</label>
-                <input id="productPrice" name="productPrice" type="number" min="0" step="0.01"
+                <input id="productPrice" name="productPrice" type="number" min="0" max="10000000" step="0.01"
                   [(ngModel)]="productForm.price" required />
                 <p class="form-hint">
                   Customer orders use the selected size price when sizes are configured.
@@ -296,7 +296,7 @@
                   maxlength="2000" placeholder="Describe the layers, flavours and finish…"></textarea></div>
               <div class="field span-two">
                 <label for="productImage">Product image</label>
-                <input id="productImage" name="productImage" type="text" [(ngModel)]="productForm.imageUrl"
+                <input id="productImage" name="productImage" type="text" [(ngModel)]="productForm.imageUrl" maxlength="1000"
                   placeholder="Paste an HTTPS image URL or upload an image below" />
                 <p class="form-hint">Use JPG, PNG or WebP up to 10 MB. Uploaded files are stored by this API; external image URLs must use HTTPS.</p>
                 <div class="product-image-tools">
