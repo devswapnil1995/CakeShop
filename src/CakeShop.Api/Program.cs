@@ -1025,6 +1025,18 @@ adminApi.MapGet("/orders", async (
             Status = x.Status.ToString(),
             x.CreatedUtc,
             x.UpdatedUtc,
+            Items = db.CustomerOrderItems.AsNoTracking()
+                .Where(item => item.ClientId == x.ClientId && item.OrderId == x.Id)
+                .OrderBy(item => item.ProductName)
+                .Select(item => new
+                {
+                    item.ProductName,
+                    item.SizeLabel,
+                    item.WeightInGrams,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.LineTotal
+                }).ToList(),
             PaymentStatus = db.PaymentTransactions
     .Where(p => p.OrderId == x.Id
              && p.ClientId == x.ClientId
