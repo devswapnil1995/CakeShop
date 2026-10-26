@@ -584,10 +584,12 @@ export class AdminComponent implements OnInit {
       !this.productForm.categoryId ||
       !this.productForm.name.trim() ||
       !Number.isFinite(Number(this.productForm.price)) ||
-      Number(this.productForm.price) < 0
+      Number(this.productForm.price) < 0 ||
+      Number(this.productForm.price) > 10000000 ||
+      Math.round(Number(this.productForm.price) * 100) !== Number(this.productForm.price) * 100
     ) {
       this.error.set(
-        'Add a name, select a category and enter a valid price.'
+        'Add a name, select a category and enter a price between ₹0 and ₹10,000,000 with at most two decimal places.'
       );
       return;
     }
