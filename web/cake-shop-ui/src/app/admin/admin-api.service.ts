@@ -94,6 +94,14 @@ export interface AdminOrder {
   createdUtc: string;
   updatedUtc: string;
   paymentStatus: string | null;
+  items?: Array<{
+    productName: string;
+    sizeLabel: string;
+    weightInGrams: number;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
 }
 
 export interface OrderStatusHistory {
