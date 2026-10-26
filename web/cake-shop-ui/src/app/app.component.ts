@@ -104,6 +104,13 @@ export class AppComponent implements OnDestroy, OnInit {
   customerName = '';
   customerPhone = '';
   orderError = '';
+  readonly legacyOtpVerified = signal(false);
+  readonly legacyOtpMessage = signal('');
+  readonly legacyTestOtp = signal('');
+  readonly legacyVerificationToken = signal('');
+  legacyOtp = '';
+  readonly isRequestingLegacyOtp = signal(false);
+  readonly isVerifyingLegacyOtp = signal(false);
 
 
   readonly products = signal<CakeProduct[]>([]);
@@ -645,6 +652,59 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
 
+  resetLegacyVerification(): void {
+    this.legacyOtpVerified.set(false);
+    this.legacyOtpMessage.set('');
+    this.legacyTestOtp.set('');
+    this.legacyVerificationToken.set('');
+    this.legacyOtp = '';
+  }
+
+  requestLegacyOtp(): void {
+    const phone = this.customerPhone.replace(/\D/g, '');
+    if (phone.length !== 10) {
+      this.orderError = 'Enter a valid 10-digit mobile number.';
+      return;
+    }
+    if (this.isRequestingLegacyOtp()) return;
+    this.orderError = '';
+    this.isRequestingLegacyOtp.set(true);
+    this.orderApi.requestCheckoutOtp(phone).pipe(finalize(() => this.isRequestingLegacyOtp.set(false))).subscribe({
+      next: response => {
+        this.legacyOtpMessage.set(response.message);
+        this.legacyTestOtp.set(response.testCode ?? '');
+        this.legacyOtpVerified.set(false);
+        this.legacyVerificationToken.set('');
+      },
+      error: error => this.orderError = error?.error?.detail ?? error?.error?.message ?? 'Could not request an OTP.'
+    });
+  }
+
+  verifyLegacyOtp(): void {
+    const phone = this.customerPhone.replace(/\D/g, '');
+    if (!/^[0-9]{6}$/.test(this.legacyOtp)) {
+      this.orderError = 'Enter the 6-digit OTP.';
+      return;
+    }
+    if (this.isVerifyingLegacyOtp()) return;
+    this.orderError = '';
+    this.isVerifyingLegacyOtp.set(true);
+    this.orderApi.verifyCheckoutOtp(phone, this.legacyOtp).pipe(finalize(() => this.isVerifyingLegacyOtp.set(false))).subscribe({
+      next: response => {
+        this.legacyOtpVerified.set(response.verified);
+        this.legacyVerificationToken.set(response.verificationToken);
+        this.legacyOtpMessage.set(response.message);
+        this.legacyTestOtp.set('');
+        this.orderError = '';
+      },
+      error: error => {
+        this.legacyOtpVerified.set(false);
+        this.legacyVerificationToken.set('');
+        this.orderError = error?.error?.message ?? 'OTP verification failed. Request a new code if it has expired.';
+      }
+    });
+  }
+
   submitOrder(): void {
     if (this.isSubmittingOrder()) return;
 
@@ -657,6 +717,11 @@ export class AppComponent implements OnDestroy, OnInit {
 
     if (!/^[0-9]{10}$/.test(this.customerPhone.trim())) {
       this.orderError = 'Please enter a valid 10-digit mobile number.';
+      return;
+    }
+
+    if (!this.legacyOtpVerified() || !this.legacyVerificationToken()) {
+      this.orderError = 'Verify your mobile number with OTP before submitting the order.';
       return;
     }
 
@@ -689,6 +754,7 @@ export class AppComponent implements OnDestroy, OnInit {
       variantId: this.selectedVariant?.id ?? null,
       customerName: this.customerName.trim(),
       customerPhone: this.customerPhone.trim(),
+      verificationToken: this.legacyVerificationToken(),
       quantity: this.orderQuantity,
       cakeSize: this.selectedVariant!.sizeLabel,
       preferredDate: this.preferredDate || null,
