@@ -581,14 +581,14 @@
         <div><p class="cart-eyebrow">A LITTLE MORE TO MAKE IT OFFICIAL</p><h2 id="checkout-title">{{ checkoutSuccess() ? 'Your order is in!' : 'Checkout securely' }}</h2></div>
         <button class="cart-close-button" type="button" aria-label="Close checkout" (click)="closeCheckout()">×</button>
       </header>
-      @if (checkoutSuccess(); as success) {
+      @if (checkoutSuccess()) {
         @if (savedOrder(); as order) {
           <div class="checkout-success">
             <span class="checkout-success-icon" aria-hidden="true">✓</span>
             <h3>Thank you, {{ checkoutCustomerName }}!</h3>
             <p>Your cart order has been saved. We’ll confirm availability and any delivery charges with you.</p>
             <div class="checkout-order-number"><span>Order number</span><strong>{{ order.orderNumber }}</strong></div>
-            <div class="checkout-order-number"><span>Order total</span><strong>{{ formatPrice((order as any).totalAmount ?? cartSubtotal) }}</strong></div>
+            <div class="checkout-order-number"><span>Order total</span><strong>{{ formatPrice(savedOrderTotal) }}</strong></div>
             <div class="checkout-success-items">
               @for (line of completedCartLines(); track line.key) {
                 <div><span>{{ line.product.name }} · {{ line.variant.sizeLabel }} × {{ line.quantity }}</span><strong>{{ formatPrice(line.lineTotal) }}</strong></div>
