@@ -572,6 +572,90 @@
   </div>
 }
 
+
+<!-- Mandatory mobile OTP checkout -->
+@if (checkoutOpen()) {
+  <div class="cart-overlay checkout-overlay" (click)="closeCheckout()">
+    <section class="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" (click)="$event.stopPropagation()">
+      <header class="checkout-header">
+        <div><p class="cart-eyebrow">A LITTLE MORE TO MAKE IT OFFICIAL</p><h2 id="checkout-title">{{ checkoutSuccess() ? 'Your order is in!' : 'Checkout securely' }}</h2></div>
+        <button class="cart-close-button" type="button" aria-label="Close checkout" (click)="closeCheckout()">×</button>
+      </header>
+      @if (checkoutSuccess(); as success) {
+        @if (savedOrder(); as order) {
+          <div class="checkout-success">
+            <span class="checkout-success-icon" aria-hidden="true">✓</span>
+            <h3>Thank you, {{ checkoutCustomerName }}!</h3>
+            <p>Your cart order has been saved. We’ll confirm availability and any delivery charges with you.</p>
+            <div class="checkout-order-number"><span>Order number</span><strong>{{ order.orderNumber }}</strong></div>
+            <div class="checkout-order-number"><span>Order total</span><strong>{{ formatPrice((order as any).totalAmount ?? cartSubtotal) }}</strong></div>
+            <div class="checkout-success-items">
+              @for (line of completedCartLines(); track line.key) {
+                <div><span>{{ line.product.name }} · {{ line.variant.sizeLabel }} × {{ line.quantity }}</span><strong>{{ formatPrice(line.lineTotal) }}</strong></div>
+              }
+            </div>
+            @if (!paymentAvailabilityChecked()) {
+              <p class="cart-footnote" role="status">Checking Razorpay Test Mode availability…</p>
+            } @else if (paymentAvailable()) {
+              @if (paymentMessage()) { <p class="checkout-status" role="status">{{ paymentMessage() }}</p> }
+              @if (paymentError()) { <p class="order-error" role="alert">{{ paymentError() }}</p> }
+              @if (!paymentMessage()) {
+                <button class="cart-primary-button" type="button" [disabled]="isStartingPayment()" (click)="startOnlinePayment()">
+                  {{ isStartingPayment() ? 'Preparing secure payment…' : 'Pay with Razorpay (Test Mode)' }} <span>→</span>
+                </button>
+              }
+            } @else {
+              <p class="cart-footnote">Online payment is unavailable. You can continue with WhatsApp to confirm your order.</p>
+            }
+            <button class="cart-primary-button checkout-whatsapp-button" type="button" (click)="continueCartToWhatsApp()">Continue to WhatsApp <span>↗</span></button>
+            <button class="cart-continue-button" type="button" (click)="closeCheckout()">Close</button>
+          </div>
+        }
+      } @else {
+        <div class="checkout-summary">
+          <div><span>{{ cartItemCount }} item{{ cartItemCount === 1 ? '' : 's' }}</span><strong>{{ formatPrice(cartSubtotal) }}</strong></div>
+          @for (line of cartLines; track line.key) {
+            <p>{{ line.product.name }} · {{ line.variant.sizeLabel }} × {{ line.quantity }}</p>
+          }
+        </div>
+        <form class="checkout-form" (ngSubmit)="placeCartOrder()">
+          <label for="checkoutCustomerName">Your name *</label>
+          <input id="checkoutCustomerName" name="checkoutCustomerName" type="text" [(ngModel)]="checkoutCustomerName" autocomplete="name" maxlength="120" required />
+          <label for="checkoutPhone">Mobile number * <span class="checkout-required-note">OTP verification required</span></label>
+          <div class="checkout-phone-row">
+            <input id="checkoutPhone" name="checkoutPhone" type="tel" inputmode="numeric" autocomplete="tel" [(ngModel)]="checkoutPhone" (ngModelChange)="resetCheckoutVerification()" maxlength="16" placeholder="10-digit mobile number" required />
+            <button class="checkout-otp-button" type="button" [disabled]="isRequestingCheckoutOtp() || checkoutPhone.replace(/\D/g, '').length < 10" (click)="requestCheckoutOtp()">
+              {{ isRequestingCheckoutOtp() ? 'Sending…' : 'Get OTP' }}
+            </button>
+          </div>
+          @if (checkoutTestOtp()) {
+            <div class="checkout-test-code" role="status"><strong>Local test OTP: {{ checkoutTestOtp() }}</strong><span>No SMS was sent. This code is available only in local Development test mode.</span></div>
+          }
+          @if (checkoutOtpMessage()) { <p class="checkout-status" role="status">{{ checkoutOtpMessage() }}</p> }
+          <label for="checkoutOtp">One-time password *</label>
+          <div class="checkout-phone-row">
+            <input id="checkoutOtp" name="checkoutOtp" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="checkoutOtp" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit OTP" [disabled]="checkoutOtpVerified()" required />
+            <button class="checkout-otp-button" type="button" [disabled]="isVerifyingCheckoutOtp() || checkoutOtpVerified() || checkoutOtp.length !== 6" (click)="verifyCheckoutOtp()">
+              {{ checkoutOtpVerified() ? 'Verified ✓' : (isVerifyingCheckoutOtp() ? 'Checking…' : 'Verify OTP') }}
+            </button>
+          </div>
+          @if (checkoutOtpVerified()) { <p class="checkout-verified" role="status"><span aria-hidden="true">✓</span> Mobile number verified</p> }
+          <label for="checkoutPreferredDate">Preferred date (optional)</label>
+          <input id="checkoutPreferredDate" name="checkoutPreferredDate" type="date" [(ngModel)]="checkoutPreferredDate" [min]="today" />
+          <label for="checkoutCustomization">Order notes (optional)</label>
+          <textarea id="checkoutCustomization" name="checkoutCustomization" rows="3" maxlength="1000" [(ngModel)]="checkoutCustomization" placeholder="Delivery notes, cake message or customisation"></textarea>
+          @if (checkoutError()) { <p class="order-error" role="alert">{{ checkoutError() }}</p> }
+          <p class="checkout-security-note"><span aria-hidden="true">🔒</span> Your mobile must be verified before an order can be submitted. Prices are rechecked by the server.</p>
+          <button class="cart-primary-button" type="submit" [disabled]="!checkoutOtpVerified() || !checkoutVerificationToken() || !checkoutCustomerName.trim() || isSubmittingCartOrder()">
+            {{ isSubmittingCartOrder() ? 'Placing your order…' : 'Place order · ' + formatPrice(cartSubtotal) }} <span>→</span>
+          </button>
+          <button class="cart-continue-button" type="button" (click)="closeCheckout()">Back to shopping</button>
+        </form>
+      }
+    </section>
+  </div>
+}
+
 <!-- Footer -->
 <footer class="site-footer">
   <a class="brand footer-brand" href="#home">
