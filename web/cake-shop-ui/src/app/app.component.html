@@ -9,7 +9,7 @@
 <header class="site-header">
   <a class="brand" href="/" aria-label="The Sweet Panda home">
     <span class="brand-mark" aria-hidden="true">
-      <img src="assets/images/logo.jpeg" alt="" />
+      <img [src]="storeProfile()?.logoUrl || 'assets/images/logo.jpeg'" alt="" />
     </span>
     <span class="brand-copy">
       <strong>{{ storeProfile()?.name || brandName }}</strong>
@@ -742,11 +742,11 @@
 <footer class="site-footer">
   <a class="brand footer-brand" href="#home">
     <span class="brand-mark" aria-hidden="true">
-      <img src="assets/images/logo.jpeg" alt="" />
+      <img [src]="storeProfile()?.logoUrl || 'assets/images/logo.jpeg'" alt="" />
     </span>
     <span class="brand-copy">
-      <strong>The Sweet Panda</strong>
-      <small>BAKED WITH A LITTLE MAGIC</small>
+      <strong>{{ storeProfile()?.name || brandName }}</strong>
+      <small>{{ storeProfile()?.tagline || "BAKED WITH A LITTLE MAGIC" }}</small>
     </span>
   </a>
 
