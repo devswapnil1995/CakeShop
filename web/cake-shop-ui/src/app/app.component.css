@@ -4437,3 +4437,17 @@ h2 em {
   max-width: 52rem;
   margin: 1.5rem 0;
 }
+
+/* Premium editorial hamper highlights */
+.hamper-highlights { margin: clamp(2rem, 5vw, 4rem) 0; }
+.hamper-highlights h2 { font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; margin: .5rem 0 1.75rem; }
+.hamper-highlights h2 em { color: #ad806e; font-weight: 400; }
+.hamper-highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.hamper-highlight-card { padding: 1.5rem; border: 1px solid rgba(105,75,56,.18); border-radius: 1rem; background: linear-gradient(145deg, #fffdf9, #f5eadd); min-height: 130px; animation: hamperReveal .65s both; transition: transform .25s ease, box-shadow .25s ease; }
+.hamper-highlight-card:hover { transform: translateY(-5px) rotate(-.3deg); box-shadow: 0 18px 35px rgba(74,42,28,.10); }
+.hamper-highlight-icon { display: inline-grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; background: #ead8c4; color: #67452f; font-size: 1.25rem; }
+.hamper-highlight-card p { margin: 1rem 0 0; font-weight: 600; line-height: 1.45; }
+.hamper-highlight-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 1.25rem; }
+.hamper-highlight-chips span { border: 1px solid rgba(105,75,56,.2); border-radius: 999px; padding: .45rem .8rem; color: #6b4a38; background: #f8efe5; font-size: .82rem; }
+@keyframes hamperReveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .hamper-highlight-card { animation: none; transition: none; } }
