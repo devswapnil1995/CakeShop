@@ -1250,7 +1250,10 @@
                   </div>
                 }
               </div>
-              <div class="field span-two"><label for="collectionDescription">Description</label><textarea id="collectionDescription" name="collectionDescription" [(ngModel)]="storeCollectionForm.description" maxlength="2000" rows="3"></textarea></div>
+              <div class="field span-two"><label for="collectionDescription">Description</label><textarea id="collectionDescription" name="collectionDescription" [(ngModel)]="storeCollectionForm.description" maxlength="2000" rows="3" placeholder="Tell the story of this hamper or campaign..."></textarea></div>
+              @if (storeCollectionForm.kind === 'Hamper') {
+                <div class="field span-two"><label for="collectionHighlights">What’s inside / hamper highlights</label><textarea id="collectionHighlights" name="collectionHighlights" [(ngModel)]="storeCollectionForm.highlights" maxlength="4000" rows="5" placeholder="Handcrafted chocolates&#10;Premium cookies&#10;Festive keepsake packaging&#10;Personalised greeting card"></textarea><small class="form-hint">Add one highlight per line. These are descriptive contents, not linked catalog products.</small></div>
+              }
               <div class="field"><label for="collectionNavLabel">Navigation label (optional)</label><input id="collectionNavLabel" name="collectionNavLabel" [(ngModel)]="storeCollectionForm.navigationLabel" maxlength="60" placeholder="Diwali Specials" /></div>
               <div class="field"><label for="collectionSort">Display order</label><input id="collectionSort" name="collectionSort" type="number" min="0" max="10000" [(ngModel)]="storeCollectionForm.sortOrder" required /></div>
               <div class="field"><label for="collectionStart">Starts (UTC)</label><input id="collectionStart" name="collectionStart" type="datetime-local" [(ngModel)]="storeCollectionForm.startsUtc" /></div>
@@ -1258,19 +1261,6 @@
               <div class="field span-two">
                 <label><input type="checkbox" name="collectionNavVisible" [(ngModel)]="storeCollectionForm.showInNavigation" /> Show this collection in the top navigation</label>
                 <small class="muted">Published collections with this option enabled appear as dynamic navigation links.</small>
-              </div>
-              <div class="field span-two">
-                <label>Products in this collection</label>
-                <div class="collection-product-picker">
-                  @for (product of products(); track product.id) {
-                    <label class="collection-product-option">
-                      <input type="checkbox" [checked]="storeCollectionForm.productIds.includes(product.id)" (change)="toggleCollectionProduct(product.id, $any($event.target).checked)" />
-                      <span>{{ product.name }} <small>{{ product.categoryName }}</small></span>
-                    </label>
-                  }
-                  @empty { <p class="muted">Add products in the Products tab first.</p> }
-                </div>
-                <small class="muted">Product membership is saved with the collection. Existing product prices remain authoritative in the shop.</small>
               </div>
               <div class="span-two form-actions">
                 <button type="submit" class="primary-btn" [disabled]="storeCollectionSaving()">{{ storeCollectionSaving() ? 'Saving…' : 'Save collection' }}</button>
