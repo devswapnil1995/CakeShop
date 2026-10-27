@@ -52,9 +52,9 @@ export class AdminComponent implements OnInit {
 
   private emptyStoreCollection(): StoreCollectionWrite {
     return {
-      kind: 'Hamper', title: '', slug: '', description: '', imageUrl: null,
+      kind: 'Hamper', title: '', slug: '', description: '', highlights: '', imageUrl: null,
       navigationLabel: null, showInNavigation: false, bundlePrice: null, sortOrder: 0,
-      startsUtc: null, endsUtc: null, isPublished: false, productIds: []
+      startsUtc: null, endsUtc: null, isPublished: false, highlights: ''
     };
   }
 
@@ -290,7 +290,7 @@ export class AdminComponent implements OnInit {
   editStoreCollection(item: AdminStoreCollection): void {
     this.editingStoreCollectionId = item.id;
     this.storeCollectionForm = {
-      kind: item.kind, title: item.title, slug: item.slug, description: item.description,
+      kind: item.kind, title: item.title, slug: item.slug, description: item.description, highlights: item.highlights ?? '',
       imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation, bundlePrice: item.bundlePrice ?? null,
       sortOrder: item.sortOrder, startsUtc: item.startsUtc, endsUtc: item.endsUtc,
       isPublished: item.isPublished, productIds: [...item.productIds]
@@ -302,12 +302,6 @@ export class AdminComponent implements OnInit {
   resetStoreCollectionForm(): void {
     this.editingStoreCollectionId = null;
     this.storeCollectionForm = this.emptyStoreCollection();
-  }
-
-  toggleCollectionProduct(productId: string, checked: boolean): void {
-    const ids = new Set(this.storeCollectionForm.productIds);
-    if (checked) ids.add(productId); else ids.delete(productId);
-    this.storeCollectionForm = { ...this.storeCollectionForm, productIds: [...ids] };
   }
 
   saveStoreCollection(): void {
