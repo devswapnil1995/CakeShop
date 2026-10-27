@@ -719,6 +719,24 @@
               <strong>{{ order.createdUtc | date:'medium' }}</strong>
             </div>
 
+            @if (order.items?.length) {
+              <section class="order-line-items" aria-label="Items in this order">
+                <h3>Items in this order</h3>
+                @for (item of order.items; track item.productName + item.sizeLabel) {
+                  <div class="order-line-item">
+                    <div>
+                      <strong>{{ item.productName }}</strong>
+                      <span>{{ item.sizeLabel }} · {{ item.weightInGrams }} g × {{ item.quantity }}</span>
+                    </div>
+                    <div class="order-line-prices">
+                      <span>{{ item.unitPrice | currency:'INR':'symbol':'1.2-2' }} each</span>
+                      <strong>{{ item.lineTotal | currency:'INR':'symbol':'1.2-2' }}</strong>
+                    </div>
+                  </div>
+                }
+              </section>
+            }
+
             <div class="order-detail-grid">
               <div class="order-detail-item">
                 <small>CUSTOMER NAME</small>

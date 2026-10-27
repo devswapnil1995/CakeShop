@@ -1,4 +1,5 @@
 using CakeShop.Api.Contracts;
+using CakeShop.Api.Checkout;
 using CakeShop.Application.Catalog;
 using CakeShop.Domain.Catalog;
 using CakeShop.Domain.Content;
@@ -90,6 +91,7 @@ builder.Services.AddSwaggerGen(options =>
         });
 });
 builder.Services.AddHttpClient<RazorpayPaymentService>();
+builder.Services.AddSingleton<CheckoutOtpService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -98,6 +100,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
+app.MapCheckoutEndpoints(defaultClientId);
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -193,6 +196,7 @@ app.MapGet("/api/v1/payments/availability", (
 app.MapPost("/api/v1/orders", async (
     CreateCustomerOrderRequest request,
     CakeShopDbContext db,
+    CheckoutOtpService otp,
     CancellationToken ct) =>
 {
     var customerName = request.CustomerName?.Trim();
@@ -209,6 +213,10 @@ app.MapPost("/api/v1/orders", async (
     var phoneDigits = new string(phone.Where(char.IsDigit).ToArray());
     if (phoneDigits.Length < 10 || phoneDigits.Length > 15)
         return Results.BadRequest(new { message = "Phone number must contain 10 to 15 digits." });
+
+    var verifiedPhone = otp.GetVerifiedPhone(request.VerificationToken ?? string.Empty);
+    if (verifiedPhone is null || !string.Equals(verifiedPhone, phoneDigits, StringComparison.Ordinal))
+        return Results.BadRequest(new { message = "Verify this mobile number with OTP before placing the order." });
 
     if (request.Quantity < 1 || request.Quantity > 100)
         return Results.BadRequest(new { message = "Quantity must be between 1 and 100." });
@@ -322,6 +330,9 @@ app.MapPost("/api/v1/orders", async (
             });
         }
     }
+
+    if (!otp.TryConsumeVerificationToken(request.VerificationToken ?? string.Empty, phoneDigits))
+        return Results.BadRequest(new { message = "Your mobile verification expired or was already used. Verify your number again." });
 
     var orderId = Guid.NewGuid();
     var orderNumber =
@@ -1022,6 +1033,18 @@ adminApi.MapGet("/orders", async (
             Status = x.Status.ToString(),
             x.CreatedUtc,
             x.UpdatedUtc,
+            Items = db.CustomerOrderItems.AsNoTracking()
+                .Where(item => item.ClientId == x.ClientId && item.OrderId == x.Id)
+                .OrderBy(item => item.ProductName)
+                .Select(item => new
+                {
+                    item.ProductName,
+                    item.SizeLabel,
+                    item.WeightInGrams,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.LineTotal
+                }).ToList(),
             PaymentStatus = db.PaymentTransactions
     .Where(p => p.OrderId == x.Id
              && p.ClientId == x.ClientId
@@ -1925,7 +1948,8 @@ public sealed record CreateCustomerOrderRequest(
     string? CakeSize,
     DateOnly? PreferredDate,
     string? Customization,
-    Guid? VariantId);
+    Guid? VariantId,
+    string? VerificationToken = null);
 
 public sealed record UpdateCustomerOrderStatusRequest(
     string? Status);

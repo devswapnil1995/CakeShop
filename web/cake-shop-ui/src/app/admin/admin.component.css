@@ -1474,3 +1474,17 @@
 }
 
 .hero-banner-thumbnail { display: block; width: min(100%, 240px); max-height: 150px; object-fit: cover; border-radius: 10px; margin-top: 8px; background: #f3e9df; }
+
+/* Multi-product cart order details */
+.order-line-items { margin: 18px 0 22px; padding: 18px; border: 1px solid #ead9c8; border-radius: 14px; background: #fffaf4; }
+.order-line-items h3 { margin: 0 0 10px; color: #603b2d; font: 400 20px Georgia, serif; }
+.order-line-item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eee1d5; }
+.order-line-item:last-child { border-bottom: 0; }
+.order-line-item > div:first-child { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.order-line-item strong { color: #603b2d; font-size: 13px; }
+.order-line-item span { color: #88766b; font-size: 11px; }
+.order-line-prices { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+@media(max-width:600px) {
+  .order-line-items { padding: 13px; }
+  .order-line-item { align-items: flex-start; gap: 9px; }
+}

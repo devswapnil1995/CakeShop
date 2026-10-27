@@ -28,11 +28,21 @@
     <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
     <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
+    <button class="cart-nav-button" type="button" (click)="openCart()" [attr.aria-label]="'Open shopping bag, ' + cartItemCount + ' items'">
+      <span aria-hidden="true">♡</span> Bag <span class="cart-nav-count">{{ cartItemCount }}</span>
+    </button>
     <button class="button button-dark nav-cta" type="button" (click)="orderOnWhatsApp()">
       Order on WhatsApp <span aria-hidden="true">↗</span>
     </button>
   </nav>
 </header>
+
+@if (cartNotice() && !addToCartOpen() && !cartDrawerOpen() && !checkoutOpen()) {
+  <div class="cart-toast" role="status">
+    <span aria-hidden="true">✓</span><p>{{ cartNotice() }}</p>
+    <button type="button" aria-label="Dismiss message" (click)="clearCartNotice()">×</button>
+  </div>
+}
 
 <main>
   @if (!isShopRoute()) {
@@ -204,7 +214,7 @@
           } @else {
             <span class="product-size-count product-size-count-muted">Ask us for sizes</span>
           }
-          <button class="quick-order" type="button" (click)="startProductOrder(product.name)"
+          <button class="quick-order" type="button" (click)="beginAddToCart(product.name)"
             [attr.aria-label]="'Ask about ' + product.name">
             ↗
           </button>
@@ -218,8 +228,8 @@
           <strong class="product-price">{{ product.price }}</strong>
         </div>
 
-        <button class="product-order" type="button" (click)="startProductOrder(product.name)">
-          Ask about this cake <span>→</span>
+        <button class="product-order add-to-bag-button" type="button" (click)="beginAddToCart(product.name)">
+          Add to bag <span aria-hidden="true">＋</span>
         </button>
       </article>
       }
@@ -366,9 +376,27 @@
         <input id="customerName" name="customerName" type="text" [(ngModel)]="customerName" autocomplete="name"
           required />
 
-        <label for="customerPhone">Mobile number *</label>
-        <input id="customerPhone" name="customerPhone" [(ngModel)]="customerPhone" type="tel" inputmode="numeric"
-          autocomplete="tel" pattern="[0-9]{10}" maxlength="10" minlength="10" required />
+        <label for="customerPhone">Mobile number * <span class="checkout-required-note">OTP verification required</span></label>
+        <div class="checkout-phone-row">
+          <input id="customerPhone" name="customerPhone" [(ngModel)]="customerPhone" (ngModelChange)="resetLegacyVerification()" type="tel" inputmode="numeric"
+            autocomplete="tel" pattern="[0-9]{10}" maxlength="10" minlength="10" required />
+          <button class="checkout-otp-button" type="button" [disabled]="isRequestingLegacyOtp() || customerPhone.length !== 10" (click)="requestLegacyOtp()">
+            {{ isRequestingLegacyOtp() ? 'Sending…' : 'Get OTP' }}
+          </button>
+        </div>
+        @if (legacyTestOtp()) {
+          <div class="checkout-test-code" role="status"><strong>Local test OTP: {{ legacyTestOtp() }}</strong><span>No SMS was sent. Local Development test mode only.</span></div>
+        }
+        @if (legacyOtpMessage()) { <p class="checkout-status" role="status">{{ legacyOtpMessage() }}</p> }
+        <label for="legacyOtp">One-time password *</label>
+        <div class="checkout-phone-row">
+          <input id="legacyOtp" name="legacyOtp" [(ngModel)]="legacyOtp" type="text" inputmode="numeric" autocomplete="one-time-code"
+            pattern="[0-9]{6}" maxlength="6" [disabled]="legacyOtpVerified()" required />
+          <button class="checkout-otp-button" type="button" [disabled]="isVerifyingLegacyOtp() || legacyOtpVerified() || legacyOtp.length !== 6" (click)="verifyLegacyOtp()">
+            {{ legacyOtpVerified() ? 'Verified ✓' : (isVerifyingLegacyOtp() ? 'Checking…' : 'Verify OTP') }}
+          </button>
+        </div>
+        @if (legacyOtpVerified()) { <p class="checkout-verified" role="status"><span aria-hidden="true">✓</span> Mobile number verified</p> }
 
         <label for="orderQuantity">Quantity *</label>
         <div class="quantity-control">
@@ -429,6 +457,8 @@
         <button type="submit" class="order-submit-button" [disabled]="
   !selectedProduct()?.id ||
   !selectedVariant ||
+  !legacyOtpVerified() ||
+  !legacyVerificationToken() ||
   isSubmittingOrder() ||
   !orderForm.valid
 ">
@@ -485,6 +515,173 @@
   </section>
 }
 </main>
+
+
+<!-- Cart selection modal -->
+@if (addToCartOpen()) {
+  <div class="cart-overlay" (click)="closeAddToCart()">
+    <section class="cart-selection-modal" role="dialog" aria-modal="true" aria-labelledby="add-to-cart-title" (click)="$event.stopPropagation()">
+      <button class="cart-close-button" type="button" aria-label="Close product selection" (click)="closeAddToCart()">×</button>
+      @if (addToCartProduct(); as product) {
+        <p class="cart-eyebrow">MADE FRESH FOR YOU</p>
+        <h2 id="add-to-cart-title">Add a little sweetness</h2>
+        <div class="cart-selected-product">
+          <img [src]="product.image" [alt]="product.name" (error)="onProductImageError($event)" />
+          <div><h3>{{ product.name }}</h3><p>{{ product.description }}</p></div>
+        </div>
+        <label for="cartVariant">Choose your size</label>
+        <select id="cartVariant" name="cartVariant" [(ngModel)]="addToCartVariantId">
+          @for (variant of product.variants; track variant.id) {
+            @if (variant.isAvailable) {
+              <option [value]="variant.id">{{ variant.sizeLabel }} · {{ formatPrice(variant.price) }}</option>
+            }
+          }
+        </select>
+        <label for="cartAddQuantity">Quantity</label>
+        <div class="cart-quantity-stepper">
+          <button type="button" aria-label="Decrease quantity" [disabled]="addToCartQuantity <= 1" (click)="addToCartQuantity = addToCartQuantity - 1">−</button>
+          <span aria-live="polite">{{ addToCartQuantity }}</span>
+          <button type="button" aria-label="Increase quantity" [disabled]="addToCartQuantity >= 100" (click)="addToCartQuantity = addToCartQuantity + 1">＋</button>
+        </div>
+        @if (cartNotice()) { <p class="cart-inline-notice" role="status">{{ cartNotice() }}</p> }
+        <button class="cart-primary-button" type="button" (click)="confirmAddToCart()">Add to bag <span>→</span></button>
+      }
+    </section>
+  </div>
+}
+
+<!-- Shopping bag drawer -->
+@if (cartDrawerOpen()) {
+  <div class="cart-overlay cart-drawer-overlay" (click)="closeCart()">
+    <aside class="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title" (click)="$event.stopPropagation()">
+      <header class="cart-drawer-header">
+        <div><p class="cart-eyebrow">YOUR SWEET SELECTION</p><h2 id="cart-drawer-title">Your bag <span>({{ cartItemCount }})</span></h2></div>
+        <button class="cart-close-button" type="button" aria-label="Close shopping bag" (click)="closeCart()">×</button>
+      </header>
+      @if (cartLines.length) {
+        <div class="cart-lines">
+          @for (line of cartLines; track line.key) {
+            <article class="cart-line">
+              <img [src]="line.product.image" [alt]="line.product.name" (error)="onProductImageError($event)" />
+              <div class="cart-line-content">
+                <div class="cart-line-title-row">
+                  <div><h3>{{ line.product.name }}</h3><p>{{ line.variant.sizeLabel }}</p></div>
+                  <button class="cart-remove-button" type="button" (click)="removeCartLine(line.key)" [attr.aria-label]="'Remove ' + line.product.name">Remove</button>
+                </div>
+                <div class="cart-line-bottom">
+                  <div class="cart-quantity-stepper compact">
+                    <button type="button" [disabled]="line.quantity <= 1" [attr.aria-label]="'Decrease ' + line.product.name + ' quantity'" (click)="updateCartQuantity(line.key, -1)">−</button>
+                    <span aria-live="polite">{{ line.quantity }}</span>
+                    <button type="button" [disabled]="line.quantity >= 100" [attr.aria-label]="'Increase ' + line.product.name + ' quantity'" (click)="updateCartQuantity(line.key, 1)">＋</button>
+                  </div>
+                  <strong>{{ formatPrice(line.lineTotal) }}</strong>
+                </div>
+                <p class="cart-unit-price">{{ formatPrice(line.unitPrice) }} each</p>
+              </div>
+            </article>
+          }
+        </div>
+        <div class="cart-drawer-footer">
+          <div class="cart-subtotal-row"><span>Subtotal</span><strong>{{ formatPrice(cartSubtotal) }}</strong></div>
+          <p class="cart-footnote">Delivery or customisation charges, if any, will be confirmed before payment.</p>
+          @if (cartNotice()) { <p class="cart-inline-notice" role="status">{{ cartNotice() }}</p> }
+          <button class="cart-primary-button" type="button" (click)="startCartCheckout()">Continue to checkout <span>→</span></button>
+          <button class="cart-continue-button" type="button" (click)="closeCart()">Continue shopping</button>
+        </div>
+      } @else {
+        <div class="cart-empty-state">
+          <span aria-hidden="true">♡</span><h3>Your bag is waiting for something sweet</h3>
+          <p>Choose your favourite cake, select a size, and it will appear here.</p>
+          <button class="cart-primary-button" type="button" (click)="closeCart()">Explore the menu <span>→</span></button>
+        </div>
+      }
+    </aside>
+  </div>
+}
+
+
+<!-- Mandatory mobile OTP checkout -->
+@if (checkoutOpen()) {
+  <div class="cart-overlay checkout-overlay" (click)="closeCheckout()">
+    <section class="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" (click)="$event.stopPropagation()">
+      <header class="checkout-header">
+        <div><p class="cart-eyebrow">A LITTLE MORE TO MAKE IT OFFICIAL</p><h2 id="checkout-title">{{ checkoutSuccess() ? 'Your order is in!' : 'Checkout securely' }}</h2></div>
+        <button class="cart-close-button" type="button" aria-label="Close checkout" (click)="closeCheckout()">×</button>
+      </header>
+      @if (checkoutSuccess()) {
+        @if (savedOrder(); as order) {
+          <div class="checkout-success">
+            <span class="checkout-success-icon" aria-hidden="true">✓</span>
+            <h3>Thank you, {{ checkoutCustomerName }}!</h3>
+            <p>Your cart order has been saved. We’ll confirm availability and any delivery charges with you.</p>
+            <div class="checkout-order-number"><span>Order number</span><strong>{{ order.orderNumber }}</strong></div>
+            <div class="checkout-order-number"><span>Order total</span><strong>{{ formatPrice(savedOrderTotal) }}</strong></div>
+            <div class="checkout-success-items">
+              @for (line of completedCartLines(); track line.key) {
+                <div><span>{{ line.product.name }} · {{ line.variant.sizeLabel }} × {{ line.quantity }}</span><strong>{{ formatPrice(line.lineTotal) }}</strong></div>
+              }
+            </div>
+            @if (!paymentAvailabilityChecked()) {
+              <p class="cart-footnote" role="status">Checking Razorpay Test Mode availability…</p>
+            } @else if (paymentAvailable()) {
+              @if (paymentMessage()) { <p class="checkout-status" role="status">{{ paymentMessage() }}</p> }
+              @if (paymentError()) { <p class="order-error" role="alert">{{ paymentError() }}</p> }
+              @if (!paymentMessage()) {
+                <button class="cart-primary-button" type="button" [disabled]="isStartingPayment()" (click)="startOnlinePayment()">
+                  {{ isStartingPayment() ? 'Preparing secure payment…' : 'Pay with Razorpay (Test Mode)' }} <span>→</span>
+                </button>
+              }
+            } @else {
+              <p class="cart-footnote">Online payment is unavailable. You can continue with WhatsApp to confirm your order.</p>
+            }
+            <button class="cart-primary-button checkout-whatsapp-button" type="button" (click)="continueCartToWhatsApp()">Continue to WhatsApp <span>↗</span></button>
+            <button class="cart-continue-button" type="button" (click)="closeCheckout()">Close</button>
+          </div>
+        }
+      } @else {
+        <div class="checkout-summary">
+          <div><span>{{ cartItemCount }} item{{ cartItemCount === 1 ? '' : 's' }}</span><strong>{{ formatPrice(cartSubtotal) }}</strong></div>
+          @for (line of cartLines; track line.key) {
+            <p>{{ line.product.name }} · {{ line.variant.sizeLabel }} × {{ line.quantity }}</p>
+          }
+        </div>
+        <form class="checkout-form" (ngSubmit)="placeCartOrder()">
+          <label for="checkoutCustomerName">Your name *</label>
+          <input id="checkoutCustomerName" name="checkoutCustomerName" type="text" [(ngModel)]="checkoutCustomerName" autocomplete="name" maxlength="120" required />
+          <label for="checkoutPhone">Mobile number * <span class="checkout-required-note">OTP verification required</span></label>
+          <div class="checkout-phone-row">
+            <input id="checkoutPhone" name="checkoutPhone" type="tel" inputmode="numeric" autocomplete="tel" [(ngModel)]="checkoutPhone" (ngModelChange)="resetCheckoutVerification()" maxlength="16" placeholder="10-digit mobile number" required />
+            <button class="checkout-otp-button" type="button" [disabled]="isRequestingCheckoutOtp() || checkoutPhoneDigits.length < 10" (click)="requestCheckoutOtp()">
+              {{ isRequestingCheckoutOtp() ? 'Sending…' : 'Get OTP' }}
+            </button>
+          </div>
+          @if (checkoutTestOtp()) {
+            <div class="checkout-test-code" role="status"><strong>Local test OTP: {{ checkoutTestOtp() }}</strong><span>No SMS was sent. This code is available only in local Development test mode.</span></div>
+          }
+          @if (checkoutOtpMessage()) { <p class="checkout-status" role="status">{{ checkoutOtpMessage() }}</p> }
+          <label for="checkoutOtp">One-time password *</label>
+          <div class="checkout-phone-row">
+            <input id="checkoutOtp" name="checkoutOtp" type="text" inputmode="numeric" autocomplete="one-time-code" [(ngModel)]="checkoutOtp" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit OTP" [disabled]="checkoutOtpVerified()" required />
+            <button class="checkout-otp-button" type="button" [disabled]="isVerifyingCheckoutOtp() || checkoutOtpVerified() || checkoutOtp.length !== 6" (click)="verifyCheckoutOtp()">
+              {{ checkoutOtpVerified() ? 'Verified ✓' : (isVerifyingCheckoutOtp() ? 'Checking…' : 'Verify OTP') }}
+            </button>
+          </div>
+          @if (checkoutOtpVerified()) { <p class="checkout-verified" role="status"><span aria-hidden="true">✓</span> Mobile number verified</p> }
+          <label for="checkoutPreferredDate">Preferred date (optional)</label>
+          <input id="checkoutPreferredDate" name="checkoutPreferredDate" type="date" [(ngModel)]="checkoutPreferredDate" [min]="today" />
+          <label for="checkoutCustomization">Order notes (optional)</label>
+          <textarea id="checkoutCustomization" name="checkoutCustomization" rows="3" maxlength="1000" [(ngModel)]="checkoutCustomization" placeholder="Delivery notes, cake message or customisation"></textarea>
+          @if (checkoutError()) { <p class="order-error" role="alert">{{ checkoutError() }}</p> }
+          <p class="checkout-security-note"><span aria-hidden="true">🔒</span> Your mobile must be verified before an order can be submitted. Prices are rechecked by the server.</p>
+          <button class="cart-primary-button" type="submit" [disabled]="!checkoutOtpVerified() || !checkoutVerificationToken() || !checkoutCustomerName.trim() || isSubmittingCartOrder()">
+            {{ isSubmittingCartOrder() ? 'Placing your order…' : 'Place order · ' + formatPrice(cartSubtotal) }} <span>→</span>
+          </button>
+          <button class="cart-continue-button" type="button" (click)="closeCheckout()">Back to shopping</button>
+        </form>
+      }
+    </section>
+  </div>
+}
 
 <!-- Footer -->
 <footer class="site-footer">
