@@ -189,12 +189,12 @@
           <div class="store-collection-product">
             @if (product.imageUrl) { <img [src]="resolveProductImageUrl(product.imageUrl)" [alt]="product.name" loading="lazy" /> }
             <span>{{ product.name }}</span>
-            <strong>{{ product.price | currency:'INR':'symbol':'1.0-2' }}</strong>
+            @if (collectionDetail.kind !== 'Hamper') { <strong>{{ product.price | currency:'INR':'symbol':'1.0-2' }}</strong> }
           </div>
         }
       </div>
       @if (collectionDetail.kind === 'Hamper') {
-        <p class="catalog-note">To order this hamper, please contact us on WhatsApp. Bundle checkout is being added and isn't available yet.</p>
+        <p class="catalog-note">The items shown are included in this hamper. Contact us to confirm availability and get the hamper price.</p>
         <button class="button button-dark" type="button" (click)="orderOnWhatsApp()">Enquire about this hamper <span aria-hidden="true">↗</span></button>
       }
     </section>
