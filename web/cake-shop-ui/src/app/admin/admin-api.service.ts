@@ -39,12 +39,12 @@ export interface HeroBannerWrite {
 export interface AdminStoreCollection {
   id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
   imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
-  isPublished: boolean; sortOrder: number; startsUtc: string | null; endsUtc: string | null; productIds: string[];
+  isPublished: boolean; highlights: string; sortOrder: number; startsUtc: string | null; endsUtc: string | null;
 }
 export interface StoreCollectionWrite {
   kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
   imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
-  sortOrder: number; startsUtc: string | null; endsUtc: string | null; isPublished: boolean; productIds: string[];
+  sortOrder: number; startsUtc: string | null; endsUtc: string | null; isPublished: boolean; highlights: string;
 }
 
 export interface AdminCategory {
