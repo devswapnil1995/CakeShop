@@ -184,6 +184,7 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.Property<string>("Story").IsRequired().HasMaxLength(3000).HasColumnType("nvarchar(3000)");
                     b.Property<string>("StoryImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
                     b.Property<string>("StoryTitle").IsRequired().HasMaxLength(180).HasColumnType("nvarchar(180)");
+                    b.Property<string>("HomeDescription").IsRequired().HasMaxLength(320).HasColumnType("nvarchar(320)").HasDefaultValue("Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.");
                     b.Property<string>("Tagline").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
                     b.Property<DateTime>("UpdatedUtc").HasColumnType("datetime2");
                     b.Property<string>("WebsiteUrl").HasMaxLength(500).HasColumnType("nvarchar(500)");
