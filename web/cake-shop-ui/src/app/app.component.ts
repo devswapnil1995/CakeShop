@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -115,6 +115,7 @@ export class AppComponent implements OnDestroy, OnInit {
 
   readonly products = signal<CakeProduct[]>([]);
   readonly heroBanners = signal<HeroBannerDto[]>([]);
+  readonly storeCollections = signal<StoreCollectionDto[]>([]);
   readonly activeHeroBannerIndex = signal(0);
   private heroRotationTimer: ReturnType<typeof setInterval> | undefined;
   readonly heroRotationPaused = signal(false);
@@ -210,6 +211,9 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   ngOnInit(): void {
+    this.catalogApi.getCollections().pipe(catchError(() => of([] as StoreCollectionDto[]))).subscribe(items => {
+      this.storeCollections.set(items);
+    });
     this.catalogApi.getHeroBanners().pipe(catchError(() => of([] as HeroBannerDto[]))).subscribe(banners => {
       this.heroBanners.set(banners);
       this.activeHeroBannerIndex.set(0);
