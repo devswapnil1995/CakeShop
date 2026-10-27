@@ -9,7 +9,7 @@
 <header class="site-header">
   <a class="brand" href="/" aria-label="The Sweet Panda home">
     <span class="brand-mark" aria-hidden="true">
-      <img [src]="storeProfile()?.logoUrl || 'assets/images/logo.jpeg'" alt="" />
+      <img [src]="resolveStoreAsset(storeProfile()?.logoUrl) || 'assets/images/logo.jpeg'" alt="" />
     </span>
     <span class="brand-copy">
       <strong>{{ storeProfile()?.name || brandName }}</strong>
@@ -329,7 +329,7 @@
   <!-- Our Story -->
   <section class="story-section" id="story">
     <div class="story-image">
-      <img [src]="storeProfile()?.storyImageUrl || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=1200&q=85'"
+      <img [src]="resolveStoreAsset(storeProfile()?.storyImageUrl) || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=1200&q=85'"
         alt="Freshly prepared bakery treats on a work surface" loading="lazy" />
     </div>
     <div class="story-copy">
