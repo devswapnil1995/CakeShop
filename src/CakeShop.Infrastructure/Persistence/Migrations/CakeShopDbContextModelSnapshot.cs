@@ -157,6 +157,7 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
                     b.Property<DateTime>("CreatedUtc").HasColumnType("datetime2");
                     b.Property<string>("Description").IsRequired().HasMaxLength(2000).HasColumnType("nvarchar(2000)");
+                    b.Property<string>("Highlights").IsRequired().HasMaxLength(4000).HasColumnType("nvarchar(4000)");
                     b.Property<DateTime?>("EndsUtc").HasColumnType("datetime2");
                     b.Property<string>("ImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
                     b.Property<bool>("IsPublished").HasColumnType("bit");
@@ -174,35 +175,6 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClientId", "IsPublished", "SortOrder");
                     b.HasIndex("ClientId", "Kind", "Slug").IsUnique();
                     b.ToTable("StoreCollections", (string)null);
-                });
-
-            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollectionItem", b =>
-                {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("CollectionId").HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ProductId").HasColumnType("uniqueidentifier");
-                    b.Property<int>("SortOrder").HasColumnType("int");
-                    b.HasKey("Id");
-                    b.HasIndex("ClientId", "CollectionId", "SortOrder");
-                    b.HasIndex("ClientId", "ProductId");
-                    b.ToTable("StoreCollectionItems", (string)null);
-                });
-
-            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollection", b =>
-                {
-                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null).WithMany()
-                        .HasForeignKey("ClientId").OnDelete(DeleteBehavior.Restrict).IsRequired();
-                });
-
-            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollectionItem", b =>
-                {
-                    b.HasOne("CakeShop.Domain.Content.StoreCollection", null).WithMany()
-                        .HasForeignKey("ClientId", "CollectionId").HasPrincipalKey("ClientId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade).IsRequired();
-                    b.HasOne("CakeShop.Domain.Catalog.Product", null).WithMany()
-                        .HasForeignKey("ClientId", "ProductId").HasPrincipalKey("ClientId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict).IsRequired();
                 });
 
             modelBuilder.Entity("CakeShop.Domain.Content.HeroBanner", b =>
