@@ -25,9 +25,8 @@
   <nav class="main-nav" [class.open]="mobileMenuOpen()" aria-label="Main navigation">
     <a href="/" (click)="closeMobileMenu()" [class.active]="!isShopRoute()">Home</a>
     <a href="/shop" (click)="closeMobileMenu()" [class.active]="isShopRoute()">Shop / Menu</a>
-    <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
-    @for (collection of storeCollections().filter(c => c.kind === 'Seasonal' && c.showInNavigation); track collection.id) {
-      <a [href]="'/#collection-' + collection.slug" (click)="closeMobileMenu()">{{ collection.navigationLabel || collection.title }}</a>
+    @for (collection of storeCollections().filter(c => c.showInNavigation); track collection.id) {
+      <a [href]="'/?collection=' + collection.slug" (click)="closeMobileMenu()">{{ collection.navigationLabel || collection.title }}</a>
     }
     <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
@@ -254,7 +253,7 @@
     </p>
   </section>
 
-  @if (storeCollections().length > 0) {
+  @if (!isShopRoute() && storeCollections().length > 0) {
     <section class="store-collections section-wrap" id="hampers">
       <div class="section-heading">
         <div>
@@ -286,7 +285,7 @@
                   }
                 </div>
               }
-              <a class="button button-dark" href="/shop">Explore the menu <span aria-hidden="true">↗</span></a>
+              <a class="button button-dark" [href]="'/?collection=' + collection.slug">View collection <span aria-hidden="true">↗</span></a>
             </div>
           </article>
         }
