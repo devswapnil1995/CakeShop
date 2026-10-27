@@ -11,8 +11,9 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // AddStoreProfile may already have been applied before HomeDescription
-            // was introduced. Guard this repair so it is safe on both old and fresh databases.
+            // Repair databases where AddStoreProfile was recorded before HomeDescription
+            // was added to the model. On fresh databases the column already exists, so this
+            // migration deliberately becomes a no-op.
             migrationBuilder.Sql("""
                 IF OBJECT_ID(N'[dbo].[StoreProfiles]', N'U') IS NOT NULL
                    AND COL_LENGTH(N'dbo.StoreProfiles', N'HomeDescription') IS NULL
@@ -27,16 +28,9 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Keep this repair reversible without assuming every environment had the column.
-            migrationBuilder.Sql("""
-                IF OBJECT_ID(N'[dbo].[StoreProfiles]', N'U') IS NOT NULL
-                   AND COL_LENGTH(N'dbo.StoreProfiles', N'HomeDescription') IS NOT NULL
-                BEGIN
-                    ALTER TABLE [dbo].[StoreProfiles]
-                    DROP CONSTRAINT [DF_StoreProfiles_HomeDescription];
-                    ALTER TABLE [dbo].[StoreProfiles] DROP COLUMN [HomeDescription];
-                END
-                """);
+            // Intentionally do not drop HomeDescription. On a fresh database it belongs to
+            // AddStoreProfile; removing it here would make rollback destructive. This is a
+            // forward-only compatibility repair for databases with schema drift.
         }
     }
 }
