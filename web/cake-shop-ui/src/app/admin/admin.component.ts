@@ -293,7 +293,7 @@ export class AdminComponent implements OnInit {
       kind: item.kind, title: item.title, slug: item.slug, description: item.description, highlights: item.highlights ?? '',
       imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation, bundlePrice: item.bundlePrice ?? null,
       sortOrder: item.sortOrder, startsUtc: item.startsUtc, endsUtc: item.endsUtc,
-      isPublished: item.isPublished, productIds: [...item.productIds]
+      isPublished: item.isPublished, highlights: item.highlights ?? ""
     };
     this.error.set('');
     this.notice = '';
