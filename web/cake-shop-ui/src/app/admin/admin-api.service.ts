@@ -38,7 +38,7 @@ export interface HeroBannerWrite {
 
 export interface AdminStoreCollection {
   id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
-  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
   isPublished: boolean; sortOrder: number; startsUtc: string | null; endsUtc: string | null; productIds: string[];
 }
 export interface StoreCollectionWrite {
