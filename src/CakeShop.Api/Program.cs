@@ -169,6 +169,32 @@ app.MapGet("/api/v1/products", async (CakeShopDbContext db, string? category, bo
 }).WithName("GetProducts").WithTags("Catalog");
 
 
+app.MapGet("/api/v1/collections", async (CakeShopDbContext db, string? kind, CancellationToken ct) =>
+{
+    var now = DateTime.UtcNow;
+    var query = db.StoreCollections.AsNoTracking()
+        .Where(x => x.ClientId == defaultClientId && x.IsPublished &&
+            (!x.StartsUtc.HasValue || x.StartsUtc <= now) &&
+            (!x.EndsUtc.HasValue || x.EndsUtc > now));
+    if (!string.IsNullOrWhiteSpace(kind) && (kind == "Hamper" || kind == "Seasonal"))
+        query = query.Where(x => x.Kind == kind);
+    var collections = await query.OrderBy(x => x.SortOrder).ThenBy(x => x.Title)
+        .Select(x => new
+        {
+            x.Id, x.Kind, x.Title, x.Slug, x.Description, x.ImageUrl, x.NavigationLabel,
+            x.ShowInNavigation, x.SortOrder, x.StartsUtc, x.EndsUtc,
+            Products = db.StoreCollectionItems.Where(i => i.ClientId == x.ClientId && i.CollectionId == x.Id)
+                .OrderBy(i => i.SortOrder)
+                .Join(db.Products.Where(product => product.ClientId == defaultClientId && product.IsAvailable),
+                    item => new { item.ClientId, item.ProductId },
+                    product => new { product.ClientId, ProductId = product.Id },
+                    (item, product) => new { item.SortOrder, Product = product })
+                .Select(y => new { y.Product.Id, y.Product.Name, y.Product.Slug, y.Product.Description, y.Product.Price, y.Product.ImageUrl, y.Product.Badge })
+                .ToList()
+        }).ToListAsync(ct);
+    return Results.Ok(collections);
+}).AllowAnonymous().WithName("GetStoreCollections").WithTags("Collections");
+
 app.MapGet("/api/v1/payments/availability", (
     IConfiguration configuration) =>
 {
@@ -840,6 +866,84 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+var collectionApi = app.MapGroup("/api/v1/admin/collections").RequireAuthorization().WithTags("Collections");
+collectionApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var items = await db.StoreCollections.AsNoTracking().Where(x => x.ClientId == clientId)
+        .OrderBy(x => x.SortOrder).ThenBy(x => x.Title)
+        .Select(x => new { x.Id, x.Kind, x.Title, x.Slug, x.Description, x.ImageUrl, x.NavigationLabel,
+            x.ShowInNavigation, x.IsPublished, x.SortOrder, x.StartsUtc, x.EndsUtc,
+            ProductIds = db.StoreCollectionItems.Where(i => i.ClientId == clientId && i.CollectionId == x.Id)
+                .OrderBy(i => i.SortOrder).Select(i => i.ProductId).ToList() })
+        .ToListAsync(ct);
+    return Results.Ok(items);
+});
+collectionApi.MapPost("/", async (ClaimsPrincipal user, StoreCollectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateStoreCollection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var slug = request.Slug!.Trim().ToLowerInvariant();
+    if (await db.StoreCollections.AnyAsync(x => x.ClientId == clientId && x.Kind == request.Kind && x.Slug == slug, ct))
+        return Results.Conflict(new { message = "A collection with this slug already exists for this type." });
+    var productIds = (request.ProductIds ?? []).Distinct().ToArray();
+    if (productIds.Length > 100) return Results.BadRequest(new { message = "A collection can contain at most 100 products." });
+    var validCount = await db.Products.CountAsync(x => x.ClientId == clientId && productIds.Contains(x.Id), ct);
+    if (validCount != productIds.Length) return Results.BadRequest(new { message = "One or more selected products are invalid for this shop." });
+    var entity = new StoreCollection(clientId, request.Kind!, request.Title!, slug, request.Description ?? "",
+        request.ImageUrl, request.NavigationLabel, request.ShowInNavigation, request.SortOrder,
+        request.StartsUtc, request.EndsUtc);
+    db.StoreCollections.Add(entity);
+    for (var i = 0; i < productIds.Length; i++) db.StoreCollectionItems.Add(new StoreCollectionItem(clientId, entity.Id, productIds[i], i));
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/v1/admin/collections/{entity.Id}", new { entity.Id });
+});
+collectionApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, StoreCollectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    var validation = ValidateStoreCollection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var slug = request.Slug!.Trim().ToLowerInvariant();
+    if (await db.StoreCollections.AnyAsync(x => x.ClientId == clientId && x.Id != id && x.Kind == request.Kind && x.Slug == slug, ct))
+        return Results.Conflict(new { message = "A collection with this slug already exists for this type." });
+    var productIds = (request.ProductIds ?? []).Distinct().ToArray();
+    if (productIds.Length > 100) return Results.BadRequest(new { message = "A collection can contain at most 100 products." });
+    var validCount = await db.Products.CountAsync(x => x.ClientId == clientId && productIds.Contains(x.Id), ct);
+    if (validCount != productIds.Length) return Results.BadRequest(new { message = "One or more selected products are invalid for this shop." });
+    entity.Update(request.Kind!, request.Title!, slug, request.Description ?? "", request.ImageUrl,
+        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc);
+    var oldItems = db.StoreCollectionItems.Where(x => x.ClientId == clientId && x.CollectionId == id);
+    db.StoreCollectionItems.RemoveRange(oldItems);
+    for (var i = 0; i < productIds.Length; i++) db.StoreCollectionItems.Add(new StoreCollectionItem(clientId, id, productIds[i], i));
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+collectionApi.MapPost("/{id:guid}/publish", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    entity.SetPublished(true); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+collectionApi.MapPost("/{id:guid}/unpublish", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    entity.SetPublished(false); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+collectionApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    db.StoreCollections.Remove(entity); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+
 
 
 adminApi.MapPost("/products/images", async (
@@ -1878,6 +1982,25 @@ static string? ValidateExpense(
 
 static string NormalizeHeroTextPosition(string? value) =>
     value is "top" or "bottom" or "left" or "right" ? value : "left";
+
+static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
+{
+    if (request.Kind is not ("Hamper" or "Seasonal")) return "Kind must be Hamper or Seasonal.";
+    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160) return "Title is required and must be at most 160 characters.";
+    if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Trim().Length > 180 ||
+        request.Slug.Trim().Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-'))) return "Slug may contain only letters, numbers and hyphens.";
+    if (request.Description?.Length > 2000) return "Description must be at most 2000 characters.";
+    if (request.ImageUrl?.Length > 1000 || request.NavigationLabel?.Length > 60) return "Image URL or navigation label is too long.";
+    if (request.ImageUrl is { Length: > 0 } image && !(image.StartsWith("/uploads/", StringComparison.Ordinal) && !image.StartsWith("//", StringComparison.Ordinal) && !image.Contains("..", StringComparison.Ordinal) && !image.Contains('\\')) &&
+        !(Uri.TryCreate(image, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo))) return "Image URL must be a safe relative upload path or HTTPS URL.";
+    if (request.SortOrder < 0 || request.SortOrder > 10000) return "Sort order must be between 0 and 10000.";
+    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc) return "End date must be after start date.";
+    return null;
+}
+
+public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
+    string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
+    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, Guid[]? ProductIds);
 
 static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 {
