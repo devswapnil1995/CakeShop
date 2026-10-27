@@ -19,7 +19,7 @@ export interface HeroBannerDto {
 }
 
 export interface StoreCollectionProductDto {
-  id: string; name: string; slug: string; description: string; price: number;
+  id: string; name: string; slug: string; description: string; price: number | null;
   imageUrl: string | null; badge: string | null;
 }
 
