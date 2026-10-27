@@ -4414,3 +4414,26 @@ h2 em {
  .store-collection-card { transition: transform .22s ease, box-shadow .22s ease; }
  .store-collection-card:hover { transform: translateY(-4px); box-shadow: 0 18px 38px rgba(74, 42, 28, .10); }
 }
+
+
+/* Dedicated collection detail view */
+.store-collection-detail {
+  padding-top: clamp(2rem, 5vw, 4rem);
+  padding-bottom: clamp(3rem, 6vw, 5rem);
+}
+.store-collection-detail .text-link {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+.store-collection-detail-image {
+  display: block;
+  width: 100%;
+  max-height: 32rem;
+  object-fit: cover;
+  border-radius: 1.25rem;
+  margin: 1.5rem 0 2rem;
+}
+.store-collection-detail .store-collection-products {
+  max-width: 52rem;
+  margin: 1.5rem 0;
+}
