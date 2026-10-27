@@ -151,6 +151,29 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductVariants", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
+                    b.Property<string>("Address").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Email").HasMaxLength(254).HasColumnType("nvarchar(254)");
+                    b.Property<string>("FacebookUrl").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("InstagramUrl").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("LogoUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("OpeningHours").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("Phone").HasMaxLength(40).HasColumnType("nvarchar(40)");
+                    b.Property<string>("Story").IsRequired().HasMaxLength(3000).HasColumnType("nvarchar(3000)");
+                    b.Property<string>("StoryImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("StoryTitle").IsRequired().HasMaxLength(180).HasColumnType("nvarchar(180)");
+                    b.Property<string>("Tagline").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
+                    b.Property<DateTime>("UpdatedUtc").HasColumnType("datetime2");
+                    b.Property<string>("WebsiteUrl").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("WhatsAppNumber").HasMaxLength(40).HasColumnType("nvarchar(40)");
+                    b.HasKey("Id");
+                    b.HasIndex("ClientId").IsUnique();
+                    b.ToTable("StoreProfiles", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Content.StoreCollection", b =>
                 {
                     b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
