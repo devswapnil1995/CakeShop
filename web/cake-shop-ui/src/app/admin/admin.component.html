@@ -1234,6 +1234,9 @@
               </div>
               <div class="field"><label for="collectionTitle">Title *</label><input id="collectionTitle" name="collectionTitle" [(ngModel)]="storeCollectionForm.title" maxlength="160" required /></div>
               <div class="field"><label for="collectionSlug">URL slug *</label><input id="collectionSlug" name="collectionSlug" [(ngModel)]="storeCollectionForm.slug" maxlength="180" placeholder="diwali-gifting" required /></div>
+              @if (storeCollectionForm.kind === 'Hamper') {
+                <div class="field"><label for="collectionBundlePrice">Bundle price (₹, optional)</label><input id="collectionBundlePrice" name="collectionBundlePrice" type="number" min="0.01" max="10000000" step="0.01" [(ngModel)]="storeCollectionForm.bundlePrice" placeholder="Leave blank to quote on request" /><small class="muted">This is the hamper price; included products' individual prices won't be shown.</small></div>
+              }
               <div class="field"><label for="collectionImage">Cover image URL</label><input id="collectionImage" name="collectionImage" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="/uploads/..." /></div>
               <div class="field span-two"><label for="collectionDescription">Description</label><textarea id="collectionDescription" name="collectionDescription" [(ngModel)]="storeCollectionForm.description" maxlength="2000" rows="3"></textarea></div>
               <div class="field"><label for="collectionNavLabel">Navigation label (optional)</label><input id="collectionNavLabel" name="collectionNavLabel" [(ngModel)]="storeCollectionForm.navigationLabel" maxlength="60" placeholder="Diwali Specials" /></div>
@@ -1241,8 +1244,8 @@
               <div class="field"><label for="collectionStart">Starts (UTC)</label><input id="collectionStart" name="collectionStart" type="datetime-local" [(ngModel)]="storeCollectionForm.startsUtc" /></div>
               <div class="field"><label for="collectionEnd">Ends (UTC)</label><input id="collectionEnd" name="collectionEnd" type="datetime-local" [(ngModel)]="storeCollectionForm.endsUtc" /></div>
               <div class="field span-two">
-                <label><input type="checkbox" name="collectionNavVisible" [(ngModel)]="storeCollectionForm.showInNavigation" /> Show this seasonal collection in the top navigation</label>
-                <small class="muted">Only published seasonal collections appear as dynamic navigation links.</small>
+                <label><input type="checkbox" name="collectionNavVisible" [(ngModel)]="storeCollectionForm.showInNavigation" /> Show this collection in the top navigation</label>
+                <small class="muted">Published collections with this option enabled appear as dynamic navigation links.</small>
               </div>
               <div class="field span-two">
                 <label>Products in this collection</label>
