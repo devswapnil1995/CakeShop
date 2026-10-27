@@ -18,6 +18,18 @@ export interface HeroBannerDto {
   endsUtc: string | null;
 }
 
+export interface StoreCollectionProductDto {
+  id: string; name: string; slug: string; description: string; price: number;
+  imageUrl: string | null; badge: string | null;
+}
+
+export interface StoreCollectionDto {
+  id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean;
+  sortOrder: number; startsUtc: string | null; endsUtc: string | null;
+  products: StoreCollectionProductDto[];
+}
+
 export interface CatalogProductDto {
   id: string;
   name: string;
@@ -70,6 +82,10 @@ export class CatalogApiService {
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1`;
   getHeroBanners(): Observable<HeroBannerDto[]> {
     return this.http.get<HeroBannerDto[]>(`${this.baseUrl}/hero-banners`);
+  }
+  getCollections(kind?: 'Hamper' | 'Seasonal'): Observable<StoreCollectionDto[]> {
+    const suffix = kind ? `?kind=${encodeURIComponent(kind)}` : '';
+    return this.http.get<StoreCollectionDto[]>(`${this.baseUrl}/collections${suffix}`);
   }
   getProducts(): Observable<CatalogProductDto[]> {
     return this.http.get<CatalogProductDto[]>(`${this.baseUrl}/products`);
