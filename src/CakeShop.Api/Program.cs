@@ -896,7 +896,7 @@ collectionApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, StoreCo
     if (await db.StoreCollections.AnyAsync(x => x.ClientId == clientId && x.Id != id && x.Kind == request.Kind && x.Slug == slug, ct))
         return Results.Conflict(new { message = "A collection with this slug already exists for this type." });
     entity.Update(request.Kind!, request.Title!, slug, request.Description ?? "", request.ImageUrl,
-        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc, request.BundlePrice);
+        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc, request.BundlePrice, request.Highlights);
     await db.SaveChangesAsync(ct);
     return Results.NoContent();
 });
