@@ -279,7 +279,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections' | 'store-profile'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections' | 'store-profile' | 'about-page'
   ): void {
     this.activeTab = tab;
     this.error.set('');
