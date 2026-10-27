@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto, StoreProfileDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto, StoreProfileDto, AboutPageSectionDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -46,6 +46,7 @@ export class AppComponent implements OnDestroy, OnInit {
   readonly isAdminRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   );
+  readonly isAboutRoute = signal(typeof window !== 'undefined' && window.location.pathname.replace(/\\/+$/, '') === '/about');
   readonly isShopRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/shop'
   );
@@ -63,6 +64,7 @@ export class AppComponent implements OnDestroy, OnInit {
   readonly apiConnected = signal(false);
   readonly brandName = 'The Sweet Panda';
   readonly storeProfile = signal<StoreProfileDto | null>(null);
+  readonly aboutSections = signal<AboutPageSectionDto[]>([]);
   // Replace with the shop's WhatsApp number in international format, digits only.
   private readonly WHATSAPP_NUMBER = '8456057904';
 
@@ -216,6 +218,7 @@ export class AppComponent implements OnDestroy, OnInit {
 
   ngOnInit(): void {
     this.catalogApi.getStoreProfile().pipe(catchError(() => of(null as StoreProfileDto | null))).subscribe(profile => this.storeProfile.set(profile));
+    this.catalogApi.getAboutSections().pipe(catchError(() => of([] as AboutPageSectionDto[]))).subscribe(sections => this.aboutSections.set(sections));
     this.catalogApi.getCollections().pipe(catchError(() => of([] as StoreCollectionDto[]))).subscribe(items => {
       this.storeCollections.set(items);
     });
