@@ -1,4 +1,5 @@
 @if (!isAdminRoute()) {
+@if (!selectedCollectionSlug()) {
 <!-- Announcement Bar -->
 <div class="announcement-bar">
   <span>Made with love, baked fresh for your sweetest moments</span>
@@ -38,8 +39,8 @@
     </button>
   </nav>
 </header>
+}
 
-@if (!selectedCollectionSlug()) {
 @if (cartNotice() && !addToCartOpen() && !cartDrawerOpen() && !checkoutOpen()) {
   <div class="cart-toast" role="status">
     <span aria-hidden="true">✓</span><p>{{ cartNotice() }}</p>
