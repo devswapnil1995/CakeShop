@@ -46,7 +46,7 @@ export class AppComponent implements OnDestroy, OnInit {
   readonly isAdminRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   );
-  readonly isAboutRoute = signal(typeof window !== 'undefined' && window.location.pathname.replace(/\\/+$/, '') === '/about');
+  readonly isAboutRoute = signal(typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/about');
   readonly isShopRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/shop'
   );
