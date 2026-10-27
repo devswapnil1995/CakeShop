@@ -25,7 +25,7 @@ export interface StoreCollectionProductDto {
 
 export interface StoreCollectionDto {
   id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
-  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
   sortOrder: number; startsUtc: string | null; endsUtc: string | null;
   products: StoreCollectionProductDto[];
 }
