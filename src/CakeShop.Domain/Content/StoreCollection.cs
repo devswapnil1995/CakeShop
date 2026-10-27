@@ -37,7 +37,7 @@ public sealed class StoreCollection
     }
 
     public void Update(string kind, string title, string slug, string description, string? imageUrl,
-        string? navigationLabel, bool showInNavigation, int sortOrder, DateTime? startsUtc, DateTime? endsUtc, decimal? bundlePrice = null)
+        string? navigationLabel, bool showInNavigation, int sortOrder, DateTime? startsUtc, DateTime? endsUtc, decimal? bundlePrice = null, string? highlights = null)
     {
         if (kind is not ("Hamper" or "Seasonal")) throw new ArgumentException("Kind must be Hamper or Seasonal.", nameof(kind));
         if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 160) throw new ArgumentException("Title is required and must be at most 160 characters.");
