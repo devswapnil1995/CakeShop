@@ -15,6 +15,7 @@ public sealed class StoreCollection
     public string Description { get; private set; } = string.Empty;
     public string? ImageUrl { get; private set; }
     public string? NavigationLabel { get; private set; }
+    public decimal? BundlePrice { get; private set; }
     public bool ShowInNavigation { get; private set; }
     public bool IsPublished { get; private set; }
     public int SortOrder { get; private set; }
@@ -25,12 +26,12 @@ public sealed class StoreCollection
 
     public StoreCollection(Guid clientId, string kind, string title, string slug, string description,
         string? imageUrl, string? navigationLabel, bool showInNavigation, int sortOrder,
-        DateTime? startsUtc, DateTime? endsUtc)
+        DateTime? startsUtc, DateTime? endsUtc, decimal? bundlePrice = null)
     {
         if (clientId == Guid.Empty) throw new ArgumentException("ClientId is required.", nameof(clientId));
         Id = Guid.NewGuid();
         ClientId = clientId;
-        Update(kind, title, slug, description, imageUrl, navigationLabel, showInNavigation, sortOrder, startsUtc, endsUtc);
+        Update(kind, title, slug, description, imageUrl, navigationLabel, showInNavigation, sortOrder, startsUtc, endsUtc, bundlePrice);
         CreatedUtc = UpdatedUtc = DateTime.UtcNow;
     }
 
@@ -42,12 +43,13 @@ public sealed class StoreCollection
         if (string.IsNullOrWhiteSpace(slug) || slug.Trim().Length > 180) throw new ArgumentException("Slug is required and must be at most 180 characters.");
         if (description?.Trim().Length > 2000) throw new ArgumentException("Description must be at most 2000 characters.");
         if (imageUrl?.Length > 1000 || navigationLabel?.Trim().Length > 60) throw new ArgumentException("Image URL or navigation label is too long.");
+        if (bundlePrice.HasValue && (kind != "Hamper" || bundlePrice <= 0 || bundlePrice > 10000000 || bundlePrice != decimal.Round(bundlePrice.Value, 2, MidpointRounding.AwayFromZero))) throw new ArgumentException("Bundle price must be a valid positive amount for hampers only.", nameof(bundlePrice));
         if (sortOrder < 0 || sortOrder > 10000) throw new ArgumentOutOfRangeException(nameof(sortOrder));
         if (startsUtc.HasValue && endsUtc.HasValue && endsUtc <= startsUtc) throw new ArgumentException("End date must be after start date.");
         Kind = kind; Title = title.Trim(); Slug = slug.Trim().ToLowerInvariant(); Description = description?.Trim() ?? string.Empty;
         ImageUrl = string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim();
         NavigationLabel = string.IsNullOrWhiteSpace(navigationLabel) ? null : navigationLabel.Trim();
-        ShowInNavigation = showInNavigation; SortOrder = sortOrder; StartsUtc = startsUtc; EndsUtc = endsUtc;
+        ShowInNavigation = showInNavigation; BundlePrice = kind == "Hamper" ? bundlePrice : null; SortOrder = sortOrder; StartsUtc = startsUtc; EndsUtc = endsUtc;
         UpdatedUtc = DateTime.UtcNow;
     }
 
