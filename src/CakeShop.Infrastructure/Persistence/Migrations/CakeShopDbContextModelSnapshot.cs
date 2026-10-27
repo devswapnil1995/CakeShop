@@ -162,6 +162,7 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsPublished").HasColumnType("bit");
                     b.Property<string>("Kind").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
                     b.Property<string>("NavigationLabel").HasMaxLength(60).HasColumnType("nvarchar(60)");
+                    b.Property<decimal?>("BundlePrice").HasColumnType("decimal(18,2)");
                     b.Property<int>("SortOrder").HasColumnType("int");
                     b.Property<bool>("ShowInNavigation").HasColumnType("bit");
                     b.Property<string>("Slug").IsRequired().HasMaxLength(180).HasColumnType("nvarchar(180)");
