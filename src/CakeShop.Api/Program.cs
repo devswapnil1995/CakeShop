@@ -128,6 +128,20 @@ app.MapGet("/api/v1/shop", async (CakeShopDbContext db, CancellationToken ct) =>
     return shop is null ? Results.NotFound() : Results.Ok(shop);
 }).WithName("GetShop").WithTags("Shop");
 
+app.MapGet("/api/v1/store-profile", async (CakeShopDbContext db, CancellationToken ct) =>
+{
+    var shop = await db.Clients.AsNoTracking().Where(x => x.Id == defaultClientId && x.IsActive)
+        .Select(x => new { x.Id, x.Name, x.Slug }).SingleOrDefaultAsync(ct);
+    if (shop is null) return Results.NotFound();
+    var profile = await db.StoreProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == defaultClientId, ct);
+    return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
+        profile?.Tagline ?? "Baked with a little magic",
+        profile?.StoryTitle ?? "Not just cake. A feeling.",
+        profile?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
+        profile?.StoryImageUrl, profile?.LogoUrl, profile?.Phone, profile?.WhatsAppNumber, profile?.Email,
+        profile?.Address, profile?.OpeningHours, profile?.InstagramUrl, profile?.FacebookUrl, profile?.WebsiteUrl));
+}).AllowAnonymous().WithName("GetStoreProfile").WithTags("Shop");
+
 app.MapGet("/api/v1/categories", async (CakeShopDbContext db, CancellationToken ct) =>
     Results.Ok(await db.Categories.AsNoTracking().Where(x => x.ClientId == defaultClientId && x.IsActive)
         .OrderBy(x => x.SortOrder).Select(x => new CategoryDto(x.Id, x.Name, x.Slug, x.SortOrder)).ToListAsync(ct)))
@@ -858,6 +872,38 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+var profileApi = app.MapGroup("/api/v1/admin/store-profile").RequireAuthorization().WithTags("Store Profile");
+profileApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var shop = await db.Clients.AsNoTracking().Where(x => x.Id == clientId && x.IsActive)
+        .Select(x => new { x.Id, x.Name, x.Slug }).SingleOrDefaultAsync(ct);
+    if (shop is null) return Results.NotFound();
+    var p = await db.StoreProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == clientId, ct);
+    return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
+        p?.Tagline ?? "Baked with a little magic", p?.StoryTitle ?? "Not just cake. A feeling.",
+        p?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
+        p?.StoryImageUrl, p?.LogoUrl, p?.Phone, p?.WhatsAppNumber, p?.Email, p?.Address,
+        p?.OpeningHours, p?.InstagramUrl, p?.FacebookUrl, p?.WebsiteUrl));
+});
+profileApi.MapPut("/", async (ClaimsPrincipal user, StoreProfileWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateStoreProfile(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var profile = await db.StoreProfiles.SingleOrDefaultAsync(x => x.ClientId == clientId, ct);
+    if (profile is null)
+    {
+        profile = new StoreProfile(clientId);
+        db.StoreProfiles.Add(profile);
+    }
+    profile.Update(request.Tagline, request.StoryTitle, request.Story, request.StoryImageUrl,
+        request.LogoUrl, request.Phone, request.WhatsAppNumber, request.Email, request.Address,
+        request.OpeningHours, request.InstagramUrl, request.FacebookUrl, request.WebsiteUrl);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
 
 var collectionApi = app.MapGroup("/api/v1/admin/collections").RequireAuthorization().WithTags("Collections");
 collectionApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
@@ -2116,6 +2162,32 @@ public sealed record HeroBannerDto(
     DateTime? StartsUtc,
     DateTime? EndsUtc,
     bool IsPublished = false);
+
+public sealed record StoreProfileDto(Guid ClientId, string Name, string Slug, string Tagline, string StoryTitle,
+    string Story, string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
+    string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
+
+public sealed record StoreProfileWriteRequest(string? Tagline, string? StoryTitle, string? Story,
+    string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
+    string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
+
+static string? ValidateStoreProfile(StoreProfileWriteRequest r)
+{
+    if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
+    if (string.IsNullOrWhiteSpace(r.StoryTitle) || r.StoryTitle.Trim().Length > 180) return "Story title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.Story) || r.Story.Trim().Length > 3000) return "Story is required and must be at most 3000 characters.";
+    if (r.StoryImageUrl?.Length > 1000 || r.LogoUrl?.Length > 1000 || r.Phone?.Length > 40 ||
+        r.WhatsAppNumber?.Length > 40 || r.Email?.Length > 254 || r.Address?.Length > 500 ||
+        r.OpeningHours?.Length > 500 || r.InstagramUrl?.Length > 500 || r.FacebookUrl?.Length > 500 ||
+        r.WebsiteUrl?.Length > 500) return "One or more profile fields exceed their allowed length.";
+    foreach (var url in new[] { r.StoryImageUrl, r.LogoUrl, r.InstagramUrl, r.FacebookUrl, r.WebsiteUrl })
+        if (!string.IsNullOrWhiteSpace(url) &&
+            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal)) &&
+            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            return "Image and social URLs must be safe relative upload paths or HTTPS URLs.";
+    if (!string.IsNullOrWhiteSpace(r.Email) && !System.Net.Mail.MailAddress.TryCreate(r.Email, out _)) return "Enter a valid email address.";
+    return null;
+}
 
 public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
     string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
