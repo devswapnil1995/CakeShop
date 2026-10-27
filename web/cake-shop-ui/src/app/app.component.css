@@ -4451,3 +4451,10 @@ h2 em {
 .hamper-highlight-chips span { border: 1px solid rgba(105,75,56,.2); border-radius: 999px; padding: .45rem .8rem; color: #6b4a38; background: #f8efe5; font-size: .82rem; }
 @keyframes hamperReveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .hamper-highlight-card { animation: none; transition: none; } }
+
+
+/* Admin-managed contact links */
+.visit-social-links { display: flex; flex-wrap: wrap; gap: .65rem; margin: 1rem 0; }
+.visit-social-links a { color: #6b4938; border-bottom: 1px solid #c9a795; padding-bottom: .2rem; font-size: .8rem; text-decoration: none; }
+.visit-social-links a:hover { color: #9c654f; }
+.visit-card-row a { color: inherit; text-decoration: underline; text-decoration-color: #c9a795; text-underline-offset: 3px; overflow-wrap: anywhere; }
