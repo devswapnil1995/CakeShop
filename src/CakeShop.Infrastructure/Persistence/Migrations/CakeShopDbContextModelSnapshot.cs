@@ -151,6 +151,25 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.ToTable("ProductVariants", (string)null);
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Content.AboutPageSection", b =>
+                {
+                    b.Property<string>("Animation").IsRequired().HasMaxLength(24).HasColumnType("nvarchar(24)");
+                    b.Property<string>("Body").IsRequired().HasMaxLength(3000).HasColumnType("nvarchar(3000)");
+                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Eyebrow").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
+                    b.Property<string>("ImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("Layout").IsRequired().HasMaxLength(24).HasColumnType("nvarchar(24)");
+                    b.Property<bool>("IsPublished").HasColumnType("bit");
+                    b.Property<string>("SecondaryImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<int>("SortOrder").HasColumnType("int");
+                    b.Property<string>("Title").IsRequired().HasMaxLength(180).HasColumnType("nvarchar(180)");
+                    b.Property<DateTime>("UpdatedUtc").HasColumnType("datetime2");
+                    b.HasKey("Id");
+                    b.HasIndex("ClientId", "SortOrder");
+                    b.ToTable("AboutPageSections", (string)null);
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
                 {
                     b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
@@ -775,6 +794,15 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
+            modelBuilder.Entity("CakeShop.Domain.Content.AboutPageSection", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
                 {
                     b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
