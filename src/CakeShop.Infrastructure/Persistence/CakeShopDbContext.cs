@@ -56,6 +56,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.HasKey(x => x.Id);
             e.Property(x => x.Tagline).HasMaxLength(120).IsRequired();
             e.Property(x => x.StoryTitle).HasMaxLength(180).IsRequired();
+            e.Property(x => x.HomeDescription).HasMaxLength(320).IsRequired();
             e.Property(x => x.Story).HasMaxLength(3000).IsRequired();
             e.Property(x => x.StoryImageUrl).HasMaxLength(1000);
             e.Property(x => x.LogoUrl).HasMaxLength(1000);
