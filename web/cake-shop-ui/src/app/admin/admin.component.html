@@ -91,6 +91,11 @@
           Homepage banners <b>{{ heroBanners().length }}</b>
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'about-page'" (click)="selectTab('about-page')">
+          <span>✦</span>
+          About page <b>{{ aboutSections().length }}</b>
+        </button>
+
         <button type="button" [class.selected]="activeTab === 'store-profile'" (click)="selectTab('store-profile')">
           <span>✧</span>
           Brand & contact
@@ -1399,6 +1404,75 @@
             <p class="form-hint span-two">Local uploads are stored under the API wwwroot folder. Configure persistent cloud object storage before production deployment.</p>
           </form>
         </div>
+        }
+
+        @if (activeTab === 'about-page') {
+          <section class="panel-layout about-admin-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">STORYTELLING STUDIO</span><h2>About page builder</h2>
+                <p class="muted">Create multiple image-and-text sections, choose a layout and animation, and publish each section independently.</p></div>
+              <button class="text-btn" type="button" (click)="loadAboutSections()" [disabled]="aboutSectionsLoading()">↻ Refresh</button>
+            </div>
+
+            <div class="about-section-manager">
+              <div class="about-section-list">
+                <div class="list-heading"><h3>Page sections <span>{{ aboutSections().length }}</span></h3>
+                  <button class="text-btn" type="button" (click)="newAboutSection()">＋ New section</button></div>
+                @if (aboutSectionsLoading()) { <div class="empty-state">Loading About sections…</div> }
+                @for (section of aboutSections(); track section.id) {
+                  <article class="about-admin-card" [class.selected]="editingAboutSectionId === section.id">
+                    <div class="about-admin-card-media">
+                      @if (section.imageUrl) { <img [src]="resolveImageUrl(section.imageUrl)" [alt]="section.title" /> }
+                      @else { <span>✿</span> }
+                    </div>
+                    <div class="about-admin-card-copy">
+                      <span class="eyebrow">{{ section.eyebrow }}</span>
+                      <strong>{{ section.title }}</strong>
+                      <small>Order {{ section.sortOrder }} · {{ section.layout }} · {{ section.animation }}</small>
+                      <span class="status-pill" [class.status-published]="section.isPublished">{{ section.isPublished ? 'Published' : 'Draft' }}</span>
+                    </div>
+                    <div class="about-admin-card-actions">
+                      <button type="button" class="text-btn" (click)="editAboutSection(section)">Edit</button>
+                      <button type="button" class="text-btn danger-text" (click)="deleteAboutSection(section)">Delete</button>
+                    </div>
+                  </article>
+                } @empty {
+                  @if (!aboutSectionsLoading()) { <div class="empty-state">No About sections yet. Add your first story block to start building the page.</div> }
+                }
+              </div>
+
+              <form class="about-section-editor" (ngSubmit)="saveAboutSection()">
+                <div class="panel-heading">
+                  <div><span class="eyebrow">{{ editingAboutSectionId ? 'EDIT SECTION' : 'NEW SECTION' }}</span>
+                    <h3>{{ editingAboutSectionId ? 'Refine this story' : 'Create a story block' }}</h3></div>
+                  @if (editingAboutSectionId) { <button type="button" class="text-btn" (click)="newAboutSection()">Cancel edit</button> }
+                </div>
+                <div class="field"><label for="aboutEyebrow">Small label / eyebrow *</label><input id="aboutEyebrow" name="aboutEyebrow" [(ngModel)]="aboutSectionForm.eyebrow" maxlength="100" required placeholder="OUR CRAFT" /></div>
+                <div class="field"><label for="aboutTitle">Heading *</label><input id="aboutTitle" name="aboutTitle" [(ngModel)]="aboutSectionForm.title" maxlength="180" required placeholder="A little care in every layer" /></div>
+                <div class="field"><label for="aboutBody">Story text *</label><textarea id="aboutBody" name="aboutBody" [(ngModel)]="aboutSectionForm.body" rows="5" maxlength="3000" required placeholder="Tell this part of your bakery story…"></textarea></div>
+                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [(ngModel)]="aboutSectionForm.imageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [(ngModel)]="aboutSectionForm.secondaryImageUrl" maxlength="1000" placeholder="Optional second image" /></div>
+                <div class="field"><label for="aboutLayout">Visual layout</label>
+                  <select id="aboutLayout" name="aboutLayout" [(ngModel)]="aboutSectionForm.layout">
+                    <option value="image-left">Image left · story right</option><option value="image-right">Image right · story left</option>
+                    <option value="centered">Centered editorial</option><option value="full-bleed">Full-bleed image-led</option><option value="editorial">Editorial collage</option>
+                  </select>
+                </div>
+                <div class="field"><label for="aboutAnimation">Entrance animation</label>
+                  <select id="aboutAnimation" name="aboutAnimation" [(ngModel)]="aboutSectionForm.animation">
+                    <option value="none">No animation</option><option value="fade-up">Soft fade up</option><option value="fade-in">Fade in</option>
+                    <option value="slide-left">Slide from left</option><option value="slide-right">Slide from right</option><option value="zoom-in">Gentle zoom</option>
+                  </select>
+                </div>
+                <div class="field"><label for="aboutSort">Display order</label><input id="aboutSort" name="aboutSort" type="number" min="0" max="10000" [(ngModel)]="aboutSectionForm.sortOrder" /></div>
+                <label class="about-publish-toggle"><input type="checkbox" name="aboutPublished" [(ngModel)]="aboutSectionForm.isPublished" /> Publish this section on the About page</label>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit" [disabled]="aboutSectionSaving()">{{ aboutSectionSaving() ? 'Saving…' : (editingAboutSectionId ? 'Save section' : 'Create section') }}</button>
+                  <button class="text-btn" type="button" (click)="newAboutSection()">Clear form</button>
+                </div>
+              </form>
+            </div>
+          </section>
         }
 
         @if (activeTab === 'store-profile') {
