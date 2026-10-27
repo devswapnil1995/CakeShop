@@ -15,6 +15,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<HeroBanner> HeroBanners => Set<HeroBanner>();
     public DbSet<StoreCollection> StoreCollections => Set<StoreCollection>();
     public DbSet<StoreProfile> StoreProfiles => Set<StoreProfile>();
+    public DbSet<AboutPageSection> AboutPageSections => Set<AboutPageSection>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
@@ -35,6 +36,20 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<AboutPageSection>(e =>
+        {
+            e.ToTable("AboutPageSections");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Eyebrow).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(180).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(3000).IsRequired();
+            e.Property(x => x.ImageUrl).HasMaxLength(1000);
+            e.Property(x => x.SecondaryImageUrl).HasMaxLength(1000);
+            e.Property(x => x.Layout).HasMaxLength(24).IsRequired();
+            e.Property(x => x.Animation).HasMaxLength(24).IsRequired();
+            e.HasIndex(x => new { x.ClientId, x.SortOrder });
+            e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<StoreProfile>(e =>
         {
             e.ToTable("StoreProfiles");
