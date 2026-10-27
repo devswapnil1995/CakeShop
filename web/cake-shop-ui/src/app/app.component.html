@@ -194,7 +194,8 @@
         }
       </div>
       @if (collectionDetail.kind === 'Hamper') {
-        <p class="catalog-note">The items shown are included in this hamper. Contact us to confirm availability and get the hamper price.</p>
+        <p class="collection-bundle-price">{{ collectionDetail.bundlePrice != null ? (collectionDetail.bundlePrice | currency:'INR':'symbol':'1.0-2') : 'Price on request' }}</p>
+        <p class="catalog-note">The items shown are included in this hamper. Contact us to confirm availability and place your order.</p>
         <button class="button button-dark" type="button" (click)="orderOnWhatsApp()">Enquire about this hamper <span aria-hidden="true">↗</span></button>
       }
     </section>
