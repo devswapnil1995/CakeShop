@@ -220,6 +220,7 @@ export class AdminComponent implements OnInit {
         this.loadDashboard();
         this.loadOrders();
         this.loadHeroBanners();
+        this.loadStoreProfile();
       },
       error: err => {
         this.error.set(err.status === 401 ? 'Email or password is incorrect.' : (err.error?.message ?? 'Unable to sign in. Check that the API is running and the admin account has been seeded.'));
