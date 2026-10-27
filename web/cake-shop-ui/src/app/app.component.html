@@ -26,6 +26,9 @@
     <a href="/" (click)="closeMobileMenu()" [class.active]="!isShopRoute()">Home</a>
     <a href="/shop" (click)="closeMobileMenu()" [class.active]="isShopRoute()">Shop / Menu</a>
     <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
+    @for (collection of storeCollections().filter(c => c.kind === 'Seasonal' && c.showInNavigation); track collection.id) {
+      <a [href]="'/#collection-' + collection.slug" (click)="closeMobileMenu()">{{ collection.navigationLabel || collection.title }}</a>
+    }
     <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
     <button class="cart-nav-button" type="button" (click)="openCart()" [attr.aria-label]="'Open shopping bag, ' + cartItemCount + ' items'">
@@ -250,6 +253,46 @@
       @if (!isShopRoute()) { <a href="/shop">Browse the full menu →</a> }
     </p>
   </section>
+
+  @if (storeCollections().length > 0) {
+    <section class="store-collections section-wrap" id="hampers">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">MADE FOR GIFTING & GATHERING</p>
+          <h2>Little boxes of <em>happiness.</em></h2>
+        </div>
+        <p class="section-intro">Thoughtfully curated hampers and seasonal treats for the moments worth celebrating.</p>
+      </div>
+      <div class="store-collection-grid">
+        @for (collection of storeCollections(); track collection.id) {
+          <article class="store-collection-card" [id]="'collection-' + collection.slug">
+            @if (collection.imageUrl) {
+              <img class="store-collection-cover" [src]="resolveProductImageUrl(collection.imageUrl)" [alt]="collection.title" loading="lazy" />
+            } @else {
+              <div class="store-collection-cover collection-placeholder" aria-hidden="true">✿</div>
+            }
+            <div class="store-collection-content">
+              <span class="eyebrow">{{ collection.kind === 'Hamper' ? 'GIFT HAMPER' : 'SEASONAL COLLECTION' }}</span>
+              <h3>{{ collection.title }}</h3>
+              <p>{{ collection.description }}</p>
+              @if (collection.products.length > 0) {
+                <div class="store-collection-products">
+                  @for (product of collection.products; track product.id) {
+                    <div class="store-collection-product">
+                      @if (product.imageUrl) { <img [src]="resolveProductImageUrl(product.imageUrl)" [alt]="product.name" loading="lazy" /> }
+                      <span>{{ product.name }}</span>
+                      <strong>{{ product.price | currency:'INR':'symbol':'1.0-2' }}</strong>
+                    </div>
+                  }
+                </div>
+              }
+              <a class="button button-dark" href="/shop">Explore the menu <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
 
   @if (!isShopRoute()) {
   <!-- Our Story -->
