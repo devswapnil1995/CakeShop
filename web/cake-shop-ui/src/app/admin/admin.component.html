@@ -81,6 +81,11 @@
           Profit report
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'collections'" (click)="selectTab('collections')">
+          <span>✿</span>
+          Hampers & seasonal <b>{{ storeCollections().length }}</b>
+        </button>
+
         <button type="button" [class.selected]="activeTab === 'hero-banners'" (click)="selectTab('hero-banners')">
           <span>▣</span>
           Homepage banners <b>{{ heroBanners().length }}</b>
@@ -1196,6 +1201,69 @@
         </div>
         }
 
+
+        @if (activeTab === 'collections') {
+          <div class="panel-layout">
+            <div class="panel-heading">
+              <div><span class="eyebrow">GIFTING & SEASONAL CAMPAIGNS</span><h2>Hampers & collections</h2>
+                <p class="muted">Create gift hampers and date-bound seasonal collections. Unpublished collections stay private.</p></div>
+              <button class="text-btn" type="button" (click)="loadStoreCollections()" [disabled]="storeCollectionsLoading()">↻ Refresh</button>
+            </div>
+            @if (storeCollectionsLoading()) { <p class="muted">Loading collections…</p> }
+            @for (item of storeCollections(); track item.id) {
+              <article class="category-row">
+                <div class="category-info">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.kind }} · /{{ item.slug }} · {{ item.productIds.length }} product(s)</small>
+                  <small>{{ item.isPublished ? 'Published' : 'Draft / unpublished' }}{{ item.showInNavigation ? ' · Navigation visible' : '' }}</small>
+                </div>
+                <div class="hero-banner-actions">
+                  <button type="button" class="quiet-btn" (click)="editStoreCollection(item)">Edit</button>
+                  <button type="button" class="quiet-btn" (click)="toggleStoreCollectionPublished(item)">{{ item.isPublished ? 'Unpublish' : 'Publish' }}</button>
+                  <button type="button" class="quiet-btn danger-btn" (click)="deleteStoreCollection(item)">Delete</button>
+                </div>
+              </article>
+            }
+            <form class="admin-form-grid collection-editor" (ngSubmit)="saveStoreCollection()">
+              <div class="span-two"><h3>{{ editingStoreCollectionId ? 'Edit collection' : 'Create a collection' }}</h3></div>
+              <div class="field">
+                <label for="collectionKind">Collection type *</label>
+                <select id="collectionKind" name="collectionKind" [(ngModel)]="storeCollectionForm.kind" required>
+                  <option value="Hamper">Gift hamper</option><option value="Seasonal">Seasonal campaign</option>
+                </select>
+              </div>
+              <div class="field"><label for="collectionTitle">Title *</label><input id="collectionTitle" name="collectionTitle" [(ngModel)]="storeCollectionForm.title" maxlength="160" required /></div>
+              <div class="field"><label for="collectionSlug">URL slug *</label><input id="collectionSlug" name="collectionSlug" [(ngModel)]="storeCollectionForm.slug" maxlength="180" placeholder="diwali-gifting" required /></div>
+              <div class="field"><label for="collectionImage">Cover image URL</label><input id="collectionImage" name="collectionImage" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="/uploads/..." /></div>
+              <div class="field span-two"><label for="collectionDescription">Description</label><textarea id="collectionDescription" name="collectionDescription" [(ngModel)]="storeCollectionForm.description" maxlength="2000" rows="3"></textarea></div>
+              <div class="field"><label for="collectionNavLabel">Navigation label (optional)</label><input id="collectionNavLabel" name="collectionNavLabel" [(ngModel)]="storeCollectionForm.navigationLabel" maxlength="60" placeholder="Diwali Specials" /></div>
+              <div class="field"><label for="collectionSort">Display order</label><input id="collectionSort" name="collectionSort" type="number" min="0" max="10000" [(ngModel)]="storeCollectionForm.sortOrder" required /></div>
+              <div class="field"><label for="collectionStart">Starts (UTC)</label><input id="collectionStart" name="collectionStart" type="datetime-local" [(ngModel)]="storeCollectionForm.startsUtc" /></div>
+              <div class="field"><label for="collectionEnd">Ends (UTC)</label><input id="collectionEnd" name="collectionEnd" type="datetime-local" [(ngModel)]="storeCollectionForm.endsUtc" /></div>
+              <div class="field span-two">
+                <label><input type="checkbox" name="collectionNavVisible" [(ngModel)]="storeCollectionForm.showInNavigation" /> Show this seasonal collection in the top navigation</label>
+                <small class="muted">Only published seasonal collections appear as dynamic navigation links.</small>
+              </div>
+              <div class="field span-two">
+                <label>Products in this collection</label>
+                <div class="collection-product-picker">
+                  @for (product of products(); track product.id) {
+                    <label class="collection-product-option">
+                      <input type="checkbox" [checked]="storeCollectionForm.productIds.includes(product.id)" (change)="toggleCollectionProduct(product.id, $any($event.target).checked)" />
+                      <span>{{ product.name }} <small>{{ product.categoryName }}</small></span>
+                    </label>
+                  }
+                  @empty { <p class="muted">Add products in the Products tab first.</p> }
+                </div>
+                <small class="muted">Product membership is saved with the collection. Existing product prices remain authoritative in the shop.</small>
+              </div>
+              <div class="span-two form-actions">
+                <button type="submit" class="primary-btn" [disabled]="storeCollectionSaving()">{{ storeCollectionSaving() ? 'Saving…' : 'Save collection' }}</button>
+                @if (editingStoreCollectionId) { <button type="button" class="quiet-btn" (click)="resetStoreCollectionForm()">Cancel edit</button> }
+              </div>
+            </form>
+          </div>
+        }
 
         @if (activeTab === 'hero-banners') {
         <div class="panel-layout">
