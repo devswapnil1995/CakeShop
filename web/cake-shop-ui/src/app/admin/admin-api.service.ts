@@ -43,7 +43,7 @@ export interface AdminStoreCollection {
 }
 export interface StoreCollectionWrite {
   kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
-  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
   sortOrder: number; startsUtc: string | null; endsUtc: string | null; isPublished: boolean; productIds: string[];
 }
 
