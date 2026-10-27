@@ -775,6 +775,15 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
 #pragma warning restore 612, 618
         }
     }
