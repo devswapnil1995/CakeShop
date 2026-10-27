@@ -82,7 +82,10 @@ export interface CatalogProductVariantDto {
 export class CatalogApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1`;
-  getStoreProfile(): Observable<StoreProfileDto> {\n    return this.http.get<StoreProfileDto>(`${this.baseUrl}/store-profile`);\n  }\n  getHeroBanners(): Observable<HeroBannerDto[]> {
+  getStoreProfile(): Observable<StoreProfileDto> {
+    return this.http.get<StoreProfileDto>(`${this.baseUrl}/store-profile`);
+  }
+  getHeroBanners(): Observable<HeroBannerDto[]> {
     return this.http.get<HeroBannerDto[]>(`${this.baseUrl}/hero-banners`);
   }
   getCollections(kind?: 'Hamper' | 'Seasonal'): Observable<StoreCollectionDto[]> {
