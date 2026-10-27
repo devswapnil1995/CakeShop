@@ -13,7 +13,7 @@ export interface AdminAboutSection {
 export type AboutSectionWrite = Omit<AdminAboutSection, 'id'>;
 
 export interface AdminStoreProfile {
-  clientId: string; name: string; slug: string; tagline: string; storyTitle: string; story: string;
+  clientId: string; name: string; slug: string; tagline: string; storyTitle: string; homeDescription: string; story: string;
   storyImageUrl: string | null; logoUrl: string | null; phone: string | null; whatsAppNumber: string | null;
   email: string | null; address: string | null; openingHours: string | null; instagramUrl: string | null;
   facebookUrl: string | null; websiteUrl: string | null;
