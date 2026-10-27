@@ -18,7 +18,7 @@ import {
   HeroBannerTextPosition,
   HeroBannerWrite,
   AdminStoreCollection,
-  StoreCollectionWrite
+  StoreCollectionWrite, AdminStoreProfile, StoreProfileWrite
 } from './admin-api.service';
 
 @Component({
@@ -41,7 +41,23 @@ export class AdminComponent implements OnInit {
     | 'expenses'
     | 'reports'
     | 'hero-banners'
-    | 'collections' = 'dashboard';
+    | 'collections'
+    | 'store-profile' = 'dashboard';
+
+  readonly storeProfile = signal<AdminStoreProfile | null>(null);
+  readonly storeProfileLoading = signal(false);
+  readonly storeProfileSaving = signal(false);
+  storeProfileForm: StoreProfileWrite = this.emptyStoreProfile();
+
+  private emptyStoreProfile(): StoreProfileWrite {
+    return {
+      tagline: 'Baked with a little magic',
+      storyTitle: 'Not just cake. A feeling.',
+      story: 'We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.',
+      storyImageUrl: null, logoUrl: null, phone: null, whatsAppNumber: null, email: null,
+      address: null, openingHours: null, instagramUrl: null, facebookUrl: null, websiteUrl: null
+    };
+  }
 
   readonly storeCollections = signal<AdminStoreCollection[]>([]);
   readonly storeCollectionsLoading = signal(false);
@@ -187,6 +203,7 @@ export class AdminComponent implements OnInit {
       this.loadDashboard();
       this.loadOrders();
       this.loadHeroBanners();
+      this.loadStoreProfile();
     }
   }
 
@@ -248,7 +265,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections' | 'store-profile'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -271,6 +288,9 @@ export class AdminComponent implements OnInit {
     }
     if (tab === 'hero-banners') {
       this.loadHeroBanners();
+    }
+    if (tab === 'store-profile') {
+      this.loadStoreProfile();
     }
     if (tab === 'collections') {
       this.loadStoreCollections();
@@ -351,6 +371,41 @@ export class AdminComponent implements OnInit {
     if (!url) return '';
     if (!url.startsWith('/')) return url;
     return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+  }
+
+  loadStoreProfile(): void {
+    this.storeProfileLoading.set(true);
+    this.api.getStoreProfile().pipe(finalize(() => this.storeProfileLoading.set(false))).subscribe({
+      next: profile => {
+        this.storeProfile.set(profile);
+        const { clientId, name, slug, ...form } = profile;
+        this.storeProfileForm = { ...form };
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  saveStoreProfile(): void {
+    const form = this.storeProfileForm;
+    if (!form.tagline.trim() || !form.storyTitle.trim() || !form.story.trim()) {
+      this.error.set('Tagline, story title and story are required.');
+      return;
+    }
+    this.error.set('');
+    this.notice = '';
+    this.storeProfileSaving.set(true);
+    this.api.updateStoreProfile({
+      ...form,
+      tagline: form.tagline.trim(),
+      storyTitle: form.storyTitle.trim(),
+      story: form.story.trim()
+    }).pipe(finalize(() => this.storeProfileSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = 'Bakery profile saved. Refresh the storefront to see the changes.';
+        this.loadStoreProfile();
+      },
+      error: err => this.handleApiError(err)
+    });
   }
 
   loadHeroBanners(): void {
