@@ -49,6 +49,9 @@ export class AppComponent implements OnDestroy, OnInit {
   readonly isShopRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/shop'
   );
+  readonly selectedCollectionSlug = signal(
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('collection') ?? '' : ''
+  );
   private readonly catalogApi = inject(CatalogApiService);
 
 
@@ -288,6 +291,11 @@ export class AppComponent implements OnDestroy, OnInit {
     return this.activeCategory === 'All'
       ? catalogue
       : catalogue.filter(product => product.category === this.activeCategory);
+  }
+
+  get selectedCollection(): StoreCollectionDto | null {
+    const slug = this.selectedCollectionSlug();
+    return slug ? this.storeCollections().find(collection => collection.slug === slug) ?? null : null;
   }
 
   get cartLines(): CartLine[] {
