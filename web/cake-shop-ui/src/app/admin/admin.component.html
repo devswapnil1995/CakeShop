@@ -1237,7 +1237,19 @@
               @if (storeCollectionForm.kind === 'Hamper') {
                 <div class="field"><label for="collectionBundlePrice">Bundle price (₹, optional)</label><input id="collectionBundlePrice" name="collectionBundlePrice" type="number" min="0.01" max="10000000" step="0.01" [(ngModel)]="storeCollectionForm.bundlePrice" placeholder="Leave blank to quote on request" /><small class="muted">This is the hamper price; included products' individual prices won't be shown.</small></div>
               }
-              <div class="field"><label for="collectionImage">Cover image URL</label><input id="collectionImage" name="collectionImage" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="/uploads/..." /></div>
+              <div class="field span-two">
+                <label for="collectionImage">Cover image URL (optional)</label>
+                <input id="collectionImage" name="collectionImage" type="url" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="https://example.com/hamper.jpg or /uploads/..." />
+                <small class="form-hint">Paste an HTTPS image URL or upload a JPG, PNG or WebP image (max 10 MB).</small>
+                <input id="collectionImageUpload" name="collectionImageUpload" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadCollectionImage($event)" [disabled]="collectionImageUploading()" />
+                @if (collectionImageUploading()) { <small class="form-hint">Uploading image…</small> }
+                @if (storeCollectionForm.imageUrl) {
+                  <div class="product-image-preview-wrap">
+                    <img class="product-image-preview" [src]="resolveProductImageUrl(storeCollectionForm.imageUrl)" [alt]="storeCollectionForm.title || 'Collection cover preview'" />
+                    <button type="button" class="secondary-btn" (click)="storeCollectionForm.imageUrl = null">Clear image</button>
+                  </div>
+                }
+              </div>
               <div class="field span-two"><label for="collectionDescription">Description</label><textarea id="collectionDescription" name="collectionDescription" [(ngModel)]="storeCollectionForm.description" maxlength="2000" rows="3"></textarea></div>
               <div class="field"><label for="collectionNavLabel">Navigation label (optional)</label><input id="collectionNavLabel" name="collectionNavLabel" [(ngModel)]="storeCollectionForm.navigationLabel" maxlength="60" placeholder="Diwali Specials" /></div>
               <div class="field"><label for="collectionSort">Display order</label><input id="collectionSort" name="collectionSort" type="number" min="0" max="10000" [(ngModel)]="storeCollectionForm.sortOrder" required /></div>
