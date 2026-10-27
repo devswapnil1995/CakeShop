@@ -14,7 +14,6 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<ClientMaster> Clients => Set<ClientMaster>();
     public DbSet<HeroBanner> HeroBanners => Set<HeroBanner>();
     public DbSet<StoreCollection> StoreCollections => Set<StoreCollection>();
-    public DbSet<StoreCollectionItem> StoreCollectionItems => Set<StoreCollectionItem>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
@@ -44,23 +43,13 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.Property(x => x.Title).HasMaxLength(160).IsRequired();
             e.Property(x => x.Slug).HasMaxLength(180).IsRequired();
             e.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Highlights).HasMaxLength(4000).IsRequired();
             e.Property(x => x.ImageUrl).HasMaxLength(1000);
             e.Property(x => x.NavigationLabel).HasMaxLength(60);
             e.Property(x => x.BundlePrice).HasColumnType("decimal(18,2)");
             e.HasIndex(x => new { x.ClientId, x.Kind, x.Slug }).IsUnique();
             e.HasIndex(x => new { x.ClientId, x.IsPublished, x.SortOrder });
             e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
-        });
-        modelBuilder.Entity<StoreCollectionItem>(e =>
-        {
-            e.ToTable("StoreCollectionItems");
-            e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.ClientId, x.CollectionId, x.SortOrder });
-            e.HasIndex(x => new { x.ClientId, x.ProductId });
-            e.HasOne<StoreCollection>().WithMany().HasForeignKey(x => new { x.ClientId, x.CollectionId })
-                .HasPrincipalKey(x => new { x.ClientId, x.Id }).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne<Product>().WithMany().HasForeignKey(x => new { x.ClientId, x.ProductId })
-                .HasPrincipalKey(x => new { x.ClientId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<HeroBanner>(e =>
         {
