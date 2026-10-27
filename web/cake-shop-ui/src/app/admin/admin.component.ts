@@ -54,7 +54,7 @@ export class AdminComponent implements OnInit {
     return {
       kind: 'Hamper', title: '', slug: '', description: '', imageUrl: null,
       navigationLabel: null, showInNavigation: false, bundlePrice: null, sortOrder: 0,
-      endsUtc: null, isPublished: false, productIds: []
+      startsUtc: null, endsUtc: null, isPublished: false, productIds: []
     };
   }
 
