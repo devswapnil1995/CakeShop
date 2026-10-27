@@ -91,6 +91,11 @@
           Homepage banners <b>{{ heroBanners().length }}</b>
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'store-profile'" (click)="selectTab('store-profile')">
+          <span>✧</span>
+          Brand & contact
+        </button>
+
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
@@ -1394,6 +1399,38 @@
             <p class="form-hint span-two">Local uploads are stored under the API wwwroot folder. Configure persistent cloud object storage before production deployment.</p>
           </form>
         </div>
+        }
+
+        @if (activeTab === 'store-profile') {
+          <section class="panel-layout store-profile-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">YOUR BAKERY IDENTITY</span><h2>Brand & contact details</h2>
+                <p class="muted">Manage the story, logo and ways customers can reach your shop.</p></div>
+              <button class="text-btn" type="button" (click)="loadStoreProfile()" [disabled]="storeProfileLoading()">↻ Refresh</button>
+            </div>
+            @if (storeProfileLoading() && !storeProfile()) { <div class="empty-state">Loading bakery profile…</div> }
+            @else {
+              <form class="form-grid store-profile-form" (ngSubmit)="saveStoreProfile()">
+                <h3 class="span-two">Brand story</h3>
+                <div class="field"><label for="profileTagline">Tagline *</label><input id="profileTagline" name="profileTagline" [(ngModel)]="storeProfileForm.tagline" maxlength="120" required /></div>
+                <div class="field"><label for="profileStoryTitle">Story heading *</label><input id="profileStoryTitle" name="profileStoryTitle" [(ngModel)]="storeProfileForm.storyTitle" maxlength="180" required /></div>
+                <div class="field span-two"><label for="profileStory">About your bakery *</label><textarea id="profileStory" name="profileStory" rows="5" [(ngModel)]="storeProfileForm.story" maxlength="3000" required placeholder="Tell customers what makes your bakery special."></textarea></div>
+                <div class="field"><label for="profileStoryImage">Story image URL</label><input id="profileStoryImage" name="profileStoryImage" [(ngModel)]="storeProfileForm.storyImageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <div class="field"><label for="profileLogo">Logo URL</label><input id="profileLogo" name="profileLogo" [(ngModel)]="storeProfileForm.logoUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <h3 class="span-two">Contact & location</h3>
+                <div class="field"><label for="profilePhone">Phone</label><input id="profilePhone" name="profilePhone" type="tel" [(ngModel)]="storeProfileForm.phone" maxlength="40" /></div>
+                <div class="field"><label for="profileWhatsapp">WhatsApp number (international format)</label><input id="profileWhatsapp" name="profileWhatsapp" type="tel" [(ngModel)]="storeProfileForm.whatsAppNumber" maxlength="40" placeholder="Country code + number" /></div>
+                <div class="field"><label for="profileEmail">Email</label><input id="profileEmail" name="profileEmail" type="email" [(ngModel)]="storeProfileForm.email" maxlength="254" /></div>
+                <div class="field"><label for="profileHours">Opening hours</label><input id="profileHours" name="profileHours" [(ngModel)]="storeProfileForm.openingHours" maxlength="500" /></div>
+                <div class="field span-two"><label for="profileAddress">Shop address</label><textarea id="profileAddress" name="profileAddress" rows="2" [(ngModel)]="storeProfileForm.address" maxlength="500"></textarea></div>
+                <h3 class="span-two">Online presence</h3>
+                <div class="field"><label for="profileInstagram">Instagram URL</label><input id="profileInstagram" name="profileInstagram" [(ngModel)]="storeProfileForm.instagramUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="field"><label for="profileFacebook">Facebook URL</label><input id="profileFacebook" name="profileFacebook" [(ngModel)]="storeProfileForm.facebookUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="field span-two"><label for="profileWebsite">Website URL</label><input id="profileWebsite" name="profileWebsite" [(ngModel)]="storeProfileForm.websiteUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="span-two form-actions"><button class="primary-btn" type="submit" [disabled]="storeProfileSaving()">{{ storeProfileSaving() ? 'Saving profile…' : 'Save brand & contact details' }}</button></div>
+              </form>
+            }
+          </section>
         }
 
       </section>
