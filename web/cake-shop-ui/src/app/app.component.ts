@@ -266,6 +266,12 @@ export class AppComponent implements OnDestroy, OnInit {
     });
   }
 
+  resolveStoreAsset(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+    return url;
+  }
+
   resolveProductImageUrl(url: string | null): string {
     if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
     if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
