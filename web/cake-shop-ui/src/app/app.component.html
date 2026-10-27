@@ -25,7 +25,9 @@
   <nav class="main-nav" [class.open]="mobileMenuOpen()" aria-label="Main navigation">
     <a href="/" (click)="closeMobileMenu()" [class.active]="!isShopRoute()">Home</a>
     <a href="/shop" (click)="closeMobileMenu()" [class.active]="isShopRoute()">Shop / Menu</a>
-    <a href="/#hampers" (click)="closeMobileMenu()">Hampers</a>
+    @for (collection of storeCollections().filter(c => c.showInNavigation); track collection.id) {
+      <a [href]="'/?collection=' + collection.slug" (click)="closeMobileMenu()">{{ collection.navigationLabel || collection.title }}</a>
+    }
     <a href="/#story" (click)="closeMobileMenu()">About Us</a>
 
     <button class="cart-nav-button" type="button" (click)="openCart()" [attr.aria-label]="'Open shopping bag, ' + cartItemCount + ' items'">
@@ -37,6 +39,7 @@
   </nav>
 </header>
 
+
 @if (cartNotice() && !addToCartOpen() && !cartDrawerOpen() && !checkoutOpen()) {
   <div class="cart-toast" role="status">
     <span aria-hidden="true">✓</span><p>{{ cartNotice() }}</p>
@@ -45,7 +48,7 @@
 }
 
 <main>
-  @if (!isShopRoute()) {
+  @if (!isShopRoute() && !selectedCollectionSlug()) {
   <!-- Homepage-only hero and introduction. -->
   <!-- Admin-managed hero section; retain the existing design as fallback until a banner is published. -->
   @if (heroBanners().length > 0) {
@@ -169,6 +172,40 @@
   </section>
   }
 
+  @if (selectedCollection; as collectionDetail) {
+    <section class="store-collection-detail section-wrap">
+      <a class="text-link" href="/">← Back to collections</a>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">{{ collectionDetail.kind === 'Hamper' ? 'GIFT HAMPER' : 'SEASONAL COLLECTION' }}</p>
+          <h1>{{ collectionDetail.title }}</h1>
+        </div>
+        <p class="section-intro">{{ collectionDetail.description }}</p>
+      </div>
+      @if (collectionDetail.imageUrl) {
+        <img class="store-collection-detail-image" [src]="resolveProductImageUrl(collectionDetail.imageUrl)" [alt]="collectionDetail.title" />
+      }
+      @if (collectionHighlights(collectionDetail.highlights).length > 0) {
+        <section class="hamper-highlights" aria-label="What's inside this hamper">
+          <p class="eyebrow">{{ collectionDetail.kind === 'Hamper' ? 'A LITTLE SOMETHING SPECIAL' : 'SEASONAL SPECIAL' }}</p>
+          <h2>{{ collectionDetail.kind === 'Hamper' ? 'Thoughtfully picked.' : 'A season worth' }}<br /><em>{{ collectionDetail.kind === 'Hamper' ? 'Beautifully presented.' : 'celebrating.' }}</em></h2>
+          <div class="hamper-highlight-grid">
+            @for (highlight of collectionHighlights(collectionDetail.highlights); track highlight; let i = $index) {
+              <article class="hamper-highlight-card" [style.animation-delay.ms]="i * 100">
+                <span class="hamper-highlight-icon" aria-hidden="true">{{ ['✦', '✿', '♡', '✧'][i % 4] }}</span>
+                <p>{{ highlight }}</p>
+              </article>
+            }
+          </div>
+        </section>
+      }
+      @if (collectionDetail.kind === 'Hamper') {
+        <p class="collection-bundle-price">{{ collectionDetail.bundlePrice != null ? (collectionDetail.bundlePrice | currency:'INR':'symbol':'1.0-2') : 'Price on request' }}</p>
+        <p class="catalog-note">Contact us to confirm availability and arrange your hamper.</p>
+        <button class="button button-dark" type="button" (click)="enquireAboutCollection(collectionDetail.title)">Enquire about this hamper <span aria-hidden="true">↗</span></button>
+      }
+    </section>
+  } @else {
   <!-- Cake Collection -->
   <section class="collection section-wrap" id="collections">
     <div class="section-heading">
@@ -250,8 +287,45 @@
       @if (!isShopRoute()) { <a href="/shop">Browse the full menu →</a> }
     </p>
   </section>
+  }
 
-  @if (!isShopRoute()) {
+  @if (!isShopRoute() && !selectedCollectionSlug() && storeCollections().length > 0) {
+    <section class="store-collections section-wrap" id="hampers">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">MADE FOR GIFTING & GATHERING</p>
+          <h2>Little boxes of <em>happiness.</em></h2>
+        </div>
+        <p class="section-intro">Thoughtfully curated hampers and seasonal treats for the moments worth celebrating.</p>
+      </div>
+      <div class="store-collection-grid">
+        @for (collection of storeCollections(); track collection.id) {
+          <article class="store-collection-card" [id]="'collection-' + collection.slug">
+            @if (collection.imageUrl) {
+              <img class="store-collection-cover" [src]="resolveProductImageUrl(collection.imageUrl)" [alt]="collection.title" loading="lazy" />
+            } @else {
+              <div class="store-collection-cover collection-placeholder" aria-hidden="true">✿</div>
+            }
+            <div class="store-collection-content">
+              <span class="eyebrow">{{ collection.kind === 'Hamper' ? 'GIFT HAMPER' : 'SEASONAL COLLECTION' }}</span>
+              <h3>{{ collection.title }}</h3>
+              <p>{{ collection.description }}</p>
+              @if (collection.kind === 'Hamper' && collectionHighlights(collection.highlights).length > 0) {
+                <div class="hamper-highlight-chips">
+                  @for (highlight of collectionHighlights(collection.highlights).slice(0, 3); track highlight) {
+                    <span>{{ highlight }}</span>
+                  }
+                </div>
+              }
+              <a class="button button-dark" [href]="'/?collection=' + collection.slug">View collection <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+
+  @if (!isShopRoute() && !selectedCollectionSlug()) {
   <!-- Our Story -->
   <section class="story-section" id="story">
     <div class="story-image">
@@ -470,7 +544,7 @@
   </div>
   }
 
-  @if (!isShopRoute()) {
+  @if (!isShopRoute() && !selectedCollectionSlug()) {
   <!-- Visit Us -->
   <section class="visit-section section-wrap" id="visit">
     <div>
@@ -683,6 +757,7 @@
   </div>
 }
 
+
 <!-- Footer -->
 <footer class="site-footer">
   <a class="brand footer-brand" href="#home">
@@ -705,8 +780,6 @@
   </div>
 </footer>
 }
-
-
 <!-- Admin routes -->
 @if (isAdminRoute()) {
 <router-outlet></router-outlet>

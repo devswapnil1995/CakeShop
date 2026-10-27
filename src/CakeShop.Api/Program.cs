@@ -169,6 +169,24 @@ app.MapGet("/api/v1/products", async (CakeShopDbContext db, string? category, bo
 }).WithName("GetProducts").WithTags("Catalog");
 
 
+app.MapGet("/api/v1/collections", async (CakeShopDbContext db, string? kind, CancellationToken ct) =>
+{
+    var now = DateTime.UtcNow;
+    var query = db.StoreCollections.AsNoTracking()
+        .Where(x => x.ClientId == defaultClientId && x.IsPublished &&
+            (!x.StartsUtc.HasValue || x.StartsUtc <= now) &&
+            (!x.EndsUtc.HasValue || x.EndsUtc > now));
+    if (!string.IsNullOrWhiteSpace(kind) && (kind == "Hamper" || kind == "Seasonal"))
+        query = query.Where(x => x.Kind == kind);
+    var collections = await query.OrderBy(x => x.SortOrder).ThenBy(x => x.Title)
+        .Select(x => new
+        {
+            x.Id, x.Kind, x.Title, x.Slug, x.Description, x.Highlights, x.ImageUrl, x.NavigationLabel,
+            x.ShowInNavigation, x.BundlePrice, x.SortOrder, x.StartsUtc, x.EndsUtc
+        }).ToListAsync(ct);
+    return Results.Ok(collections);
+}).AllowAnonymous().WithName("GetStoreCollections").WithTags("Collections");
+
 app.MapGet("/api/v1/payments/availability", (
     IConfiguration configuration) =>
 {
@@ -840,6 +858,70 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+var collectionApi = app.MapGroup("/api/v1/admin/collections").RequireAuthorization().WithTags("Collections");
+collectionApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var items = await db.StoreCollections.AsNoTracking().Where(x => x.ClientId == clientId)
+        .OrderBy(x => x.SortOrder).ThenBy(x => x.Title)
+        .Select(x => new { x.Id, x.Kind, x.Title, x.Slug, x.Description, x.Highlights, x.ImageUrl, x.NavigationLabel,
+            x.ShowInNavigation, x.BundlePrice, x.IsPublished, x.SortOrder, x.StartsUtc, x.EndsUtc })
+        .ToListAsync(ct);
+    return Results.Ok(items);
+});
+collectionApi.MapPost("/", async (ClaimsPrincipal user, StoreCollectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateStoreCollection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var slug = request.Slug!.Trim().ToLowerInvariant();
+    if (await db.StoreCollections.AnyAsync(x => x.ClientId == clientId && x.Kind == request.Kind && x.Slug == slug, ct))
+        return Results.Conflict(new { message = "A collection with this slug already exists for this type." });
+    var entity = new StoreCollection(clientId, request.Kind!, request.Title!, slug, request.Description ?? "",
+        request.ImageUrl, request.NavigationLabel, request.ShowInNavigation, request.SortOrder,
+        request.StartsUtc, request.EndsUtc, request.BundlePrice, request.Highlights);
+    db.StoreCollections.Add(entity);
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/v1/admin/collections/{entity.Id}", new { entity.Id });
+});
+collectionApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, StoreCollectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    var validation = ValidateStoreCollection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var slug = request.Slug!.Trim().ToLowerInvariant();
+    if (await db.StoreCollections.AnyAsync(x => x.ClientId == clientId && x.Id != id && x.Kind == request.Kind && x.Slug == slug, ct))
+        return Results.Conflict(new { message = "A collection with this slug already exists for this type." });
+    entity.Update(request.Kind!, request.Title!, slug, request.Description ?? "", request.ImageUrl,
+        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc, request.BundlePrice, request.Highlights);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+collectionApi.MapPost("/{id:guid}/publish", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    entity.SetPublished(true); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+collectionApi.MapPost("/{id:guid}/unpublish", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    entity.SetPublished(false); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+collectionApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var entity = await db.StoreCollections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (entity is null) return Results.NotFound();
+    db.StoreCollections.Remove(entity); await db.SaveChangesAsync(ct); return Results.NoContent();
+});
+
 
 
 adminApi.MapPost("/products/images", async (
@@ -1879,6 +1961,23 @@ static string? ValidateExpense(
 static string NormalizeHeroTextPosition(string? value) =>
     value is "top" or "bottom" or "left" or "right" ? value : "left";
 
+static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
+{
+    if (request.Kind is not ("Hamper" or "Seasonal")) return "Kind must be Hamper or Seasonal.";
+    if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 160) return "Title is required and must be at most 160 characters.";
+    if (string.IsNullOrWhiteSpace(request.Slug) || request.Slug.Trim().Length > 180 ||
+        request.Slug.Trim().Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-'))) return "Slug may contain only letters, numbers and hyphens.";
+    if (request.Description?.Length > 2000) return "Description must be at most 2000 characters.";
+    if (request.ImageUrl?.Length > 1000 || request.NavigationLabel?.Length > 60) return "Image URL or navigation label is too long.";
+    if (request.ImageUrl is { Length: > 0 } image && !(image.StartsWith("/uploads/", StringComparison.Ordinal) && !image.StartsWith("//", StringComparison.Ordinal) && !image.Contains("..", StringComparison.Ordinal) && !image.Contains('\\')) &&
+        !(Uri.TryCreate(image, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo))) return "Image URL must be a safe relative upload path or HTTPS URL.";
+    if (request.SortOrder < 0 || request.SortOrder > 10000) return "Sort order must be between 0 and 10000.";
+    if ((request.Highlights?.Trim().Length ?? 0) > 4000) return "Highlights must be at most 4000 characters.";
+    if (request.BundlePrice.HasValue && (request.Kind != "Hamper" || request.BundlePrice <= 0 || request.BundlePrice > 10000000 || request.BundlePrice != decimal.Round(request.BundlePrice.Value, 2, MidpointRounding.AwayFromZero))) return "Bundle price must be a valid positive amount for hampers only.";
+    if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc) return "End date must be after start date.";
+    return null;
+}
+
 static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 {
     if ((request.Title?.Trim().Length ?? 0) > 160)
@@ -2017,3 +2116,8 @@ public sealed record HeroBannerDto(
     DateTime? StartsUtc,
     DateTime? EndsUtc,
     bool IsPublished = false);
+
+public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
+    string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
+    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, decimal? BundlePrice = null, string? Highlights = null);
+

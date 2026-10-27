@@ -36,6 +36,17 @@ export interface HeroBannerWrite {
   endsUtc: string | null;
 }
 
+export interface AdminStoreCollection {
+  id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
+  isPublished: boolean; highlights: string; sortOrder: number; startsUtc: string | null; endsUtc: string | null;
+}
+export interface StoreCollectionWrite {
+  kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
+  imageUrl: string | null; navigationLabel: string | null; showInNavigation: boolean; bundlePrice: number | null;
+  sortOrder: number; startsUtc: string | null; endsUtc: string | null; isPublished: boolean; highlights: string;
+}
+
 export interface AdminCategory {
   id: string;
   name: string;
@@ -247,6 +258,25 @@ export class AdminApiService {
   getCategories(): Observable<AdminCategory[]> { return this.http.get<AdminCategory[]>(`${this.base}/categories`, this.options); }
   createCategory(body: CategoryWrite): Observable<AdminCategory> { return this.http.post<AdminCategory>(`${this.base}/categories`, body, this.options); }
   updateCategory(id: string, body: CategoryWrite): Observable<AdminCategory> { return this.http.put<AdminCategory>(`${this.base}/categories/${id}`, body, this.options); }
+
+  getStoreCollections(): Observable<AdminStoreCollection[]> {
+    return this.http.get<AdminStoreCollection[]>(`${this.base}/collections`, this.options);
+  }
+  createStoreCollection(body: StoreCollectionWrite): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.base}/collections`, body, this.options);
+  }
+  updateStoreCollection(id: string, body: StoreCollectionWrite): Observable<void> {
+    return this.http.put<void>(`${this.base}/collections/${id}`, body, this.options);
+  }
+  publishStoreCollection(id: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/collections/${id}/publish`, {}, this.options);
+  }
+  unpublishStoreCollection(id: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/collections/${id}/unpublish`, {}, this.options);
+  }
+  deleteStoreCollection(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/collections/${id}`, this.options);
+  }
 
   getOrders(): Observable<AdminOrder[]> {
     return this.http.get<AdminOrder[]>(

@@ -4395,3 +4395,59 @@ h2 em {
 .cart-toast button { border: 0; background: transparent; color: #8b7668; font-size: 20px; cursor: pointer; }
 @media(max-width:680px) { .cart-toast { top: 84px; right: 12px; } }
 @media(prefers-reduced-motion: reduce) { .cart-toast { animation: none !important; } }
+
+
+/* Step 6: gift hampers and seasonal collections */
+.store-collections { padding-top: 5rem; padding-bottom: 5rem; }
+.store-collection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 1.5rem; }
+.store-collection-card { overflow: hidden; border: 1px solid rgba(91, 54, 38, .14); border-radius: 1.25rem; background: #fffaf4; }
+.store-collection-cover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.collection-placeholder { display: grid; place-items: center; background: linear-gradient(135deg, #f4e6d4, #e9c8ad); color: #74452f; font-size: 3rem; }
+.store-collection-content { padding: 1.5rem; }
+.store-collection-content h3 { margin: .5rem 0; font-size: 1.5rem; }
+.store-collection-content > p { color: #765f53; line-height: 1.65; }
+.store-collection-products { display: grid; gap: .5rem; margin: 1rem 0 1.25rem; }
+.store-collection-product { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: .75rem; align-items: center; font-size: .9rem; }
+.store-collection-product img { width: 42px; height: 42px; border-radius: .5rem; object-fit: cover; }
+.store-collection-product strong { white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+ .store-collection-card { transition: transform .22s ease, box-shadow .22s ease; }
+ .store-collection-card:hover { transform: translateY(-4px); box-shadow: 0 18px 38px rgba(74, 42, 28, .10); }
+}
+
+
+/* Dedicated collection detail view */
+.store-collection-detail {
+  padding-top: clamp(2rem, 5vw, 4rem);
+  padding-bottom: clamp(3rem, 6vw, 5rem);
+}
+.store-collection-detail .text-link {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+.store-collection-detail-image {
+  display: block;
+  width: 100%;
+  max-height: 32rem;
+  object-fit: cover;
+  border-radius: 1.25rem;
+  margin: 1.5rem 0 2rem;
+}
+.store-collection-detail .store-collection-products {
+  max-width: 52rem;
+  margin: 1.5rem 0;
+}
+
+/* Premium editorial hamper highlights */
+.hamper-highlights { margin: clamp(2rem, 5vw, 4rem) 0; }
+.hamper-highlights h2 { font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; margin: .5rem 0 1.75rem; }
+.hamper-highlights h2 em { color: #ad806e; font-weight: 400; }
+.hamper-highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.hamper-highlight-card { padding: 1.5rem; border: 1px solid rgba(105,75,56,.18); border-radius: 1rem; background: linear-gradient(145deg, #fffdf9, #f5eadd); min-height: 130px; animation: hamperReveal .65s both; transition: transform .25s ease, box-shadow .25s ease; }
+.hamper-highlight-card:hover { transform: translateY(-5px) rotate(-.3deg); box-shadow: 0 18px 35px rgba(74,42,28,.10); }
+.hamper-highlight-icon { display: inline-grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; background: #ead8c4; color: #67452f; font-size: 1.25rem; }
+.hamper-highlight-card p { margin: 1rem 0 0; font-weight: 600; line-height: 1.45; }
+.hamper-highlight-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 1.25rem; }
+.hamper-highlight-chips span { border: 1px solid rgba(105,75,56,.2); border-radius: 999px; padding: .45rem .8rem; color: #6b4a38; background: #f8efe5; font-size: .82rem; }
+@keyframes hamperReveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .hamper-highlight-card { animation: none; transition: none; } }

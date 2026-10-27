@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -48,6 +48,9 @@ export class AppComponent implements OnDestroy, OnInit {
   );
   readonly isShopRoute = signal(
     typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/shop'
+  );
+  readonly selectedCollectionSlug = signal(
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('collection') ?? '' : ''
   );
   private readonly catalogApi = inject(CatalogApiService);
 
@@ -115,6 +118,7 @@ export class AppComponent implements OnDestroy, OnInit {
 
   readonly products = signal<CakeProduct[]>([]);
   readonly heroBanners = signal<HeroBannerDto[]>([]);
+  readonly storeCollections = signal<StoreCollectionDto[]>([]);
   readonly activeHeroBannerIndex = signal(0);
   private heroRotationTimer: ReturnType<typeof setInterval> | undefined;
   readonly heroRotationPaused = signal(false);
@@ -210,6 +214,9 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   ngOnInit(): void {
+    this.catalogApi.getCollections().pipe(catchError(() => of([] as StoreCollectionDto[]))).subscribe(items => {
+      this.storeCollections.set(items);
+    });
     this.catalogApi.getHeroBanners().pipe(catchError(() => of([] as HeroBannerDto[]))).subscribe(banners => {
       this.heroBanners.set(banners);
       this.activeHeroBannerIndex.set(0);
@@ -284,6 +291,11 @@ export class AppComponent implements OnDestroy, OnInit {
     return this.activeCategory === 'All'
       ? catalogue
       : catalogue.filter(product => product.category === this.activeCategory);
+  }
+
+  get selectedCollection(): StoreCollectionDto | null {
+    const slug = this.selectedCollectionSlug();
+    return slug ? this.storeCollections().find(collection => collection.slug === slug) ?? null : null;
   }
 
   get cartLines(): CartLine[] {
@@ -615,6 +627,15 @@ export class AppComponent implements OnDestroy, OnInit {
       return;
     }
     this.orderOnWhatsApp(productName);
+  }
+
+  collectionHighlights(highlights: string | null | undefined): string[] {
+    return (highlights ?? '').split(/\r?\n/).map(item => item.trim()).filter(Boolean).slice(0, 20);
+  }
+
+  enquireAboutCollection(collectionTitle: string): void {
+    const message = `Hi The Sweet Panda, I'm interested in the ${collectionTitle} hamper. Please share availability and the package price.`;
+    window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   }
 
   orderOnWhatsApp(productName?: string): void {

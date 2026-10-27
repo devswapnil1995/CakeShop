@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
@@ -16,7 +16,9 @@ import {
   ProductVariantWrite,
   AdminHeroBanner,
   HeroBannerTextPosition,
-  HeroBannerWrite
+  HeroBannerWrite,
+  AdminStoreCollection,
+  StoreCollectionWrite
 } from './admin-api.service';
 
 @Component({
@@ -38,7 +40,23 @@ export class AdminComponent implements OnInit {
     | 'orders'
     | 'expenses'
     | 'reports'
-    | 'hero-banners' = 'dashboard';
+    | 'hero-banners'
+    | 'collections' = 'dashboard';
+
+  readonly storeCollections = signal<AdminStoreCollection[]>([]);
+  readonly storeCollectionsLoading = signal(false);
+  readonly storeCollectionSaving = signal(false);
+  editingStoreCollectionId: string | null = null;
+  storeCollectionForm: StoreCollectionWrite = this.emptyStoreCollection();
+  readonly storeCollectionKinds = ['Hamper', 'Seasonal'] as const;
+
+  private emptyStoreCollection(): StoreCollectionWrite {
+    return {
+      kind: 'Hamper', title: '', slug: '', description: '', highlights: '', imageUrl: null,
+      navigationLabel: null, showInNavigation: false, bundlePrice: null, sortOrder: 0,
+      startsUtc: null, endsUtc: null, isPublished: false
+    };
+  }
 
   readonly heroBanners = signal<AdminHeroBanner[]>([]);
   readonly heroBannersLoading = signal(false);
@@ -230,7 +248,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -254,8 +272,80 @@ export class AdminComponent implements OnInit {
     if (tab === 'hero-banners') {
       this.loadHeroBanners();
     }
+    if (tab === 'collections') {
+      this.loadStoreCollections();
+    }
   }
 
+
+  loadStoreCollections(): void {
+    if (!this.loggedIn()) return;
+    this.storeCollectionsLoading.set(true);
+    this.api.getStoreCollections().pipe(finalize(() => this.storeCollectionsLoading.set(false))).subscribe({
+      next: items => this.storeCollections.set(items),
+      error: () => this.error.set('Could not load hampers and seasonal collections.')
+    });
+  }
+
+  editStoreCollection(item: AdminStoreCollection): void {
+    this.editingStoreCollectionId = item.id;
+    this.storeCollectionForm = {
+      kind: item.kind, title: item.title, slug: item.slug, description: item.description, highlights: item.highlights ?? '',
+      imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation, bundlePrice: item.bundlePrice ?? null,
+      sortOrder: item.sortOrder, startsUtc: item.startsUtc, endsUtc: item.endsUtc,
+      isPublished: item.isPublished
+    };
+    this.error.set('');
+    this.notice = '';
+  }
+
+  resetStoreCollectionForm(): void {
+    this.editingStoreCollectionId = null;
+    this.storeCollectionForm = this.emptyStoreCollection();
+  }
+
+  saveStoreCollection(): void {
+    const form = this.storeCollectionForm;
+    if (!form.title.trim() || !form.slug.trim()) {
+      this.error.set('Collection title and slug are required.');
+      return;
+    }
+    if (form.startsUtc && form.endsUtc && form.endsUtc <= form.startsUtc) {
+      this.error.set('End date must be after start date.');
+      return;
+    }
+    this.storeCollectionSaving.set(true);
+    const body: StoreCollectionWrite = {
+      ...form, title: form.title.trim(), slug: form.slug.trim().toLowerCase(),
+      description: form.description.trim(), imageUrl: form.imageUrl?.trim() || null,
+      navigationLabel: form.navigationLabel?.trim() || null
+    };
+    const request: Observable<unknown> = this.editingStoreCollectionId
+      ? this.api.updateStoreCollection(this.editingStoreCollectionId, body)
+      : this.api.createStoreCollection(body);
+    request.pipe(finalize(() => this.storeCollectionSaving.set(false))).subscribe({
+      next: () => { 
+        this.notice = 'Collection saved.'; this.error.set(''); 
+        this.resetStoreCollectionForm(); this.loadStoreCollections(); },
+      error: error => this.error.set(error?.error?.message || 'Could not save collection.')
+    });
+  }
+
+  toggleStoreCollectionPublished(item: AdminStoreCollection): void {
+    const request = item.isPublished ? this.api.unpublishStoreCollection(item.id) : this.api.publishStoreCollection(item.id);
+    request.subscribe({
+      next: () => { this.notice = item.isPublished ? 'Collection unpublished.' : 'Collection published.'; this.loadStoreCollections(); },
+      error: error => this.error.set(error?.error?.message || 'Could not update publication status.')
+    });
+  }
+
+  deleteStoreCollection(item: AdminStoreCollection): void {
+    if (!confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
+    this.api.deleteStoreCollection(item.id).subscribe({
+      next: () => { this.notice = 'Collection deleted.'; if (this.editingStoreCollectionId === item.id) this.resetStoreCollectionForm(); this.loadStoreCollections(); },
+      error: error => this.error.set(error?.error?.message || 'Could not delete collection.')
+    });
+  }
 
   resolveHeroMediaUrl(url: string | null): string {
     if (!url) return '';
@@ -510,6 +600,37 @@ export class AdminComponent implements OnInit {
     if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=180&q=80';
     if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
     return url;
+  }
+
+  readonly collectionImageUploading = signal(false);
+
+  uploadCollectionImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !['jpg', 'jpeg', 'png', 'webp'].includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
+      this.error.set('Choose a JPG, PNG or WebP image.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set('Image must be 10 MB or smaller.');
+      input.value = '';
+      return;
+    }
+    this.collectionImageUploading.set(true);
+    this.api.uploadProductImage(file).pipe(finalize(() => {
+      this.collectionImageUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.storeCollectionForm.imageUrl = result.mediaUrl;
+        this.notice = 'Collection image uploaded. Save the collection to keep this change.';
+      },
+      error: error => this.error.set(error?.error?.message || 'Could not upload collection image.')
+    });
   }
 
   uploadProductImage(event: Event): void {
