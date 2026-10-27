@@ -53,7 +53,7 @@ export class AdminComponent implements OnInit {
   private emptyStoreCollection(): StoreCollectionWrite {
     return {
       kind: 'Hamper', title: '', slug: '', description: '', imageUrl: null,
-      navigationLabel: null, showInNavigation: false, sortOrder: 0, startsUtc: null,
+      navigationLabel: null, showInNavigation: false, bundlePrice: null, sortOrder: 0,
       endsUtc: null, isPublished: false, productIds: []
     };
   }
@@ -291,7 +291,7 @@ export class AdminComponent implements OnInit {
     this.editingStoreCollectionId = item.id;
     this.storeCollectionForm = {
       kind: item.kind, title: item.title, slug: item.slug, description: item.description,
-      imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation,
+      imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation, bundlePrice: item.bundlePrice ?? null,
       sortOrder: item.sortOrder, startsUtc: item.startsUtc, endsUtc: item.endsUtc,
       isPublished: item.isPublished, productIds: [...item.productIds]
     };
