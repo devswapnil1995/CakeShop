@@ -1485,7 +1485,8 @@
             @if (storeProfileLoading() && !storeProfile()) { <div class="empty-state">Loading bakery profile…</div> }
             @else {
               <form class="form-grid store-profile-form" (ngSubmit)="saveStoreProfile()">
-                <h3 class="span-two">Brand story</h3>
+                <h3 class="span-two">Homepage teaser & brand story</h3>
+          <div class="field span-two"><label for="profileHomeDescription">Short homepage description *</label><textarea id="profileHomeDescription" name="profileHomeDescription" rows="2" [(ngModel)]="storeProfileForm.homeDescription" maxlength="320" required placeholder="A short introduction shown on the home page."></textarea></div>
                 <div class="field"><label for="profileTagline">Tagline *</label><input id="profileTagline" name="profileTagline" [(ngModel)]="storeProfileForm.tagline" maxlength="120" required /></div>
                 <div class="field"><label for="profileStoryTitle">Story heading *</label><input id="profileStoryTitle" name="profileStoryTitle" [(ngModel)]="storeProfileForm.storyTitle" maxlength="180" required /></div>
                 <div class="field span-two"><label for="profileStory">About your bakery *</label><textarea id="profileStory" name="profileStory" rows="5" [(ngModel)]="storeProfileForm.story" maxlength="3000" required placeholder="Tell customers what makes your bakery special."></textarea></div>
