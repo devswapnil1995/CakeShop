@@ -629,6 +629,11 @@ export class AppComponent implements OnDestroy, OnInit {
     this.orderOnWhatsApp(productName);
   }
 
+  enquireAboutCollection(collectionTitle: string): void {
+    const message = `Hi The Sweet Panda, I'm interested in the ${collectionTitle} hamper. Please share availability and the package price.`;
+    window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  }
+
   orderOnWhatsApp(productName?: string): void {
     this.selectedProduct.set(
       this.products().find(product => product.name === productName) ?? null
