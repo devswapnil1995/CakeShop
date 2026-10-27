@@ -629,6 +629,10 @@ export class AppComponent implements OnDestroy, OnInit {
     this.orderOnWhatsApp(productName);
   }
 
+  collectionHighlights(highlights: string | null | undefined): string[] {
+    return (highlights ?? '').split(/\r?\n/).map(item => item.trim()).filter(Boolean).slice(0, 20);
+  }
+
   enquireAboutCollection(collectionTitle: string): void {
     const message = `Hi The Sweet Panda, I'm interested in the ${collectionTitle} hamper. Please share availability and the package price.`;
     window.open(`https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
