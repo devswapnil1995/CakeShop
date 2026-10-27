@@ -24,7 +24,6 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     Description = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
                     ImageUrl = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     NavigationLabel = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: true),
-                    BundlePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     ShowInNavigation = table.Column<bool>(type: "bit", nullable: false),
                     IsPublished = table.Column<bool>(type: "bit", nullable: false),
                     SortOrder = table.Column<int>(type: "int", nullable: false),
