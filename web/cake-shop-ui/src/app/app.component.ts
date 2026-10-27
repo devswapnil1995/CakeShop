@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, finalize, of } from 'rxjs';
-import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto } from './catalog-api.service';
+import { CatalogApiService, CatalogProductVariantDto, ProductVariantDto, HeroBannerDto, StoreCollectionDto, StoreProfileDto } from './catalog-api.service';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -62,6 +62,7 @@ export class AppComponent implements OnDestroy, OnInit {
 
   readonly apiConnected = signal(false);
   readonly brandName = 'The Sweet Panda';
+  readonly storeProfile = signal<StoreProfileDto | null>(null);
   // Replace with the shop's WhatsApp number in international format, digits only.
   private readonly WHATSAPP_NUMBER = '8456057904';
 
@@ -214,6 +215,7 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   ngOnInit(): void {
+    this.catalogApi.getStoreProfile().pipe(catchError(() => of(null as StoreProfileDto | null))).subscribe(profile => this.storeProfile.set(profile));
     this.catalogApi.getCollections().pipe(catchError(() => of([] as StoreCollectionDto[]))).subscribe(items => {
       this.storeCollections.set(items);
     });
@@ -622,7 +624,8 @@ export class AppComponent implements OnDestroy, OnInit {
     const product = this.products().find(item => item.name === productName);
     if (product && product.variants.length === 0) {
       const message = `Hi ${this.brandName}! I'm interested in ${product.name}. Could you please share the available sizes and current pricing?`;
-      const url = `https://wa.me/${this.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      const number = (this.storeProfile()?.whatsAppNumber || this.WHATSAPP_NUMBER).replace(/\\D/g, '');
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
