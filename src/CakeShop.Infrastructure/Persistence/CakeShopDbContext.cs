@@ -46,6 +46,7 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
             e.Property(x => x.Description).HasMaxLength(2000).IsRequired();
             e.Property(x => x.ImageUrl).HasMaxLength(1000);
             e.Property(x => x.NavigationLabel).HasMaxLength(60);
+            e.Property(x => x.BundlePrice).HasColumnType("decimal(18,2)");
             e.HasIndex(x => new { x.ClientId, x.Kind, x.Slug }).IsUnique();
             e.HasIndex(x => new { x.ClientId, x.IsPublished, x.SortOrder });
             e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
