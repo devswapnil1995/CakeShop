@@ -142,6 +142,14 @@ app.MapGet("/api/v1/store-profile", async (CakeShopDbContext db, CancellationTok
         profile?.Address, profile?.OpeningHours, profile?.InstagramUrl, profile?.FacebookUrl, profile?.WebsiteUrl));
 }).AllowAnonymous().WithName("GetStoreProfile").WithTags("Shop");
 
+app.MapGet("/api/v1/about-sections", async (CakeShopDbContext db, CancellationToken ct) =>
+    Results.Ok(await db.AboutPageSections.AsNoTracking()
+        .Where(x => x.ClientId == defaultClientId && x.IsPublished)
+        .OrderBy(x => x.SortOrder)
+        .Select(x => new AboutPageSectionDto(x.Id, x.Eyebrow, x.Title, x.Body, x.ImageUrl, x.SecondaryImageUrl, x.Layout, x.Animation, x.SortOrder, x.IsPublished))
+        .ToListAsync(ct)))
+    .AllowAnonymous().WithName("GetAboutPageSections").WithTags("Shop");
+
 app.MapGet("/api/v1/categories", async (CakeShopDbContext db, CancellationToken ct) =>
     Results.Ok(await db.Categories.AsNoTracking().Where(x => x.ClientId == defaultClientId && x.IsActive)
         .OrderBy(x => x.SortOrder).Select(x => new CategoryDto(x.Id, x.Name, x.Slug, x.SortOrder)).ToListAsync(ct)))
@@ -901,6 +909,45 @@ profileApi.MapPut("/", async (ClaimsPrincipal user, StoreProfileWriteRequest req
     profile.Update(request.Tagline, request.StoryTitle, request.Story, request.StoryImageUrl,
         request.LogoUrl, request.Phone, request.WhatsAppNumber, request.Email, request.Address,
         request.OpeningHours, request.InstagramUrl, request.FacebookUrl, request.WebsiteUrl);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
+var aboutApi = app.MapGroup("/api/v1/admin/about-sections").RequireAuthorization().WithTags("About Page");
+aboutApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    return Results.Ok(await db.AboutPageSections.AsNoTracking().Where(x => x.ClientId == clientId)
+        .OrderBy(x => x.SortOrder).Select(x => new AboutPageSectionDto(x.Id, x.Eyebrow, x.Title, x.Body, x.ImageUrl, x.SecondaryImageUrl, x.Layout, x.Animation, x.SortOrder, x.IsPublished)).ToListAsync(ct));
+});
+aboutApi.MapPost("/", async (ClaimsPrincipal user, AboutPageSectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateAboutSection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var section = new AboutPageSection(clientId, request.Title, request.Body);
+    section.Update(request.Eyebrow, request.Title, request.Body, request.ImageUrl, request.SecondaryImageUrl, request.Layout, request.Animation, request.SortOrder, request.IsPublished);
+    db.AboutPageSections.Add(section);
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/v1/admin/about-sections/{section.Id}", new AboutPageSectionDto(section.Id, section.Eyebrow, section.Title, section.Body, section.ImageUrl, section.SecondaryImageUrl, section.Layout, section.Animation, section.SortOrder, section.IsPublished));
+});
+aboutApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, AboutPageSectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateAboutSection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var section = await db.AboutPageSections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (section is null) return Results.NotFound();
+    section.Update(request.Eyebrow, request.Title, request.Body, request.ImageUrl, request.SecondaryImageUrl, request.Layout, request.Animation, request.SortOrder, request.IsPublished);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+aboutApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var section = await db.AboutPageSections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (section is null) return Results.NotFound();
+    db.AboutPageSections.Remove(section);
     await db.SaveChangesAsync(ct);
     return Results.NoContent();
 });
@@ -2007,6 +2054,23 @@ static string? ValidateExpense(
 static string NormalizeHeroTextPosition(string? value) =>
     value is "top" or "bottom" or "left" or "right" ? value : "left";
 
+static string? ValidateAboutSection(AboutPageSectionWriteRequest r)
+{
+    if (string.IsNullOrWhiteSpace(r.Eyebrow) || r.Eyebrow.Trim().Length > 100) return "Eyebrow is required and must be at most 100 characters.";
+    if (string.IsNullOrWhiteSpace(r.Title) || r.Title.Trim().Length > 180) return "Title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.Body) || r.Body.Trim().Length > 3000) return "Body is required and must be at most 3000 characters.";
+    if (r.SortOrder < 0 || r.SortOrder > 10000) return "Sort order must be between 0 and 10000.";
+    if (r.Layout is not ("image-left" or "image-right" or "centered" or "full-bleed" or "editorial")) return "Choose a supported layout.";
+    if (r.Animation is not ("none" or "fade-up" or "fade-in" or "slide-left" or "slide-right" or "zoom-in")) return "Choose a supported animation.";
+    foreach (var url in new[] { r.ImageUrl, r.SecondaryImageUrl })
+        if (!string.IsNullOrWhiteSpace(url) && url.Length > 1000) return "Image URLs must be at most 1000 characters.";
+        else if (!string.IsNullOrWhiteSpace(url) &&
+            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal) && !url.Contains('\\')) &&
+            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            return "Image URLs must be HTTPS URLs or safe uploaded paths.";
+    return null;
+}
+
 static string? ValidateStoreProfile(StoreProfileWriteRequest r)
 {
     if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
@@ -2180,6 +2244,11 @@ public sealed record HeroBannerDto(
     DateTime? StartsUtc,
     DateTime? EndsUtc,
     bool IsPublished = false);
+
+public sealed record AboutPageSectionDto(Guid Id, string Eyebrow, string Title, string Body, string? ImageUrl,
+    string? SecondaryImageUrl, string Layout, string Animation, int SortOrder, bool IsPublished);
+public sealed record AboutPageSectionWriteRequest(string? Eyebrow, string? Title, string? Body, string? ImageUrl,
+    string? SecondaryImageUrl, string? Layout, string? Animation, int SortOrder, bool IsPublished);
 
 public sealed record StoreProfileDto(Guid ClientId, string Name, string Slug, string Tagline, string StoryTitle,
     string Story, string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
