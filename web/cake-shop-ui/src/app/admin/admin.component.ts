@@ -65,6 +65,7 @@ export class AdminComponent implements OnInit {
     return {
       tagline: 'Baked with a little magic',
       storyTitle: 'Not just cake. A feeling.',
+      homeDescription: 'Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.',
       story: 'We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.',
       storyImageUrl: null, logoUrl: null, phone: null, whatsAppNumber: null, email: null,
       address: null, openingHours: null, instagramUrl: null, facebookUrl: null, websiteUrl: null
