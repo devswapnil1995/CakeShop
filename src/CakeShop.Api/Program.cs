@@ -1998,10 +1998,6 @@ static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
     return null;
 }
 
-public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
-    string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
-    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, Guid[]? ProductIds);
-
 static string? ValidateHeroBanner(HeroBannerWriteRequest request)
 {
     if ((request.Title?.Trim().Length ?? 0) > 160)
@@ -2140,3 +2136,8 @@ public sealed record HeroBannerDto(
     DateTime? StartsUtc,
     DateTime? EndsUtc,
     bool IsPublished = false);
+
+public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
+    string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
+    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, Guid[]? ProductIds);
+
