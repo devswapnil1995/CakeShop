@@ -54,7 +54,7 @@ export class AdminComponent implements OnInit {
     return {
       kind: 'Hamper', title: '', slug: '', description: '', highlights: '', imageUrl: null,
       navigationLabel: null, showInNavigation: false, bundlePrice: null, sortOrder: 0,
-      startsUtc: null, endsUtc: null, isPublished: false, highlights: ''
+      startsUtc: null, endsUtc: null, isPublished: false
     };
   }
 
@@ -293,7 +293,7 @@ export class AdminComponent implements OnInit {
       kind: item.kind, title: item.title, slug: item.slug, description: item.description, highlights: item.highlights ?? '',
       imageUrl: item.imageUrl, navigationLabel: item.navigationLabel, showInNavigation: item.showInNavigation, bundlePrice: item.bundlePrice ?? null,
       sortOrder: item.sortOrder, startsUtc: item.startsUtc, endsUtc: item.endsUtc,
-      isPublished: item.isPublished, highlights: item.highlights ?? ""
+      isPublished: item.isPublished
     };
     this.error.set('');
     this.notice = '';
