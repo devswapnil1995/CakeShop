@@ -624,7 +624,7 @@ export class AppComponent implements OnDestroy, OnInit {
     const product = this.products().find(item => item.name === productName);
     if (product && product.variants.length === 0) {
       const message = `Hi ${this.brandName}! I'm interested in ${product.name}. Could you please share the available sizes and current pricing?`;
-      const number = (this.storeProfile()?.whatsAppNumber || this.WHATSAPP_NUMBER).replace(/\\D/g, '');
+      const number = (this.storeProfile()?.whatsAppNumber || this.WHATSAPP_NUMBER).replace(/[^0-9]/g, '');
     const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
