@@ -9,6 +9,7 @@ public sealed class StoreProfile
     public Guid ClientId { get; private set; }
     public string Tagline { get; private set; } = string.Empty;
     public string StoryTitle { get; private set; } = string.Empty;
+    public string HomeDescription { get; private set; } = string.Empty;
     public string Story { get; private set; } = string.Empty;
     public string? StoryImageUrl { get; private set; }
     public string? LogoUrl { get; private set; }
@@ -29,16 +30,18 @@ public sealed class StoreProfile
         ClientId = clientId;
         Tagline = "Baked with a little magic";
         StoryTitle = "Not just cake. A feeling.";
+        HomeDescription = "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.";
         Story = "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.";
         UpdatedUtc = DateTime.UtcNow;
     }
 
-    public void Update(string? tagline, string? storyTitle, string? story, string? storyImageUrl,
+    public void Update(string? tagline, string? storyTitle, string? homeDescription, string? story, string? storyImageUrl,
         string? logoUrl, string? phone, string? whatsAppNumber, string? email, string? address,
         string? openingHours, string? instagramUrl, string? facebookUrl, string? websiteUrl)
     {
         Tagline = Required(tagline, 120, nameof(tagline));
         StoryTitle = Required(storyTitle, 180, nameof(storyTitle));
+        HomeDescription = Required(homeDescription, 320, nameof(homeDescription));
         Story = Required(story, 3000, nameof(story));
         StoryImageUrl = Optional(storyImageUrl, 1000, nameof(storyImageUrl));
         LogoUrl = Optional(logoUrl, 1000, nameof(logoUrl));
