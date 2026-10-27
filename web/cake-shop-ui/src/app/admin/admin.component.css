@@ -1499,3 +1499,10 @@
 .collection-product-option input { margin-top: .2rem; }
 .collection-product-option span { display: grid; gap: .2rem; }
 .collection-product-option small { color: #806a5e; }
+
+
+/* Bakery profile editor */
+.store-profile-panel { max-width: 100%; }
+.store-profile-form h3 { margin: 1.25rem 0 .2rem; padding-bottom: .65rem; border-bottom: 1px solid #eaded3; color: #5e3d2e; font: 400 1.2rem Georgia, serif; }
+.store-profile-form textarea { resize: vertical; min-height: 88px; }
+.store-profile-form .form-actions { display: flex; justify-content: flex-start; margin-top: .5rem; }
