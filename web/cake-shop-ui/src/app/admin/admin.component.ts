@@ -18,7 +18,7 @@ import {
   HeroBannerTextPosition,
   HeroBannerWrite,
   AdminStoreCollection,
-  StoreCollectionWrite, AdminStoreProfile, StoreProfileWrite
+  StoreCollectionWrite, AdminStoreProfile, StoreProfileWrite, AdminAboutSection, AboutSectionWrite
 } from './admin-api.service';
 
 @Component({
@@ -42,7 +42,19 @@ export class AdminComponent implements OnInit {
     | 'reports'
     | 'hero-banners'
     | 'collections'
-    | 'store-profile' = 'dashboard';
+    | 'store-profile'
+    | 'about-page' = 'dashboard';
+
+  readonly aboutSections = signal<AdminAboutSection[]>([]);
+  readonly aboutSectionsLoading = signal(false);
+  readonly aboutSectionSaving = signal(false);
+  editingAboutSectionId: string | null = null;
+  aboutSectionForm: AboutSectionWrite = this.emptyAboutSection();
+
+  private emptyAboutSection(): AboutSectionWrite {
+    return { eyebrow: 'OUR STORY', title: '', body: '', imageUrl: null, secondaryImageUrl: null,
+      layout: 'image-left', animation: 'fade-up', sortOrder: this.aboutSections().length, isPublished: false };
+  }
 
   readonly storeProfile = signal<AdminStoreProfile | null>(null);
   readonly storeProfileLoading = signal(false);
@@ -293,6 +305,9 @@ export class AdminComponent implements OnInit {
     if (tab === 'store-profile') {
       this.loadStoreProfile();
     }
+    if (tab === 'about-page') {
+      this.loadAboutSections();
+    }
     if (tab === 'collections') {
       this.loadStoreCollections();
     }
@@ -372,6 +387,68 @@ export class AdminComponent implements OnInit {
     if (!url) return '';
     if (!url.startsWith('/')) return url;
     return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+  }
+
+  loadAboutSections(): void {
+    if (!this.loggedIn()) return;
+    this.aboutSectionsLoading.set(true);
+    this.api.getAboutSections().pipe(finalize(() => this.aboutSectionsLoading.set(false))).subscribe({
+      next: rows => this.aboutSections.set(rows),
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  newAboutSection(): void {
+    this.editingAboutSectionId = null;
+    this.aboutSectionForm = this.emptyAboutSection();
+    this.error.set('');
+    this.notice = '';
+  }
+
+  editAboutSection(section: AdminAboutSection): void {
+    const { id, ...form } = section;
+    this.editingAboutSectionId = id;
+    this.aboutSectionForm = { ...form };
+    this.error.set('');
+    this.notice = '';
+  }
+
+  saveAboutSection(): void {
+    const f = this.aboutSectionForm;
+    if (!f.eyebrow.trim() || !f.title.trim() || !f.body.trim()) {
+      this.error.set('Eyebrow, title and body are required.');
+      return;
+    }
+    this.error.set('');
+    this.notice = '';
+    this.aboutSectionSaving.set(true);
+    const request: AboutSectionWrite = {
+      ...f, eyebrow: f.eyebrow.trim(), title: f.title.trim(), body: f.body.trim(),
+      imageUrl: f.imageUrl?.trim() || null, secondaryImageUrl: f.secondaryImageUrl?.trim() || null
+    };
+    const operation = this.editingAboutSectionId
+      ? this.api.updateAboutSection(this.editingAboutSectionId, request)
+      : this.api.createAboutSection(request);
+    operation.pipe(finalize(() => this.aboutSectionSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = this.editingAboutSectionId ? 'About section updated.' : 'About section created.';
+        this.newAboutSection();
+        this.loadAboutSections();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  deleteAboutSection(section: AdminAboutSection): void {
+    if (!window.confirm(`Delete the About section "${section.title}"? This cannot be undone.`)) return;
+    this.api.deleteAboutSection(section.id).subscribe({
+      next: () => {
+        this.notice = 'About section deleted.';
+        if (this.editingAboutSectionId === section.id) this.newAboutSection();
+        this.loadAboutSections();
+      },
+      error: err => this.handleApiError(err)
+    });
   }
 
   loadStoreProfile(): void {
