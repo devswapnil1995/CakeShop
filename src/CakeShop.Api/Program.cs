@@ -182,14 +182,14 @@ app.MapGet("/api/v1/collections", async (CakeShopDbContext db, string? kind, Can
         .Select(x => new
         {
             x.Id, x.Kind, x.Title, x.Slug, x.Description, x.ImageUrl, x.NavigationLabel,
-            x.ShowInNavigation, x.SortOrder, x.StartsUtc, x.EndsUtc,
+            x.ShowInNavigation, x.BundlePrice, x.SortOrder, x.StartsUtc, x.EndsUtc,
             Products = db.StoreCollectionItems.Where(i => i.ClientId == x.ClientId && i.CollectionId == x.Id)
                 .OrderBy(i => i.SortOrder)
                 .Join(db.Products.Where(product => product.ClientId == defaultClientId && product.IsAvailable),
                     item => new { item.ClientId, item.ProductId },
                     product => new { product.ClientId, ProductId = product.Id },
                     (item, product) => new { item.SortOrder, Product = product })
-                .Select(y => new { y.Product.Id, y.Product.Name, y.Product.Slug, y.Product.Description, y.Product.Price, y.Product.ImageUrl, y.Product.Badge })
+                .Select(y => new { y.Product.Id, y.Product.Name, y.Product.Slug, y.Product.Description, Price = x.Kind == "Hamper" ? (decimal?)null : y.Product.Price, y.Product.ImageUrl, y.Product.Badge })
                 .ToList()
         }).ToListAsync(ct);
     return Results.Ok(collections);
@@ -874,7 +874,7 @@ collectionApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, Can
     var items = await db.StoreCollections.AsNoTracking().Where(x => x.ClientId == clientId)
         .OrderBy(x => x.SortOrder).ThenBy(x => x.Title)
         .Select(x => new { x.Id, x.Kind, x.Title, x.Slug, x.Description, x.ImageUrl, x.NavigationLabel,
-            x.ShowInNavigation, x.IsPublished, x.SortOrder, x.StartsUtc, x.EndsUtc,
+            x.ShowInNavigation, x.BundlePrice, x.IsPublished, x.SortOrder, x.StartsUtc, x.EndsUtc,
             ProductIds = db.StoreCollectionItems.Where(i => i.ClientId == clientId && i.CollectionId == x.Id)
                 .OrderBy(i => i.SortOrder).Select(i => i.ProductId).ToList() })
         .ToListAsync(ct);
@@ -894,7 +894,7 @@ collectionApi.MapPost("/", async (ClaimsPrincipal user, StoreCollectionWriteRequ
     if (validCount != productIds.Length) return Results.BadRequest(new { message = "One or more selected products are invalid for this shop." });
     var entity = new StoreCollection(clientId, request.Kind!, request.Title!, slug, request.Description ?? "",
         request.ImageUrl, request.NavigationLabel, request.ShowInNavigation, request.SortOrder,
-        request.StartsUtc, request.EndsUtc);
+        request.StartsUtc, request.EndsUtc, request.BundlePrice);
     db.StoreCollections.Add(entity);
     for (var i = 0; i < productIds.Length; i++) db.StoreCollectionItems.Add(new StoreCollectionItem(clientId, entity.Id, productIds[i], i));
     await db.SaveChangesAsync(ct);
@@ -915,7 +915,7 @@ collectionApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, StoreCo
     var validCount = await db.Products.CountAsync(x => x.ClientId == clientId && productIds.Contains(x.Id), ct);
     if (validCount != productIds.Length) return Results.BadRequest(new { message = "One or more selected products are invalid for this shop." });
     entity.Update(request.Kind!, request.Title!, slug, request.Description ?? "", request.ImageUrl,
-        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc);
+        request.NavigationLabel, request.ShowInNavigation, request.SortOrder, request.StartsUtc, request.EndsUtc, request.BundlePrice);
     var oldItems = db.StoreCollectionItems.Where(x => x.ClientId == clientId && x.CollectionId == id);
     db.StoreCollectionItems.RemoveRange(oldItems);
     for (var i = 0; i < productIds.Length; i++) db.StoreCollectionItems.Add(new StoreCollectionItem(clientId, id, productIds[i], i));
@@ -1994,6 +1994,7 @@ static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
     if (request.ImageUrl is { Length: > 0 } image && !(image.StartsWith("/uploads/", StringComparison.Ordinal) && !image.StartsWith("//", StringComparison.Ordinal) && !image.Contains("..", StringComparison.Ordinal) && !image.Contains('\\')) &&
         !(Uri.TryCreate(image, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo))) return "Image URL must be a safe relative upload path or HTTPS URL.";
     if (request.SortOrder < 0 || request.SortOrder > 10000) return "Sort order must be between 0 and 10000.";
+    if (request.BundlePrice.HasValue && (request.Kind != "Hamper" || request.BundlePrice <= 0 || request.BundlePrice > 10000000 || request.BundlePrice != decimal.Round(request.BundlePrice.Value, 2, MidpointRounding.AwayFromZero))) return "Bundle price must be a valid positive amount for hampers only.";
     if (request.StartsUtc.HasValue && request.EndsUtc.HasValue && request.EndsUtc <= request.StartsUtc) return "End date must be after start date.";
     return null;
 }
@@ -2139,5 +2140,5 @@ public sealed record HeroBannerDto(
 
 public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
     string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
-    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, Guid[]? ProductIds);
+    DateTime? StartsUtc, DateTime? EndsUtc, bool IsPublished, Guid[]? ProductIds, decimal? BundlePrice = null);
 
