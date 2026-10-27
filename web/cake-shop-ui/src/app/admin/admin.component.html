@@ -1422,7 +1422,7 @@
                 @for (section of aboutSections(); track section.id) {
                   <article class="about-admin-card" [class.selected]="editingAboutSectionId === section.id">
                     <div class="about-admin-card-media">
-                      @if (section.imageUrl) { <img [src]="resolveImageUrl(section.imageUrl)" [alt]="section.title" /> }
+                      @if (section.imageUrl) { <img [src]="resolveProductImageUrl(section.imageUrl)" [alt]="section.title" /> }
                       @else { <span>✿</span> }
                     </div>
                     <div class="about-admin-card-copy">
