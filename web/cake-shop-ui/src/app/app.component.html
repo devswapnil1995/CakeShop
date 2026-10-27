@@ -309,14 +309,10 @@
               <span class="eyebrow">{{ collection.kind === 'Hamper' ? 'GIFT HAMPER' : 'SEASONAL COLLECTION' }}</span>
               <h3>{{ collection.title }}</h3>
               <p>{{ collection.description }}</p>
-              @if (collection.products.length > 0) {
-                <div class="store-collection-products">
-                  @for (product of collection.products; track product.id) {
-                    <div class="store-collection-product">
-                      @if (product.imageUrl) { <img [src]="resolveProductImageUrl(product.imageUrl)" [alt]="product.name" loading="lazy" /> }
-                      <span>{{ product.name }}</span>
-                      <strong>{{ product.price | currency:'INR':'symbol':'1.0-2' }}</strong>
-                    </div>
+              @if (collection.kind === 'Hamper' && collectionHighlights(collection.highlights).length > 0) {
+                <div class="hamper-highlight-chips">
+                  @for (highlight of collectionHighlights(collection.highlights).slice(0, 3); track highlight) {
+                    <span>{{ highlight }}</span>
                   }
                 </div>
               }
