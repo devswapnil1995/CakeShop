@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AdminApiService, AdminCategory, AdminProduct, CategoryWrite, ProductWrite, AdminOrder,
@@ -51,9 +51,11 @@ export class AdminComponent implements OnInit {
   readonly storeCollectionKinds = ['Hamper', 'Seasonal'] as const;
 
   private emptyStoreCollection(): StoreCollectionWrite {
-    return { kind: 'Hamper', title: '', slug: '', description: '', imageUrl: null,
+    return {
+      kind: 'Hamper', title: '', slug: '', description: '', imageUrl: null,
       navigationLabel: null, showInNavigation: false, sortOrder: 0, startsUtc: null,
-      endsUtc: null, isPublished: false, productIds: [] };
+      endsUtc: null, isPublished: false, productIds: []
+    };
   }
 
   readonly heroBanners = signal<AdminHeroBanner[]>([]);
@@ -246,7 +248,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -319,14 +321,18 @@ export class AdminComponent implements OnInit {
       return;
     }
     this.storeCollectionSaving.set(true);
-    const body: StoreCollectionWrite = { ...form, title: form.title.trim(), slug: form.slug.trim().toLowerCase(),
+    const body: StoreCollectionWrite = {
+      ...form, title: form.title.trim(), slug: form.slug.trim().toLowerCase(),
       description: form.description.trim(), imageUrl: form.imageUrl?.trim() || null,
-      navigationLabel: form.navigationLabel?.trim() || null };
-    const request = this.editingStoreCollectionId
+      navigationLabel: form.navigationLabel?.trim() || null
+    };
+    const request: Observable<unknown> = this.editingStoreCollectionId
       ? this.api.updateStoreCollection(this.editingStoreCollectionId, body)
       : this.api.createStoreCollection(body);
     request.pipe(finalize(() => this.storeCollectionSaving.set(false))).subscribe({
-      next: () => { this.notice = 'Collection saved.'; this.error.set(''); this.resetStoreCollectionForm(); this.loadStoreCollections(); },
+      next: () => { 
+        this.notice = 'Collection saved.'; this.error.set(''); 
+        this.resetStoreCollectionForm(); this.loadStoreCollections(); },
       error: error => this.error.set(error?.error?.message || 'Could not save collection.')
     });
   }
