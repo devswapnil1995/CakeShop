@@ -1,10 +1,12 @@
-using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using System;
 
 #nullable disable
 
 namespace CakeShop.Infrastructure.Persistence.Migrations
 {
+    [DbContext(typeof(CakeShopDbContext))]
     [Migration("20261027100000_AddStoreCollections")]
     public partial class AddStoreCollections : Migration
     {
