@@ -184,15 +184,20 @@
       @if (collectionDetail.imageUrl) {
         <img class="store-collection-detail-image" [src]="resolveProductImageUrl(collectionDetail.imageUrl)" [alt]="collectionDetail.title" />
       }
-      <div class="store-collection-products">
-        @for (product of collectionDetail.products; track product.id) {
-          <div class="store-collection-product">
-            @if (product.imageUrl) { <img [src]="resolveProductImageUrl(product.imageUrl)" [alt]="product.name" loading="lazy" /> }
-            <span>{{ product.name }}</span>
-            @if (collectionDetail.kind !== 'Hamper') { <strong>{{ product.price | currency:'INR':'symbol':'1.0-2' }}</strong> }
+      @if (collectionDetail.kind === 'Hamper' && collectionHighlights(collectionDetail.highlights).length > 0) {
+        <section class="hamper-highlights" aria-label="What's inside this hamper">
+          <p class="eyebrow">A LITTLE SOMETHING SPECIAL</p>
+          <h2>Thoughtfully picked.<br /><em>Beautifully presented.</em></h2>
+          <div class="hamper-highlight-grid">
+            @for (highlight of collectionHighlights(collectionDetail.highlights); track highlight; let i = $index) {
+              <article class="hamper-highlight-card" [style.animation-delay.ms]="i * 100">
+                <span class="hamper-highlight-icon" aria-hidden="true">{{ ['✦', '✿', '♡', '✧'][i % 4] }}</span>
+                <p>{{ highlight }}</p>
+              </article>
+            }
           </div>
-        }
-      </div>
+        </section>
+      }
       @if (collectionDetail.kind === 'Hamper') {
         <p class="collection-bundle-price">{{ collectionDetail.bundlePrice != null ? (collectionDetail.bundlePrice | currency:'INR':'symbol':'1.0-2') : 'Price on request' }}</p>
         <p class="catalog-note">The items shown are included in this hamper. Contact us to confirm availability and place your order.</p>
