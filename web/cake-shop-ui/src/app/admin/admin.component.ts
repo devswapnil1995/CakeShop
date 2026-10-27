@@ -608,6 +608,37 @@ export class AdminComponent implements OnInit {
     return url;
   }
 
+  readonly collectionImageUploading = signal(false);
+
+  uploadCollectionImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !['jpg', 'jpeg', 'png', 'webp'].includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
+      this.error.set('Choose a JPG, PNG or WebP image.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set('Image must be 10 MB or smaller.');
+      input.value = '';
+      return;
+    }
+    this.collectionImageUploading.set(true);
+    this.api.uploadProductImage(file).pipe(finalize(() => {
+      this.collectionImageUploading.set(false);
+      input.value = '';
+    })).subscribe({
+      next: result => {
+        this.storeCollectionForm.imageUrl = result.mediaUrl;
+        this.notice = 'Collection image uploaded. Save the collection to keep this change.';
+      },
+      error: error => this.error.set(error?.error?.message || 'Could not upload collection image.')
+    });
+  }
+
   uploadProductImage(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
