@@ -1,5 +1,4 @@
 @if (!isAdminRoute()) {
-@if (!selectedCollectionSlug()) {
 <!-- Announcement Bar -->
 <div class="announcement-bar">
   <span>Made with love, baked fresh for your sweetest moments</span>
@@ -39,7 +38,7 @@
     </button>
   </nav>
 </header>
-}
+
 
 @if (cartNotice() && !addToCartOpen() && !cartDrawerOpen() && !checkoutOpen()) {
   <div class="cart-toast" role="status">
@@ -758,6 +757,7 @@
   </div>
 }
 
+
 <!-- Footer -->
 <footer class="site-footer">
   <a class="brand footer-brand" href="#home">
@@ -779,8 +779,7 @@
     <span>FRESHLY MADE, ALWAYS.</span>
   </div>
 </footer>
-
-
+}
 <!-- Admin routes -->
 @if (isAdminRoute()) {
 <router-outlet></router-outlet>
