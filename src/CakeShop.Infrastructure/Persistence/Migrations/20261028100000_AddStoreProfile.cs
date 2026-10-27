@@ -20,6 +20,7 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     ClientId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Tagline = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     StoryTitle = table.Column<string>(type: "nvarchar(180)", maxLength: 180, nullable: false),
+                    HomeDescription = table.Column<string>(type: "nvarchar(320)", maxLength: 320, nullable: false, defaultValue: "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation."),
                     Story = table.Column<string>(type: "nvarchar(3000)", maxLength: 3000, nullable: false),
                     StoryImageUrl = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     LogoUrl = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
