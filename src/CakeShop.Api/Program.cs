@@ -893,7 +893,7 @@ profileApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, Cancel
     return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
         p?.Tagline ?? "Baked with a little magic", p?.StoryTitle ?? "Not just cake. A feeling.",
         p?.HomeDescription ?? "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.",
-        p?.Story ??
+        p?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
         p?.StoryImageUrl, p?.LogoUrl, p?.Phone, p?.WhatsAppNumber, p?.Email, p?.Address,
         p?.OpeningHours, p?.InstagramUrl, p?.FacebookUrl, p?.WebsiteUrl));
 });
