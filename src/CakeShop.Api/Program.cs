@@ -137,6 +137,7 @@ app.MapGet("/api/v1/store-profile", async (CakeShopDbContext db, CancellationTok
     return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
         profile?.Tagline ?? "Baked with a little magic",
         profile?.StoryTitle ?? "Not just cake. A feeling.",
+        profile?.HomeDescription ?? "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.",
         profile?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
         profile?.StoryImageUrl, profile?.LogoUrl, profile?.Phone, profile?.WhatsAppNumber, profile?.Email,
         profile?.Address, profile?.OpeningHours, profile?.InstagramUrl, profile?.FacebookUrl, profile?.WebsiteUrl));
@@ -891,7 +892,8 @@ profileApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, Cancel
     var p = await db.StoreProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == clientId, ct);
     return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
         p?.Tagline ?? "Baked with a little magic", p?.StoryTitle ?? "Not just cake. A feeling.",
-        p?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
+        p?.HomeDescription ?? "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.",
+        p?.Story ??
         p?.StoryImageUrl, p?.LogoUrl, p?.Phone, p?.WhatsAppNumber, p?.Email, p?.Address,
         p?.OpeningHours, p?.InstagramUrl, p?.FacebookUrl, p?.WebsiteUrl));
 });
@@ -906,7 +908,7 @@ profileApi.MapPut("/", async (ClaimsPrincipal user, StoreProfileWriteRequest req
         profile = new StoreProfile(clientId);
         db.StoreProfiles.Add(profile);
     }
-    profile.Update(request.Tagline, request.StoryTitle, request.Story, request.StoryImageUrl,
+    profile.Update(request.Tagline, request.StoryTitle, request.HomeDescription, request.Story, request.StoryImageUrl,
         request.LogoUrl, request.Phone, request.WhatsAppNumber, request.Email, request.Address,
         request.OpeningHours, request.InstagramUrl, request.FacebookUrl, request.WebsiteUrl);
     await db.SaveChangesAsync(ct);
@@ -2075,6 +2077,7 @@ static string? ValidateStoreProfile(StoreProfileWriteRequest r)
 {
     if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
     if (string.IsNullOrWhiteSpace(r.StoryTitle) || r.StoryTitle.Trim().Length > 180) return "Story title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.HomeDescription) || r.HomeDescription.Trim().Length > 320) return "Homepage description is required and must be at most 320 characters.";
     if (string.IsNullOrWhiteSpace(r.Story) || r.Story.Trim().Length > 3000) return "Story is required and must be at most 3000 characters.";
     if (r.StoryImageUrl?.Length > 1000 || r.LogoUrl?.Length > 1000 || r.Phone?.Length > 40 ||
         r.WhatsAppNumber?.Length > 40 || r.Email?.Length > 254 || r.Address?.Length > 500 ||
@@ -2251,10 +2254,10 @@ public sealed record AboutPageSectionWriteRequest(string? Eyebrow, string? Title
     string? SecondaryImageUrl, string? Layout, string? Animation, int SortOrder, bool IsPublished);
 
 public sealed record StoreProfileDto(Guid ClientId, string Name, string Slug, string Tagline, string StoryTitle,
-    string Story, string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
+    string HomeDescription, string Story, string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
     string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
 
-public sealed record StoreProfileWriteRequest(string? Tagline, string? StoryTitle, string? Story,
+public sealed record StoreProfileWriteRequest(string? Tagline, string? StoryTitle, string? HomeDescription, string? Story,
     string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
     string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
 
