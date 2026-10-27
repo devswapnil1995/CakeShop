@@ -2007,6 +2007,24 @@ static string? ValidateExpense(
 static string NormalizeHeroTextPosition(string? value) =>
     value is "top" or "bottom" or "left" or "right" ? value : "left";
 
+static string? ValidateStoreProfile(StoreProfileWriteRequest r)
+{
+    if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
+    if (string.IsNullOrWhiteSpace(r.StoryTitle) || r.StoryTitle.Trim().Length > 180) return "Story title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.Story) || r.Story.Trim().Length > 3000) return "Story is required and must be at most 3000 characters.";
+    if (r.StoryImageUrl?.Length > 1000 || r.LogoUrl?.Length > 1000 || r.Phone?.Length > 40 ||
+        r.WhatsAppNumber?.Length > 40 || r.Email?.Length > 254 || r.Address?.Length > 500 ||
+        r.OpeningHours?.Length > 500 || r.InstagramUrl?.Length > 500 || r.FacebookUrl?.Length > 500 ||
+        r.WebsiteUrl?.Length > 500) return "One or more profile fields exceed their allowed length.";
+    foreach (var url in new[] { r.StoryImageUrl, r.LogoUrl, r.InstagramUrl, r.FacebookUrl, r.WebsiteUrl })
+        if (!string.IsNullOrWhiteSpace(url) &&
+            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal)) &&
+            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            return "Image and social URLs must be safe relative upload paths or HTTPS URLs.";
+    if (!string.IsNullOrWhiteSpace(r.Email) && !System.Net.Mail.MailAddress.TryCreate(r.Email, out _)) return "Enter a valid email address.";
+    return null;
+}
+
 static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
 {
     if (request.Kind is not ("Hamper" or "Seasonal")) return "Kind must be Hamper or Seasonal.";
@@ -2170,24 +2188,6 @@ public sealed record StoreProfileDto(Guid ClientId, string Name, string Slug, st
 public sealed record StoreProfileWriteRequest(string? Tagline, string? StoryTitle, string? Story,
     string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
     string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
-
-static string? ValidateStoreProfile(StoreProfileWriteRequest r)
-{
-    if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
-    if (string.IsNullOrWhiteSpace(r.StoryTitle) || r.StoryTitle.Trim().Length > 180) return "Story title is required and must be at most 180 characters.";
-    if (string.IsNullOrWhiteSpace(r.Story) || r.Story.Trim().Length > 3000) return "Story is required and must be at most 3000 characters.";
-    if (r.StoryImageUrl?.Length > 1000 || r.LogoUrl?.Length > 1000 || r.Phone?.Length > 40 ||
-        r.WhatsAppNumber?.Length > 40 || r.Email?.Length > 254 || r.Address?.Length > 500 ||
-        r.OpeningHours?.Length > 500 || r.InstagramUrl?.Length > 500 || r.FacebookUrl?.Length > 500 ||
-        r.WebsiteUrl?.Length > 500) return "One or more profile fields exceed their allowed length.";
-    foreach (var url in new[] { r.StoryImageUrl, r.LogoUrl, r.InstagramUrl, r.FacebookUrl, r.WebsiteUrl })
-        if (!string.IsNullOrWhiteSpace(url) &&
-            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal)) &&
-            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
-            return "Image and social URLs must be safe relative upload paths or HTTPS URLs.";
-    if (!string.IsNullOrWhiteSpace(r.Email) && !System.Net.Mail.MailAddress.TryCreate(r.Email, out _)) return "Enter a valid email address.";
-    return null;
-}
 
 public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
     string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,
