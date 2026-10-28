@@ -738,6 +738,37 @@ export class AdminComponent implements OnInit {
 
   readonly collectionImageUploading = signal(false);
 
+  uploadAssetImage(event: Event, target: "profile-story" | "profile-logo" | "about-primary" | "about-secondary"): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!extension || !["jpg", "jpeg", "png", "webp"].includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
+      this.error.set("Choose a JPG, PNG or WebP image.");
+      input.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set("Image must be 10 MB or smaller.");
+      input.value = "";
+      return;
+    }
+    const folder = target.startsWith("profile-") ? "profile" : "about";
+    this.error.set("");
+    this.api.uploadProductImage(file, folder).pipe(finalize(() => input.value = "")).subscribe({
+      next: result => {
+        switch (target) {
+          case "profile-story": this.storeProfileForm.storyImageUrl = result.mediaUrl; break;
+          case "profile-logo": this.storeProfileForm.logoUrl = result.mediaUrl; break;
+          case "about-primary": this.aboutSectionForm.imageUrl = result.mediaUrl; break;
+          case "about-secondary": this.aboutSectionForm.secondaryImageUrl = result.mediaUrl; break;
+        }
+        this.notice = "Image uploaded to Azure Blob Storage. Save the form to keep this change.";
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
   uploadCollectionImage(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
