@@ -755,7 +755,7 @@ export class AdminComponent implements OnInit {
       return;
     }
     this.collectionImageUploading.set(true);
-    this.api.uploadProductImage(file).pipe(finalize(() => {
+    this.api.uploadProductImage(file, "collections").pipe(finalize(() => {
       this.collectionImageUploading.set(false);
       input.value = '';
     })).subscribe({
