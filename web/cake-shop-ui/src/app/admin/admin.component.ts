@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -30,6 +30,7 @@ import {
 })
 export class AdminComponent implements OnInit {
   private readonly api = inject(AdminApiService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   loggedIn = signal(false);
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -423,11 +424,13 @@ export class AdminComponent implements OnInit {
   setAboutPrimaryImageUrl(value: string | null): void {
     this.aboutPrimaryImageUrl.set(value);
     this.aboutSectionForm.imageUrl = value;
+    this.changeDetector.detectChanges();
   }
 
   setAboutSecondaryImageUrl(value: string | null): void {
     this.aboutSecondaryImageUrl.set(value);
     this.aboutSectionForm.secondaryImageUrl = value;
+    this.changeDetector.detectChanges();
   }
 
   saveAboutSection(): void {
@@ -778,15 +781,15 @@ export class AdminComponent implements OnInit {
           case "profile-story": this.storeProfileForm.storyImageUrl = result.mediaUrl; break;
           case "profile-logo": this.storeProfileForm.logoUrl = result.mediaUrl; break;
           case "about-primary":
-            this.aboutSectionForm.imageUrl = result.mediaUrl;
-            this.aboutPrimaryImageUrl.set(result.mediaUrl);
+            this.setAboutPrimaryImageUrl(result.mediaUrl);
             break;
           case "about-secondary":
-            this.aboutSectionForm.secondaryImageUrl = result.mediaUrl;
-            this.aboutSecondaryImageUrl.set(result.mediaUrl);
+            this.setAboutSecondaryImageUrl(result.mediaUrl);
             break;
         }
         this.notice = "Image uploaded to Azure Blob Storage. Save the form to keep this change.";
+        // Ensure the URL input reflects the async upload result immediately.
+        this.changeDetector.detectChanges();
       },
       error: err => this.handleApiError(err)
     });
