@@ -258,10 +258,11 @@ export class AdminApiService {
   }
 
   getProducts(): Observable<AdminProduct[]> { return this.http.get<AdminProduct[]>(`${this.base}/products`, this.options); }
-  uploadProductImage(file: File, folder: "products" | "collections" | "about" | "profile" = "products"): Observable<{ mediaUrl: string }> {
+  uploadProductImage(file: File, folder: "products" | "collections" | "about" | "profile" = "products", assetKey = "image", replaceUrl?: string | null): Observable<{ mediaUrl: string }> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.post<{ mediaUrl: string }>(`${this.base}/products/images?folder=${folder}`, form, this.options);
+    const params = new HttpParams().set('folder', folder).set('assetKey', assetKey).set('replaceUrl', replaceUrl ?? '');
+    return this.http.post<{ mediaUrl: string }>(`${this.base}/products/images`, form, { ...this.options, params });
   }
   createProduct(body: ProductWrite): Observable<AdminProduct> {
     return this.http.post<AdminProduct>(
@@ -425,11 +426,12 @@ export class AdminApiService {
 
 
 
-  uploadHeroBannerMedia(file: File): Observable<{ mediaUrl: string; mediaType: 'Image' | 'Video' }> {
+  uploadHeroBannerMedia(file: File, assetKey: string, replaceUrl?: string | null): Observable<{ mediaUrl: string; mediaType: 'Image' | 'Video' }> {
     const body = new FormData();
     body.append('file', file, file.name);
+    const params = new HttpParams().set('assetKey', assetKey).set('replaceUrl', replaceUrl ?? '');
     return this.http.post<{ mediaUrl: string; mediaType: 'Image' | 'Video' }>(
-      `${this.base}/hero-banners/media`, body, this.options
+      `${this.base}/hero-banners/media`, body, { ...this.options, params }
     );
   }
 
