@@ -313,7 +313,7 @@
                 <label for="productImage">Product image</label>
                 <input id="productImage" name="productImage" type="text" [(ngModel)]="productForm.imageUrl" maxlength="1000"
                   placeholder="Paste an HTTPS image URL or upload an image below" />
-                <p class="form-hint">Use JPG, PNG or WebP up to 10 MB. Uploaded files are stored by this API; external image URLs must use HTTPS.</p>
+                <p class="form-hint">Use JPG, PNG or WebP up to 10 MB. Uploaded files are stored in Azure Blob Storage; external image URLs must use HTTPS.</p>
                 <div class="product-image-tools">
                   <input id="productImageFile" name="productImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                     (change)="uploadProductImage($event)" [disabled]="productImageUploading()" />
@@ -1249,8 +1249,8 @@
               }
               <div class="field span-two">
                 <label for="collectionImage">Cover image URL (optional)</label>
-                <input id="collectionImage" name="collectionImage" type="url" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="https://example.com/hamper.jpg or /uploads/..." />
-                <small class="form-hint">Paste an HTTPS image URL or upload a JPG, PNG or WebP image (max 10 MB).</small>
+                <input id="collectionImage" name="collectionImage" type="url" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
+                <small class="form-hint">Paste an HTTPS image URL or upload a JPG, PNG or WebP image to Azure Blob Storage (max 10 MB).</small>
                 <input id="collectionImageUpload" name="collectionImageUpload" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadCollectionImage($event)" [disabled]="collectionImageUploading()" />
                 @if (collectionImageUploading()) { <small class="form-hint">Uploading image…</small> }
                 @if (storeCollectionForm.imageUrl) {
@@ -1366,11 +1366,11 @@
             </div>
             <div class="field">
               <label for="heroMediaUrl">Media URL (HTTPS or uploaded file) *</label>
-              <input id="heroMediaUrl" name="heroMediaUrl" type="text" [(ngModel)]="heroBannerForm.mediaUrl" maxlength="2000" placeholder="https://… or /uploads/heroes/…" required />
+              <input id="heroMediaUrl" name="heroMediaUrl" type="text" [(ngModel)]="heroBannerForm.mediaUrl" maxlength="2000" placeholder="Blob URL or HTTPS URL" required />
             </div>
             <div class="field">
               <label for="heroMobileMediaUrl">Mobile media URL (optional)</label>
-              <input id="heroMobileMediaUrl" name="heroMobileMediaUrl" type="text" [(ngModel)]="heroBannerForm.mobileMediaUrl" maxlength="2000" placeholder="HTTPS URL or uploaded path" />
+              <input id="heroMobileMediaUrl" name="heroMobileMediaUrl" type="text" [(ngModel)]="heroBannerForm.mobileMediaUrl" maxlength="2000" placeholder="Blob URL or HTTPS URL" />
             </div>
             <div class="field">
               <label for="heroMediaUpload">Upload image or video (optional)</label>
@@ -1450,8 +1450,10 @@
                 <div class="field"><label for="aboutEyebrow">Small label / eyebrow *</label><input id="aboutEyebrow" name="aboutEyebrow" [(ngModel)]="aboutSectionForm.eyebrow" maxlength="100" required placeholder="OUR CRAFT" /></div>
                 <div class="field"><label for="aboutTitle">Heading *</label><input id="aboutTitle" name="aboutTitle" [(ngModel)]="aboutSectionForm.title" maxlength="180" required placeholder="A little care in every layer" /></div>
                 <div class="field"><label for="aboutBody">Story text *</label><textarea id="aboutBody" name="aboutBody" [(ngModel)]="aboutSectionForm.body" rows="5" maxlength="3000" required placeholder="Tell this part of your bakery story…"></textarea></div>
-                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [(ngModel)]="aboutSectionForm.imageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
-                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [(ngModel)]="aboutSectionForm.secondaryImageUrl" maxlength="1000" placeholder="Optional second image" /></div>
+                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [ngModel]="aboutPrimaryImageUrl()" (ngModelChange)="setAboutPrimaryImageUrl($event)" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
+                  <input id="aboutImageFile" name="aboutImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'about-primary')" /></div>
+                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [ngModel]="aboutSecondaryImageUrl()" (ngModelChange)="setAboutSecondaryImageUrl($event)" maxlength="1000" placeholder="Optional second image" />
+                  <input id="aboutImage2File" name="aboutImage2File" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'about-secondary')" /></div>
                 <div class="field"><label for="aboutLayout">Visual layout</label>
                   <select id="aboutLayout" name="aboutLayout" [(ngModel)]="aboutSectionForm.layout">
                     <option value="image-left">Image left · story right</option><option value="image-right">Image right · story left</option>
@@ -1490,8 +1492,11 @@
                 <div class="field"><label for="profileTagline">Tagline *</label><input id="profileTagline" name="profileTagline" [(ngModel)]="storeProfileForm.tagline" maxlength="120" required /></div>
                 <div class="field"><label for="profileStoryTitle">Story heading *</label><input id="profileStoryTitle" name="profileStoryTitle" [(ngModel)]="storeProfileForm.storyTitle" maxlength="180" required /></div>
                 <div class="field span-two"><label for="profileStory">About your bakery *</label><textarea id="profileStory" name="profileStory" rows="5" [(ngModel)]="storeProfileForm.story" maxlength="3000" required placeholder="Tell customers what makes your bakery special."></textarea></div>
-                <div class="field"><label for="profileStoryImage">Story image URL</label><input id="profileStoryImage" name="profileStoryImage" [(ngModel)]="storeProfileForm.storyImageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
-                <div class="field"><label for="profileLogo">Logo URL</label><input id="profileLogo" name="profileLogo" [(ngModel)]="storeProfileForm.logoUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <div class="field"><label for="profileStoryImage">Story image URL</label><input id="profileStoryImage" name="profileStoryImage" [(ngModel)]="storeProfileForm.storyImageUrl" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
+                  <input id="profileStoryImageFile" name="profileStoryImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'profile-story')" />
+                </div>
+                <div class="field"><label for="profileLogo">Logo URL</label><input id="profileLogo" name="profileLogo" [(ngModel)]="storeProfileForm.logoUrl" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
+                  <input id="profileLogoFile" name="profileLogoFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'profile-logo')" /></div>
                 <h3 class="span-two">Contact & location</h3>
                 <div class="field"><label for="profilePhone">Phone</label><input id="profilePhone" name="profilePhone" type="tel" [(ngModel)]="storeProfileForm.phone" maxlength="40" /></div>
                 <div class="field"><label for="profileWhatsapp">WhatsApp number (international format)</label><input id="profileWhatsapp" name="profileWhatsapp" type="tel" [(ngModel)]="storeProfileForm.whatsAppNumber" maxlength="40" placeholder="Country code + number" /></div>

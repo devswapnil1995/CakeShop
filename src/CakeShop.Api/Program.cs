@@ -1,3 +1,5 @@
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using CakeShop.Api.Contracts;
 using CakeShop.Api.Checkout;
 using CakeShop.Application.Catalog;
@@ -1020,26 +1022,19 @@ collectionApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, Cake
 
 
 adminApi.MapPost("/products/images", async (
-    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+    ClaimsPrincipal user, IFormFile file, string? folder, string? assetKey, string? replaceUrl, IConfiguration configuration, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
-    if (file is null || file.Length == 0)
-        return Results.BadRequest(new { message = "Choose an image to upload." });
-    if (file.Length > 10 * 1024 * 1024)
-        return Results.BadRequest(new { message = "Product images must be 10 MB or smaller." });
-
+    if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose an image to upload." });
+    if (file.Length > 10 * 1024 * 1024) return Results.BadRequest(new { message = "Images must be 10 MB or smaller." });
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     var allowed = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
     {
-        [".jpg"] = new[] { "image/jpeg" },
-        [".jpeg"] = new[] { "image/jpeg" },
-        [".png"] = new[] { "image/png" },
-        [".webp"] = new[] { "image/webp" }
+        [".jpg"] = new[] { "image/jpeg" }, [".jpeg"] = new[] { "image/jpeg" },
+        [".png"] = new[] { "image/png" }, [".webp"] = new[] { "image/webp" }
     };
-    if (!allowed.TryGetValue(extension, out var contentTypes) ||
-        !contentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
-        return Results.BadRequest(new { message = "Supported product images: JPG, PNG and WebP. File type must match the extension." });
-
+    if (!allowed.TryGetValue(extension, out var contentTypes) || !contentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Supported images: JPG, PNG and WebP. File type must match the extension." });
     var header = new byte[12];
     await using (var input = file.OpenReadStream())
     {
@@ -1047,38 +1042,52 @@ adminApi.MapPost("/products/images", async (
         if (!IsAllowedHeroFileSignature(extension, header, read))
             return Results.BadRequest(new { message = "The file contents do not match the selected image type." });
     }
-
-    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "products", clientId.ToString("N"));
-    Directory.CreateDirectory(uploadRoot);
-    var safeName = $"{Guid.NewGuid():N}{extension}";
-    var fullPath = Path.Combine(uploadRoot, safeName);
-    await using (var output = File.Create(fullPath))
-    await using (var input = file.OpenReadStream())
-        await input.CopyToAsync(output, ct);
-
-    return Results.Ok(new { mediaUrl = $"/uploads/products/{clientId:N}/{safeName}" });
+    var folderName = (folder ?? "products").Trim().ToLowerInvariant();
+    if (folderName is not ("products" or "collections" or "about" or "profile"))
+        return Results.BadRequest(new { message = "Unsupported image folder." });
+    var container = CreateImageContainerClient(configuration);
+    if (container is null)
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
+            detail: "Configure SPBlobStorage:AccountName, SPBlobStorage:AccountKey and SPBlobStorage:ContainerName in the API environment.");
+    var normalizedKey = NormalizeAssetKey(assetKey);
+    if (string.IsNullOrWhiteSpace(normalizedKey))
+        return Results.BadRequest(new { message = "Provide an asset name so the image can be stored with a stable filename." });
+    var blobName = $"assets/{folderName}/{clientId:N}/{normalizedKey}{extension}";
+    var blob = container.GetBlobClient(blobName);
+    await using var inputStream = file.OpenReadStream();
+    var uploadResult = await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType,
+                CacheControl = "no-cache, no-store, must-revalidate"
+            }
+        },
+        cancellationToken: ct);
+    if (TryGetOwnedBlobName(replaceUrl, container, clientId, folderName, out var previousBlobName) &&
+        !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
+        await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
+    var mediaUrl = $"{blob.Uri}?v={Uri.EscapeDataString(uploadResult.Value.ETag.ToString())}";
+    return Results.Ok(new { mediaUrl });
 }).DisableAntiforgery();
 
 adminApi.MapPost("/hero-banners/media", async (
-    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+    ClaimsPrincipal user, IFormFile file, string? assetKey, string? replaceUrl, IConfiguration configuration, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
     if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose a file to upload." });
     if (file.Length > 20 * 1024 * 1024) return Results.BadRequest(new { message = "Media files must be 20 MB or smaller." });
-
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     var allowed = new Dictionary<string, (string MediaType, string[] ContentTypes)>(StringComparer.OrdinalIgnoreCase)
     {
-        [".jpg"] = ("Image", new[] { "image/jpeg" }),
-        [".jpeg"] = ("Image", new[] { "image/jpeg" }),
-        [".png"] = ("Image", new[] { "image/png" }),
-        [".webp"] = ("Image", new[] { "image/webp" }),
-        [".mp4"] = ("Video", new[] { "video/mp4" }),
-        [".webm"] = ("Video", new[] { "video/webm" })
+        [".jpg"] = ("Image", new[] { "image/jpeg" }), [".jpeg"] = ("Image", new[] { "image/jpeg" }),
+        [".png"] = ("Image", new[] { "image/png" }), [".webp"] = ("Image", new[] { "image/webp" }),
+        [".mp4"] = ("Video", new[] { "video/mp4" }), [".webm"] = ("Video", new[] { "video/webm" })
     };
     if (!allowed.TryGetValue(extension, out var fileInfo) || !fileInfo.ContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
         return Results.BadRequest(new { message = "Supported files: JPG, PNG, WebP, MP4, and WebM. File type must match the extension." });
-
     var header = new byte[12];
     await using (var input = file.OpenReadStream())
     {
@@ -1086,16 +1095,32 @@ adminApi.MapPost("/hero-banners/media", async (
         if (!IsAllowedHeroFileSignature(extension, header, read))
             return Results.BadRequest(new { message = "The file contents do not match the selected media type." });
     }
-
-    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "heroes", clientId.ToString("N"));
-    Directory.CreateDirectory(uploadRoot);
-    var safeName = $"{Guid.NewGuid():N}{extension}";
-    var fullPath = Path.Combine(uploadRoot, safeName);
-    await using (var output = File.Create(fullPath))
-    await using (var input = file.OpenReadStream())
-        await input.CopyToAsync(output, ct);
-
-    return Results.Ok(new { mediaUrl = $"/uploads/heroes/{clientId:N}/{safeName}", mediaType = fileInfo.MediaType });
+    var container = CreateImageContainerClient(configuration);
+    if (container is null)
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
+            detail: "Configure SPBlobStorage:AccountName, SPBlobStorage:AccountKey and SPBlobStorage:ContainerName in the API environment.");
+    var normalizedKey = NormalizeAssetKey(assetKey);
+    if (string.IsNullOrWhiteSpace(normalizedKey))
+        return Results.BadRequest(new { message = "Provide a banner name so media can be stored with a stable filename." });
+    var blobName = $"assets/heroes/{clientId:N}/{normalizedKey}{extension}";
+    var blob = container.GetBlobClient(blobName);
+    await using var inputStream = file.OpenReadStream();
+    var uploadResult = await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType,
+                CacheControl = "no-cache, no-store, must-revalidate"
+            }
+        },
+        cancellationToken: ct);
+    if (TryGetOwnedBlobName(replaceUrl, container, clientId, "heroes", out var previousBlobName) &&
+        !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
+        await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
+    var mediaUrl = $"{blob.Uri}?v={Uri.EscapeDataString(uploadResult.Value.ETag.ToString())}";
+    return Results.Ok(new { mediaUrl, mediaType = fileInfo.MediaType });
 }).DisableAntiforgery();
 
 adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
@@ -2141,6 +2166,39 @@ static bool IsAllowedHeroMediaUrl(string value) =>
     (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
      uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
 
+static string? NormalizeAssetKey(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value)) return null;
+    var chars = value.Trim().ToLowerInvariant().Select(ch => char.IsLetterOrDigit(ch) ? ch : '-').ToArray();
+    var normalized = new string(chars);
+    while (normalized.Contains("--", StringComparison.Ordinal))
+        normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+    normalized = normalized.Trim('-');
+    return normalized.Length > 80 ? normalized[..80].Trim('-') : normalized;
+}
+
+static bool TryGetOwnedBlobName(string? url, BlobContainerClient container, Guid clientId, string folder, out string blobName)
+{
+    blobName = string.Empty;
+    if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+        !string.Equals(uri.Host, container.Uri.Host, StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(uri.UserInfo))
+        return false;
+    var containerPath = container.Uri.AbsolutePath.TrimEnd('/');
+    var prefix = containerPath + $"/assets/{folder}/{clientId:N}/";
+    if (!uri.AbsolutePath.StartsWith(prefix, StringComparison.Ordinal)) return false;
+    blobName = Uri.UnescapeDataString(uri.AbsolutePath[(containerPath.Length + 1)..]);
+    return !blobName.Contains("..", StringComparison.Ordinal) && !blobName.Contains('\\');
+}
+
+static BlobContainerClient? CreateImageContainerClient(IConfiguration configuration)
+{
+    var accountName = configuration["SPBlobStorage:AccountName"];
+    var accountKey = configuration["SPBlobStorage:AccountKey"];
+    var containerName = configuration["SPBlobStorage:ContainerName"] ?? "image";
+    if (string.IsNullOrWhiteSpace(accountName) || string.IsNullOrWhiteSpace(accountKey) || string.IsNullOrWhiteSpace(containerName)) return null;
+    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+    return new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
+}
 static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
 {
     if (extension is ".jpg" or ".jpeg")

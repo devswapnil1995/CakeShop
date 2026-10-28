@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -30,6 +30,7 @@ import {
 })
 export class AdminComponent implements OnInit {
   private readonly api = inject(AdminApiService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   loggedIn = signal(false);
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -49,6 +50,8 @@ export class AdminComponent implements OnInit {
   readonly aboutSectionsLoading = signal(false);
   readonly aboutSectionSaving = signal(false);
   editingAboutSectionId: string | null = null;
+  readonly aboutPrimaryImageUrl = signal<string | null>(null);
+  readonly aboutSecondaryImageUrl = signal<string | null>(null);
   aboutSectionForm: AboutSectionWrite = this.emptyAboutSection();
 
   private emptyAboutSection(): AboutSectionWrite {
@@ -402,6 +405,8 @@ export class AdminComponent implements OnInit {
   newAboutSection(): void {
     this.editingAboutSectionId = null;
     this.aboutSectionForm = this.emptyAboutSection();
+    this.aboutPrimaryImageUrl.set(null);
+    this.aboutSecondaryImageUrl.set(null);
     this.error.set('');
     this.notice = '';
   }
@@ -410,8 +415,22 @@ export class AdminComponent implements OnInit {
     const { id, ...form } = section;
     this.editingAboutSectionId = id;
     this.aboutSectionForm = { ...form };
+    this.aboutPrimaryImageUrl.set(form.imageUrl ?? null);
+    this.aboutSecondaryImageUrl.set(form.secondaryImageUrl ?? null);
     this.error.set('');
     this.notice = '';
+  }
+
+  setAboutPrimaryImageUrl(value: string | null): void {
+    this.aboutPrimaryImageUrl.set(value);
+    this.aboutSectionForm.imageUrl = value;
+    this.changeDetector.detectChanges();
+  }
+
+  setAboutSecondaryImageUrl(value: string | null): void {
+    this.aboutSecondaryImageUrl.set(value);
+    this.aboutSectionForm.secondaryImageUrl = value;
+    this.changeDetector.detectChanges();
   }
 
   saveAboutSection(): void {
@@ -534,7 +553,7 @@ export class AdminComponent implements OnInit {
     if (!file) return;
     this.error.set('');
     this.heroMediaUploading.set(true);
-    this.api.uploadHeroBannerMedia(file).pipe(finalize(() => {
+    this.api.uploadHeroBannerMedia(file, this.editingHeroBannerId || this.heroBannerForm.title, this.heroBannerForm.mediaUrl).pipe(finalize(() => {
       this.heroMediaUploading.set(false);
       input.value = '';
     })).subscribe({
@@ -738,6 +757,43 @@ export class AdminComponent implements OnInit {
 
   readonly collectionImageUploading = signal(false);
 
+  uploadAssetImage(event: Event, target: "profile-story" | "profile-logo" | "about-primary" | "about-secondary"): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!extension || !["jpg", "jpeg", "png", "webp"].includes(extension) || (file.type && !allowedTypes.includes(file.type))) {
+      this.error.set("Choose a JPG, PNG or WebP image.");
+      input.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.error.set("Image must be 10 MB or smaller.");
+      input.value = "";
+      return;
+    }
+    const folder = target.startsWith("profile-") ? "profile" : "about";
+    this.error.set("");
+    this.api.uploadProductImage(file, folder, target, target === "profile-story" ? this.storeProfileForm.storyImageUrl : target === "profile-logo" ? this.storeProfileForm.logoUrl : target === "about-primary" ? this.aboutSectionForm.imageUrl : this.aboutSectionForm.secondaryImageUrl).pipe(finalize(() => input.value = "")).subscribe({
+      next: result => {
+        switch (target) {
+          case "profile-story": this.storeProfileForm.storyImageUrl = result.mediaUrl; break;
+          case "profile-logo": this.storeProfileForm.logoUrl = result.mediaUrl; break;
+          case "about-primary":
+            this.setAboutPrimaryImageUrl(result.mediaUrl);
+            break;
+          case "about-secondary":
+            this.setAboutSecondaryImageUrl(result.mediaUrl);
+            break;
+        }
+        this.notice = "Image uploaded to Azure Blob Storage. Save the form to keep this change.";
+        // Ensure the URL input reflects the async upload result immediately.
+        this.changeDetector.detectChanges();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
   uploadCollectionImage(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -755,7 +811,7 @@ export class AdminComponent implements OnInit {
       return;
     }
     this.collectionImageUploading.set(true);
-    this.api.uploadProductImage(file).pipe(finalize(() => {
+    this.api.uploadProductImage(file, "collections", this.storeCollectionForm.slug || this.storeCollectionForm.title, this.storeCollectionForm.imageUrl).pipe(finalize(() => {
       this.collectionImageUploading.set(false);
       input.value = '';
     })).subscribe({
@@ -791,7 +847,7 @@ export class AdminComponent implements OnInit {
     }
 
     this.productImageUploading.set(true);
-    this.api.uploadProductImage(file).pipe(finalize(() => {
+    this.api.uploadProductImage(file, "products", this.productForm.slug || this.productForm.name, this.productForm.imageUrl).pipe(finalize(() => {
       this.productImageUploading.set(false);
       input.value = '';
     })).subscribe({

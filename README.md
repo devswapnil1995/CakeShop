@@ -95,8 +95,25 @@ The dev proxy sends `/api` requests to `http://localhost:5080`. Replace the plac
 ## Architecture / security notes
 - All catalog records include `ClientId`; product-to-category relationship uses a composite tenant-aware foreign key.
 - Public catalog endpoints are read-only; authenticated admin endpoints support category/product create and update.
-- This is currently a single-shop deployment. Multi-shop onboarding, tenant membership management, image uploads, audit logs and subscription billing are not implemented.
+- This is currently a single-shop deployment. Multi-shop onboarding, tenant membership management, audit logs and subscription billing are not implemented.
 - Public endpoints return only active/available catalog data. Apply rate limiting, security headers, monitoring, proper secret storage and production CORS restrictions before launch.
+
+## Azure Blob Storage for media assets
+
+Uploaded product, collection, About page, store-profile and hero media are stored in the existing Azure Storage container named `image`, under the virtual `assets/` folder. Upload paths are grouped by purpose and tenant, for example `assets/products/{clientId}/...`, `assets/collections/{clientId}/...`, `assets/about/{clientId}/...`, `assets/profile/{clientId}/...` and `assets/heroes/{clientId}/...`.
+
+Configure the API with these settings:
+- `SPBlobStorage:AccountName`: storage account name.
+- `SPBlobStorage:ContainerName`: `image` (default).
+- `SPBlobStorage:AccountKey`: the storage account access key, supplied only through local user-secrets or the hosting environment; never commit it or expose it to Angular.
+
+For local development, from the API project directory run `dotnet user-secrets set "SPBlobStorage:AccountKey" "<your-access-key>"`. Set `SPBlobStorage__AccountName`, `SPBlobStorage__ContainerName`, and `SPBlobStorage__AccountKey` in the API hosting environment (or use Key Vault). Do not place the access key in frontend environment files. The container must already exist. Public storefront image URLs require the `image` container to allow anonymous blob reads; otherwise use a private-container/SAS delivery design.
+
+Existing database rows may still contain legacy `/uploads/...` URLs. Those files must be copied to Blob Storage and the corresponding image URLs updated before removing legacy URL compatibility; this code change moves new uploads to Blob Storage and does not automatically migrate previously uploaded files.
+
+## Stable Blob asset naming and replacement
+
+Media uploads use stable filenames based on the product slug/name, collection slug/title, About/profile asset role, or hero banner ID/title. Re-uploading the same asset and file extension overwrites that blob. When the extension or filename changes, the API deletes the previous blob only when the previous URL belongs to the current tenant and the same storage container/folder, and only after the new upload succeeds. Older random-name uploads may remain until replaced or manually cleaned up.
 
 ## Admin dashboard (Release 1)
 
