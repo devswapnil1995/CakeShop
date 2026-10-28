@@ -1054,7 +1054,7 @@ adminApi.MapPost("/products/images", async (
     var container = CreateImageContainerClient(configuration);
     if (container is null)
         return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
-            detail: "Configure AzureBlobStorage:AccountName, AzureBlobStorage:AccountKey and AzureBlobStorage:ContainerName in the API environment.");
+            detail: "Configure SPBlobStorage:AccountName, SPBlobStorage:AccountKey and SPBlobStorage:ContainerName in the API environment.");
 
     var safeName = $"{Guid.NewGuid():N}{extension}";
     var blobName = $"assets/{folderName}/{clientId:N}/{safeName}";
@@ -1095,7 +1095,7 @@ adminApi.MapPost("/hero-banners/media", async (
     var container = CreateImageContainerClient(configuration);
     if (container is null)
         return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
-            detail: "Configure AzureBlobStorage:AccountName, AzureBlobStorage:AccountKey and AzureBlobStorage:ContainerName in the API environment.");
+            detail: "Configure SPBlobStorage:AccountName, SPBlobStorage:AccountKey and SPBlobStorage:ContainerName in the API environment.");
 
     var safeName = $"{Guid.NewGuid():N}{extension}";
     var blobName = $"assets/heroes/{clientId:N}/{safeName}";
@@ -2150,9 +2150,9 @@ static bool IsAllowedHeroMediaUrl(string value) =>
 
 static BlobContainerClient? CreateImageContainerClient(IConfiguration configuration)
 {
-    var accountName = configuration["AzureBlobStorage:AccountName"];
-    var accountKey = configuration["AzureBlobStorage:AccountKey"];
-    var containerName = configuration["AzureBlobStorage:ContainerName"] ?? "image";
+    var accountName = configuration["SPBlobStorage:AccountName"];
+    var accountKey = configuration["SPBlobStorage:AccountKey"];
+    var containerName = configuration["SPBlobStorage:ContainerName"] ?? "image";
     if (string.IsNullOrWhiteSpace(accountName) || string.IsNullOrWhiteSpace(accountKey) || string.IsNullOrWhiteSpace(containerName)) return null;
     var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
     return new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
