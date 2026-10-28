@@ -1055,8 +1055,13 @@ adminApi.MapPost("/products/images", async (
     var blobName = $"assets/{folderName}/{clientId:N}/{normalizedKey}{extension}";
     var blob = container.GetBlobClient(blobName);
     await using var inputStream = file.OpenReadStream();
-    await blob.UploadAsync(inputStream, overwrite: true,
-        httpHeaders: new BlobHttpHeaders { ContentType = file.ContentType }, cancellationToken: ct);
+    await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType }
+        },
+        cancellationToken: ct);
     if (TryGetOwnedBlobName(replaceUrl, container, clientId, folderName, out var previousBlobName) &&
         !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
         await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
@@ -1095,8 +1100,13 @@ adminApi.MapPost("/hero-banners/media", async (
     var blobName = $"assets/heroes/{clientId:N}/{normalizedKey}{extension}";
     var blob = container.GetBlobClient(blobName);
     await using var inputStream = file.OpenReadStream();
-    await blob.UploadAsync(inputStream, overwrite: true,
-        httpHeaders: new BlobHttpHeaders { ContentType = file.ContentType }, cancellationToken: ct);
+    await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType }
+        },
+        cancellationToken: ct);
     if (TryGetOwnedBlobName(replaceUrl, container, clientId, "heroes", out var previousBlobName) &&
         !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
         await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
