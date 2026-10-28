@@ -1,3 +1,5 @@
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using CakeShop.Api.Contracts;
 using CakeShop.Api.Checkout;
 using CakeShop.Application.Catalog;
@@ -1020,13 +1022,11 @@ collectionApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, Cake
 
 
 adminApi.MapPost("/products/images", async (
-    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+    ClaimsPrincipal user, IFormFile file, string? folder, IConfiguration configuration, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
-    if (file is null || file.Length == 0)
-        return Results.BadRequest(new { message = "Choose an image to upload." });
-    if (file.Length > 10 * 1024 * 1024)
-        return Results.BadRequest(new { message = "Product images must be 10 MB or smaller." });
+    if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose an image to upload." });
+    if (file.Length > 10 * 1024 * 1024) return Results.BadRequest(new { message = "Images must be 10 MB or smaller." });
 
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     var allowed = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
@@ -1036,9 +1036,8 @@ adminApi.MapPost("/products/images", async (
         [".png"] = new[] { "image/png" },
         [".webp"] = new[] { "image/webp" }
     };
-    if (!allowed.TryGetValue(extension, out var contentTypes) ||
-        !contentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
-        return Results.BadRequest(new { message = "Supported product images: JPG, PNG and WebP. File type must match the extension." });
+    if (!allowed.TryGetValue(extension, out var contentTypes) || !contentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Supported images: JPG, PNG and WebP. File type must match the extension." });
 
     var header = new byte[12];
     await using (var input = file.OpenReadStream())
@@ -1048,19 +1047,25 @@ adminApi.MapPost("/products/images", async (
             return Results.BadRequest(new { message = "The file contents do not match the selected image type." });
     }
 
-    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "products", clientId.ToString("N"));
-    Directory.CreateDirectory(uploadRoot);
+    var folderName = (folder ?? "products").Trim().ToLowerInvariant();
+    if (folderName is not ("products" or "collections" or "about" or "profile"))
+        return Results.BadRequest(new { message = "Unsupported image folder." });
+
+    var container = CreateImageContainerClient(configuration);
+    if (container is null)
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
+            detail: "Configure AzureBlobStorage:AccountName, AzureBlobStorage:AccountKey and AzureBlobStorage:ContainerName in the API environment.");
+
     var safeName = $"{Guid.NewGuid():N}{extension}";
-    var fullPath = Path.Combine(uploadRoot, safeName);
-    await using (var output = File.Create(fullPath))
-    await using (var input = file.OpenReadStream())
-        await input.CopyToAsync(output, ct);
+    var blobName = $"assets/{folderName}/{clientId:N}/{safeName}";
+    var blob = container.GetBlobClient(blobName);
+    await using var inputStream = file.OpenReadStream();
+    await blob.UploadAsync(inputStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType } }, ct);
 
-    return Results.Ok(new { mediaUrl = $"/uploads/products/{clientId:N}/{safeName}" });
+    return Results.Ok(new { mediaUrl = blob.Uri.ToString() });
 }).DisableAntiforgery();
-
 adminApi.MapPost("/hero-banners/media", async (
-    ClaimsPrincipal user, IFormFile file, IWebHostEnvironment environment, CancellationToken ct) =>
+    ClaimsPrincipal user, IFormFile file, IConfiguration configuration, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
     if (file is null || file.Length == 0) return Results.BadRequest(new { message = "Choose a file to upload." });
@@ -1087,17 +1092,19 @@ adminApi.MapPost("/hero-banners/media", async (
             return Results.BadRequest(new { message = "The file contents do not match the selected media type." });
     }
 
-    var uploadRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "heroes", clientId.ToString("N"));
-    Directory.CreateDirectory(uploadRoot);
+    var container = CreateImageContainerClient(configuration);
+    if (container is null)
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Image storage is not configured.",
+            detail: "Configure AzureBlobStorage:AccountName, AzureBlobStorage:AccountKey and AzureBlobStorage:ContainerName in the API environment.");
+
     var safeName = $"{Guid.NewGuid():N}{extension}";
-    var fullPath = Path.Combine(uploadRoot, safeName);
-    await using (var output = File.Create(fullPath))
-    await using (var input = file.OpenReadStream())
-        await input.CopyToAsync(output, ct);
+    var blobName = $"assets/heroes/{clientId:N}/{safeName}";
+    var blob = container.GetBlobClient(blobName);
+    await using var inputStream = file.OpenReadStream();
+    await blob.UploadAsync(inputStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType } }, ct);
 
-    return Results.Ok(new { mediaUrl = $"/uploads/heroes/{clientId:N}/{safeName}", mediaType = fileInfo.MediaType });
+    return Results.Ok(new { mediaUrl = blob.Uri.ToString(), mediaType = fileInfo.MediaType });
 }).DisableAntiforgery();
-
 adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
 {
     if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
@@ -2141,6 +2148,15 @@ static bool IsAllowedHeroMediaUrl(string value) =>
     (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
      uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo));
 
+static BlobContainerClient? CreateImageContainerClient(IConfiguration configuration)
+{
+    var accountName = configuration["AzureBlobStorage:AccountName"];
+    var accountKey = configuration["AzureBlobStorage:AccountKey"];
+    var containerName = configuration["AzureBlobStorage:ContainerName"] ?? "image";
+    if (string.IsNullOrWhiteSpace(accountName) || string.IsNullOrWhiteSpace(accountKey) || string.IsNullOrWhiteSpace(containerName)) return null;
+    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+    return new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
+}
 static bool IsAllowedHeroFileSignature(string extension, byte[] header, int read)
 {
     if (extension is ".jpg" or ".jpeg")
