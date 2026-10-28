@@ -275,6 +275,12 @@ export class AppComponent implements OnDestroy, OnInit {
     return url;
   }
 
+  getContactWhatsAppUrl(): string {
+    const number = (this.storeProfile()?.whatsAppNumber || this.WHATSAPP_NUMBER).replace(/\D/g, '');
+    const message = `Hi ${this.storeProfile()?.name || this.brandName}! I'd like to know more about your bakery.`;
+    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  }
+
   resolveProductImageUrl(url: string | null): string {
     if (!url) return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80';
     if (url.startsWith('/')) return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
