@@ -95,7 +95,7 @@ The dev proxy sends `/api` requests to `http://localhost:5080`. Replace the plac
 ## Architecture / security notes
 - All catalog records include `ClientId`; product-to-category relationship uses a composite tenant-aware foreign key.
 - Public catalog endpoints are read-only; authenticated admin endpoints support category/product create and update.
-- This is currently a single-shop deployment. Multi-shop onboarding, tenant membership management, image uploads, audit logs and subscription billing are not implemented.
+- This is currently a single-shop deployment. Multi-shop onboarding, tenant membership management, audit logs and subscription billing are not implemented.
 - Public endpoints return only active/available catalog data. Apply rate limiting, security headers, monitoring, proper secret storage and production CORS restrictions before launch.
 
 ## Azure Blob Storage for media assets
