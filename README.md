@@ -111,6 +111,10 @@ For local development, from the API project directory run `dotnet user-secrets s
 
 Existing database rows may still contain legacy `/uploads/...` URLs. Those files must be copied to Blob Storage and the corresponding image URLs updated before removing legacy URL compatibility; this code change moves new uploads to Blob Storage and does not automatically migrate previously uploaded files.
 
+## Stable Blob asset naming and replacement
+
+Media uploads use stable filenames based on the product slug/name, collection slug/title, About/profile asset role, or hero banner ID/title. Re-uploading the same asset and file extension overwrites that blob. When the extension or filename changes, the API deletes the previous blob only when the previous URL belongs to the current tenant and the same storage container/folder, and only after the new upload succeeds. Older random-name uploads may remain until replaced or manually cleaned up.
+
 ## Admin dashboard (Release 1)
 
 Once the API/database are running and a development admin has been seeded, open `http://localhost:4200/admin` to use the Angular admin dashboard. The public storefront remains at `http://localhost:4200/`.
