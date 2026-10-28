@@ -1250,7 +1250,7 @@
               <div class="field span-two">
                 <label for="collectionImage">Cover image URL (optional)</label>
                 <input id="collectionImage" name="collectionImage" type="url" [(ngModel)]="storeCollectionForm.imageUrl" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
-                <small class="form-hint">Paste an HTTPS image URL or upload a JPG, PNG or WebP image (max 10 MB).</small>
+                <small class="form-hint">Paste an HTTPS image URL or upload a JPG, PNG or WebP image to Azure Blob Storage (max 10 MB).</small>
                 <input id="collectionImageUpload" name="collectionImageUpload" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadCollectionImage($event)" [disabled]="collectionImageUploading()" />
                 @if (collectionImageUploading()) { <small class="form-hint">Uploading image…</small> }
                 @if (storeCollectionForm.imageUrl) {
