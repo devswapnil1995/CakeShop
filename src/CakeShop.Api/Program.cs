@@ -1055,20 +1055,22 @@ adminApi.MapPost("/products/images", async (
     var blobName = $"assets/{folderName}/{clientId:N}/{normalizedKey}{extension}";
     var blob = container.GetBlobClient(blobName);
     await using var inputStream = file.OpenReadStream();
-await blob.UploadAsync(
-    inputStream,
-    new BlobUploadOptions
-    {
-        HttpHeaders = new BlobHttpHeaders
+    var uploadResult = await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
         {
-            ContentType = file.ContentType
-        }
-    },
-    cancellationToken: ct);
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType,
+                CacheControl = "no-cache, no-store, must-revalidate"
+            }
+        },
+        cancellationToken: ct);
     if (TryGetOwnedBlobName(replaceUrl, container, clientId, folderName, out var previousBlobName) &&
         !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
         await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
-    return Results.Ok(new { mediaUrl = blob.Uri.ToString() });
+    var mediaUrl = $"{blob.Uri}?v={Uri.EscapeDataString(uploadResult.Value.ETag.ToString())}";
+    return Results.Ok(new { mediaUrl });
 }).DisableAntiforgery();
 
 adminApi.MapPost("/hero-banners/media", async (
@@ -1103,20 +1105,22 @@ adminApi.MapPost("/hero-banners/media", async (
     var blobName = $"assets/heroes/{clientId:N}/{normalizedKey}{extension}";
     var blob = container.GetBlobClient(blobName);
     await using var inputStream = file.OpenReadStream();
-    await blob.UploadAsync(
-    inputStream,
-    new BlobUploadOptions
-    {
-        HttpHeaders = new BlobHttpHeaders
+    var uploadResult = await blob.UploadAsync(
+        inputStream,
+        new BlobUploadOptions
         {
-            ContentType = file.ContentType
-        }
-    },
-    cancellationToken: ct);
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType,
+                CacheControl = "no-cache, no-store, must-revalidate"
+            }
+        },
+        cancellationToken: ct);
     if (TryGetOwnedBlobName(replaceUrl, container, clientId, "heroes", out var previousBlobName) &&
         !string.Equals(previousBlobName, blobName, StringComparison.Ordinal))
         await container.GetBlobClient(previousBlobName).DeleteIfExistsAsync(cancellationToken: ct);
-    return Results.Ok(new { mediaUrl = blob.Uri.ToString(), mediaType = fileInfo.MediaType });
+    var mediaUrl = $"{blob.Uri}?v={Uri.EscapeDataString(uploadResult.Value.ETag.ToString())}";
+    return Results.Ok(new { mediaUrl, mediaType = fileInfo.MediaType });
 }).DisableAntiforgery();
 
 adminApi.MapGet("/hero-banners", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
