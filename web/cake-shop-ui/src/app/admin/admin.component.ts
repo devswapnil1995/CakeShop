@@ -534,7 +534,7 @@ export class AdminComponent implements OnInit {
     if (!file) return;
     this.error.set('');
     this.heroMediaUploading.set(true);
-    this.api.uploadHeroBannerMedia(file).pipe(finalize(() => {
+    this.api.uploadHeroBannerMedia(file, this.editingHeroBannerId || this.heroBannerForm.title, this.heroBannerForm.mediaUrl).pipe(finalize(() => {
       this.heroMediaUploading.set(false);
       input.value = '';
     })).subscribe({
@@ -756,7 +756,7 @@ export class AdminComponent implements OnInit {
     }
     const folder = target.startsWith("profile-") ? "profile" : "about";
     this.error.set("");
-    this.api.uploadProductImage(file, folder).pipe(finalize(() => input.value = "")).subscribe({
+    this.api.uploadProductImage(file, folder, target, target === "profile-story" ? this.storeProfileForm.storyImageUrl : target === "profile-logo" ? this.storeProfileForm.logoUrl : target === "about-primary" ? this.aboutSectionForm.imageUrl : this.aboutSectionForm.secondaryImageUrl).pipe(finalize(() => input.value = "")).subscribe({
       next: result => {
         switch (target) {
           case "profile-story": this.storeProfileForm.storyImageUrl = result.mediaUrl; break;
@@ -786,7 +786,7 @@ export class AdminComponent implements OnInit {
       return;
     }
     this.collectionImageUploading.set(true);
-    this.api.uploadProductImage(file, "collections").pipe(finalize(() => {
+    this.api.uploadProductImage(file, "collections", this.storeCollectionForm.slug || this.storeCollectionForm.title, this.storeCollectionForm.imageUrl).pipe(finalize(() => {
       this.collectionImageUploading.set(false);
       input.value = '';
     })).subscribe({
@@ -822,7 +822,7 @@ export class AdminComponent implements OnInit {
     }
 
     this.productImageUploading.set(true);
-    this.api.uploadProductImage(file).pipe(finalize(() => {
+    this.api.uploadProductImage(file, "products", this.productForm.slug || this.productForm.name, this.productForm.imageUrl).pipe(finalize(() => {
       this.productImageUploading.set(false);
       input.value = '';
     })).subscribe({
