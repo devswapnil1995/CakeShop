@@ -1450,9 +1450,9 @@
                 <div class="field"><label for="aboutEyebrow">Small label / eyebrow *</label><input id="aboutEyebrow" name="aboutEyebrow" [(ngModel)]="aboutSectionForm.eyebrow" maxlength="100" required placeholder="OUR CRAFT" /></div>
                 <div class="field"><label for="aboutTitle">Heading *</label><input id="aboutTitle" name="aboutTitle" [(ngModel)]="aboutSectionForm.title" maxlength="180" required placeholder="A little care in every layer" /></div>
                 <div class="field"><label for="aboutBody">Story text *</label><textarea id="aboutBody" name="aboutBody" [(ngModel)]="aboutSectionForm.body" rows="5" maxlength="3000" required placeholder="Tell this part of your bakery story…"></textarea></div>
-                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [(ngModel)]="aboutSectionForm.imageUrl" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
+                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [ngModel]="aboutPrimaryImageUrl()" (ngModelChange)="setAboutPrimaryImageUrl($event)" maxlength="1000" placeholder="Blob URL or HTTPS URL" />
                   <input id="aboutImageFile" name="aboutImageFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'about-primary')" /></div>
-                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [(ngModel)]="aboutSectionForm.secondaryImageUrl" maxlength="1000" placeholder="Optional second image" />
+                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [ngModel]="aboutSecondaryImageUrl()" (ngModelChange)="setAboutSecondaryImageUrl($event)" maxlength="1000" placeholder="Optional second image" />
                   <input id="aboutImage2File" name="aboutImage2File" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" (change)="uploadAssetImage($event, 'about-secondary')" /></div>
                 <div class="field"><label for="aboutLayout">Visual layout</label>
                   <select id="aboutLayout" name="aboutLayout" [(ngModel)]="aboutSectionForm.layout">
