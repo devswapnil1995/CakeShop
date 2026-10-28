@@ -258,10 +258,10 @@ export class AdminApiService {
   }
 
   getProducts(): Observable<AdminProduct[]> { return this.http.get<AdminProduct[]>(`${this.base}/products`, this.options); }
-  uploadProductImage(file: File): Observable<{ mediaUrl: string }> {
+  uploadProductImage(file: File, folder: "products" | "collections" | "about" | "profile" = "products"): Observable<{ mediaUrl: string }> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.post<{ mediaUrl: string }>(`${this.base}/products/images`, form, this.options);
+    return this.http.post<{ mediaUrl: string }>(`${this.base}/products/images?folder=${folder}`, form, this.options);
   }
   createProduct(body: ProductWrite): Observable<AdminProduct> {
     return this.http.post<AdminProduct>(
