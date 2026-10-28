@@ -209,6 +209,38 @@
         <p>We’re preparing more of the moments, people and little details that make our bakery special.</p>
       </section>
     }
+    <section class="about-contact-section section-wrap" id="about-contact">
+      <div class="about-contact-intro">
+        <p class="eyebrow">COME SAY HELLO</p>
+        <h2>Let’s make something <em>sweet.</em></h2>
+        <p>Planning a celebration or have a question? We’d love to hear from you.</p>
+      </div>
+      <div class="about-contact-card">
+        @if (storeProfile()?.address) {
+          <div class="about-contact-row"><span aria-hidden="true">⌖</span><div><small>FIND OUR SHOP</small><p>{{ storeProfile()?.address }}</p></div></div>
+        }
+        @if (storeProfile()?.openingHours) {
+          <div class="about-contact-row"><span aria-hidden="true">◷</span><div><small>OPENING HOURS</small><p>{{ storeProfile()?.openingHours }}</p></div></div>
+        }
+        @if (storeProfile()?.phone) {
+          <div class="about-contact-row"><span aria-hidden="true">☎</span><div><small>CALL US</small><p><a [href]="'tel:' + storeProfile()?.phone">{{ storeProfile()?.phone }}</a></p></div></div>
+        }
+        @if (storeProfile()?.email) {
+          <div class="about-contact-row"><span aria-hidden="true">✉</span><div><small>EMAIL</small><p><a [href]="'mailto:' + storeProfile()?.email">{{ storeProfile()?.email }}</a></p></div></div>
+        }
+        @if (storeProfile()?.instagramUrl || storeProfile()?.facebookUrl || storeProfile()?.websiteUrl) {
+          <div class="about-contact-socials">
+            @if (storeProfile()?.instagramUrl) { <a [href]="storeProfile()?.instagramUrl" target="_blank" rel="noopener noreferrer">Instagram ↗</a> }
+            @if (storeProfile()?.facebookUrl) { <a [href]="storeProfile()?.facebookUrl" target="_blank" rel="noopener noreferrer">Facebook ↗</a> }
+            @if (storeProfile()?.websiteUrl) { <a [href]="storeProfile()?.websiteUrl" target="_blank" rel="noopener noreferrer">Website ↗</a> }
+          </div>
+        }
+        @if (!storeProfile()?.address && !storeProfile()?.openingHours && !storeProfile()?.phone && !storeProfile()?.email) {
+          <p class="about-contact-empty">Contact details will appear here once the bakery profile is configured.</p>
+        }
+        <a class="button button-dark about-contact-button" [href]="getContactWhatsAppUrl()" target="_blank" rel="noopener noreferrer">Chat with us on WhatsApp <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
     <section class="about-page-cta section-wrap">
       <p class="eyebrow">LET'S MAKE SOMETHING SWEET</p>
       <h2>Your next happy moment<br /><em>starts here.</em></h2>
