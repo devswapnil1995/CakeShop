@@ -128,6 +128,29 @@ app.MapGet("/api/v1/shop", async (CakeShopDbContext db, CancellationToken ct) =>
     return shop is null ? Results.NotFound() : Results.Ok(shop);
 }).WithName("GetShop").WithTags("Shop");
 
+app.MapGet("/api/v1/store-profile", async (CakeShopDbContext db, CancellationToken ct) =>
+{
+    var shop = await db.Clients.AsNoTracking().Where(x => x.Id == defaultClientId && x.IsActive)
+        .Select(x => new { x.Id, x.Name, x.Slug }).SingleOrDefaultAsync(ct);
+    if (shop is null) return Results.NotFound();
+    var profile = await db.StoreProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == defaultClientId, ct);
+    return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
+        profile?.Tagline ?? "Baked with a little magic",
+        profile?.StoryTitle ?? "Not just cake. A feeling.",
+        profile?.HomeDescription ?? "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.",
+        profile?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
+        profile?.StoryImageUrl, profile?.LogoUrl, profile?.Phone, profile?.WhatsAppNumber, profile?.Email,
+        profile?.Address, profile?.OpeningHours, profile?.InstagramUrl, profile?.FacebookUrl, profile?.WebsiteUrl));
+}).AllowAnonymous().WithName("GetStoreProfile").WithTags("Shop");
+
+app.MapGet("/api/v1/about-sections", async (CakeShopDbContext db, CancellationToken ct) =>
+    Results.Ok(await db.AboutPageSections.AsNoTracking()
+        .Where(x => x.ClientId == defaultClientId && x.IsPublished)
+        .OrderBy(x => x.SortOrder)
+        .Select(x => new AboutPageSectionDto(x.Id, x.Eyebrow, x.Title, x.Body, x.ImageUrl, x.SecondaryImageUrl, x.Layout, x.Animation, x.SortOrder, x.IsPublished))
+        .ToListAsync(ct)))
+    .AllowAnonymous().WithName("GetAboutPageSections").WithTags("Shop");
+
 app.MapGet("/api/v1/categories", async (CakeShopDbContext db, CancellationToken ct) =>
     Results.Ok(await db.Categories.AsNoTracking().Where(x => x.ClientId == defaultClientId && x.IsActive)
         .OrderBy(x => x.SortOrder).Select(x => new CategoryDto(x.Id, x.Name, x.Slug, x.SortOrder)).ToListAsync(ct)))
@@ -858,6 +881,78 @@ auth.MapPost("/login", async (LoginRequest request, CakeShopDbContext db, IPassw
 }).AllowAnonymous();
 
 var adminApi = app.MapGroup("/api/v1/admin").RequireAuthorization().WithTags("Admin Catalog");
+
+var profileApi = app.MapGroup("/api/v1/admin/store-profile").RequireAuthorization().WithTags("Store Profile");
+profileApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var shop = await db.Clients.AsNoTracking().Where(x => x.Id == clientId && x.IsActive)
+        .Select(x => new { x.Id, x.Name, x.Slug }).SingleOrDefaultAsync(ct);
+    if (shop is null) return Results.NotFound();
+    var p = await db.StoreProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == clientId, ct);
+    return Results.Ok(new StoreProfileDto(shop.Id, shop.Name, shop.Slug,
+        p?.Tagline ?? "Baked with a little magic", p?.StoryTitle ?? "Not just cake. A feeling.",
+        p?.HomeDescription ?? "Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.",
+        p?.Story ?? "We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.",
+        p?.StoryImageUrl, p?.LogoUrl, p?.Phone, p?.WhatsAppNumber, p?.Email, p?.Address,
+        p?.OpeningHours, p?.InstagramUrl, p?.FacebookUrl, p?.WebsiteUrl));
+});
+profileApi.MapPut("/", async (ClaimsPrincipal user, StoreProfileWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateStoreProfile(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var profile = await db.StoreProfiles.SingleOrDefaultAsync(x => x.ClientId == clientId, ct);
+    if (profile is null)
+    {
+        profile = new StoreProfile(clientId);
+        db.StoreProfiles.Add(profile);
+    }
+    profile.Update(request.Tagline, request.StoryTitle, request.HomeDescription, request.Story, request.StoryImageUrl,
+        request.LogoUrl, request.Phone, request.WhatsAppNumber, request.Email, request.Address,
+        request.OpeningHours, request.InstagramUrl, request.FacebookUrl, request.WebsiteUrl);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+
+var aboutApi = app.MapGroup("/api/v1/admin/about-sections").RequireAuthorization().WithTags("About Page");
+aboutApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    return Results.Ok(await db.AboutPageSections.AsNoTracking().Where(x => x.ClientId == clientId)
+        .OrderBy(x => x.SortOrder).Select(x => new AboutPageSectionDto(x.Id, x.Eyebrow, x.Title, x.Body, x.ImageUrl, x.SecondaryImageUrl, x.Layout, x.Animation, x.SortOrder, x.IsPublished)).ToListAsync(ct));
+});
+aboutApi.MapPost("/", async (ClaimsPrincipal user, AboutPageSectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateAboutSection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var section = new AboutPageSection(clientId, request.Title, request.Body);
+    section.Update(request.Eyebrow, request.Title, request.Body, request.ImageUrl, request.SecondaryImageUrl, request.Layout, request.Animation, request.SortOrder, request.IsPublished);
+    db.AboutPageSections.Add(section);
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/v1/admin/about-sections/{section.Id}", new AboutPageSectionDto(section.Id, section.Eyebrow, section.Title, section.Body, section.ImageUrl, section.SecondaryImageUrl, section.Layout, section.Animation, section.SortOrder, section.IsPublished));
+});
+aboutApi.MapPut("/{id:guid}", async (Guid id, ClaimsPrincipal user, AboutPageSectionWriteRequest request, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var validation = ValidateAboutSection(request);
+    if (validation is not null) return Results.BadRequest(new { message = validation });
+    var section = await db.AboutPageSections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (section is null) return Results.NotFound();
+    section.Update(request.Eyebrow, request.Title, request.Body, request.ImageUrl, request.SecondaryImageUrl, request.Layout, request.Animation, request.SortOrder, request.IsPublished);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
+aboutApi.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
+{
+    if (!TryGetClientId(user, out var clientId)) return Results.Forbid();
+    var section = await db.AboutPageSections.SingleOrDefaultAsync(x => x.Id == id && x.ClientId == clientId, ct);
+    if (section is null) return Results.NotFound();
+    db.AboutPageSections.Remove(section);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
 
 var collectionApi = app.MapGroup("/api/v1/admin/collections").RequireAuthorization().WithTags("Collections");
 collectionApi.MapGet("/", async (ClaimsPrincipal user, CakeShopDbContext db, CancellationToken ct) =>
@@ -1961,6 +2056,42 @@ static string? ValidateExpense(
 static string NormalizeHeroTextPosition(string? value) =>
     value is "top" or "bottom" or "left" or "right" ? value : "left";
 
+static string? ValidateAboutSection(AboutPageSectionWriteRequest r)
+{
+    if (string.IsNullOrWhiteSpace(r.Eyebrow) || r.Eyebrow.Trim().Length > 100) return "Eyebrow is required and must be at most 100 characters.";
+    if (string.IsNullOrWhiteSpace(r.Title) || r.Title.Trim().Length > 180) return "Title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.Body) || r.Body.Trim().Length > 3000) return "Body is required and must be at most 3000 characters.";
+    if (r.SortOrder < 0 || r.SortOrder > 10000) return "Sort order must be between 0 and 10000.";
+    if (r.Layout is not ("image-left" or "image-right" or "centered" or "full-bleed" or "editorial")) return "Choose a supported layout.";
+    if (r.Animation is not ("none" or "fade-up" or "fade-in" or "slide-left" or "slide-right" or "zoom-in")) return "Choose a supported animation.";
+    foreach (var url in new[] { r.ImageUrl, r.SecondaryImageUrl })
+        if (!string.IsNullOrWhiteSpace(url) && url.Length > 1000) return "Image URLs must be at most 1000 characters.";
+        else if (!string.IsNullOrWhiteSpace(url) &&
+            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal) && !url.Contains('\\')) &&
+            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            return "Image URLs must be HTTPS URLs or safe uploaded paths.";
+    return null;
+}
+
+static string? ValidateStoreProfile(StoreProfileWriteRequest r)
+{
+    if (string.IsNullOrWhiteSpace(r.Tagline) || r.Tagline.Trim().Length > 120) return "Tagline is required and must be at most 120 characters.";
+    if (string.IsNullOrWhiteSpace(r.StoryTitle) || r.StoryTitle.Trim().Length > 180) return "Story title is required and must be at most 180 characters.";
+    if (string.IsNullOrWhiteSpace(r.HomeDescription) || r.HomeDescription.Trim().Length > 320) return "Homepage description is required and must be at most 320 characters.";
+    if (string.IsNullOrWhiteSpace(r.Story) || r.Story.Trim().Length > 3000) return "Story is required and must be at most 3000 characters.";
+    if (r.StoryImageUrl?.Length > 1000 || r.LogoUrl?.Length > 1000 || r.Phone?.Length > 40 ||
+        r.WhatsAppNumber?.Length > 40 || r.Email?.Length > 254 || r.Address?.Length > 500 ||
+        r.OpeningHours?.Length > 500 || r.InstagramUrl?.Length > 500 || r.FacebookUrl?.Length > 500 ||
+        r.WebsiteUrl?.Length > 500) return "One or more profile fields exceed their allowed length.";
+    foreach (var url in new[] { r.StoryImageUrl, r.LogoUrl, r.InstagramUrl, r.FacebookUrl, r.WebsiteUrl })
+        if (!string.IsNullOrWhiteSpace(url) &&
+            !(url.StartsWith("/uploads/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal) && !url.Contains("..", StringComparison.Ordinal)) &&
+            !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            return "Image and social URLs must be safe relative upload paths or HTTPS URLs.";
+    if (!string.IsNullOrWhiteSpace(r.Email) && !System.Net.Mail.MailAddress.TryCreate(r.Email, out _)) return "Enter a valid email address.";
+    return null;
+}
+
 static string? ValidateStoreCollection(StoreCollectionWriteRequest request)
 {
     if (request.Kind is not ("Hamper" or "Seasonal")) return "Kind must be Hamper or Seasonal.";
@@ -2116,6 +2247,19 @@ public sealed record HeroBannerDto(
     DateTime? StartsUtc,
     DateTime? EndsUtc,
     bool IsPublished = false);
+
+public sealed record AboutPageSectionDto(Guid Id, string Eyebrow, string Title, string Body, string? ImageUrl,
+    string? SecondaryImageUrl, string Layout, string Animation, int SortOrder, bool IsPublished);
+public sealed record AboutPageSectionWriteRequest(string? Eyebrow, string? Title, string? Body, string? ImageUrl,
+    string? SecondaryImageUrl, string? Layout, string? Animation, int SortOrder, bool IsPublished);
+
+public sealed record StoreProfileDto(Guid ClientId, string Name, string Slug, string Tagline, string StoryTitle,
+    string HomeDescription, string Story, string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
+    string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
+
+public sealed record StoreProfileWriteRequest(string? Tagline, string? StoryTitle, string? HomeDescription, string? Story,
+    string? StoryImageUrl, string? LogoUrl, string? Phone, string? WhatsAppNumber, string? Email,
+    string? Address, string? OpeningHours, string? InstagramUrl, string? FacebookUrl, string? WebsiteUrl);
 
 public sealed record StoreCollectionWriteRequest(string? Kind, string? Title, string? Slug, string? Description,
     string? ImageUrl, string? NavigationLabel, bool ShowInNavigation, int SortOrder,

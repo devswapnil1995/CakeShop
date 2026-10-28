@@ -4,6 +4,22 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 
+export interface AdminAboutSection {
+  id: string; eyebrow: string; title: string; body: string; imageUrl: string | null; secondaryImageUrl: string | null;
+  layout: 'image-left' | 'image-right' | 'centered' | 'full-bleed' | 'editorial';
+  animation: 'none' | 'fade-up' | 'fade-in' | 'slide-left' | 'slide-right' | 'zoom-in';
+  sortOrder: number; isPublished: boolean;
+}
+export type AboutSectionWrite = Omit<AdminAboutSection, 'id'>;
+
+export interface AdminStoreProfile {
+  clientId: string; name: string; slug: string; tagline: string; storyTitle: string; homeDescription: string; story: string;
+  storyImageUrl: string | null; logoUrl: string | null; phone: string | null; whatsAppNumber: string | null;
+  email: string | null; address: string | null; openingHours: string | null; instagramUrl: string | null;
+  facebookUrl: string | null; websiteUrl: string | null;
+}
+export type StoreProfileWrite = Omit<AdminStoreProfile, 'clientId' | 'name' | 'slug'>;
+
 export interface AdminHeroBanner {
   id: string;
   title: string;
@@ -415,6 +431,27 @@ export class AdminApiService {
     return this.http.post<{ mediaUrl: string; mediaType: 'Image' | 'Video' }>(
       `${this.base}/hero-banners/media`, body, this.options
     );
+  }
+
+  getAboutSections(): Observable<AdminAboutSection[]> {
+    return this.http.get<AdminAboutSection[]>(`${this.base}/about-sections`, this.options);
+  }
+  createAboutSection(body: AboutSectionWrite): Observable<AdminAboutSection> {
+    return this.http.post<AdminAboutSection>(`${this.base}/about-sections`, body, this.options);
+  }
+  updateAboutSection(id: string, body: AboutSectionWrite): Observable<void> {
+    return this.http.put<void>(`${this.base}/about-sections/${id}`, body, this.options);
+  }
+  deleteAboutSection(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/about-sections/${id}`, this.options);
+  }
+
+  getStoreProfile(): Observable<AdminStoreProfile> {
+    return this.http.get<AdminStoreProfile>(`${this.base}/store-profile`, this.options);
+  }
+
+  updateStoreProfile(body: StoreProfileWrite): Observable<void> {
+    return this.http.put<void>(`${this.base}/store-profile`, body, this.options);
   }
 
   getHeroBanners(): Observable<AdminHeroBanner[]> {

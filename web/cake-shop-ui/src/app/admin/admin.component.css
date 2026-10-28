@@ -1499,3 +1499,37 @@
 .collection-product-option input { margin-top: .2rem; }
 .collection-product-option span { display: grid; gap: .2rem; }
 .collection-product-option small { color: #806a5e; }
+
+
+/* Bakery profile editor */
+.store-profile-panel { max-width: 100%; }
+.store-profile-form h3 { margin: 1.25rem 0 .2rem; padding-bottom: .65rem; border-bottom: 1px solid #eaded3; color: #5e3d2e; font: 400 1.2rem Georgia, serif; }
+.store-profile-form textarea { resize: vertical; min-height: 88px; }
+.store-profile-form .form-actions { display: flex; justify-content: flex-start; margin-top: .5rem; }
+
+
+/* About page visual builder */
+.about-section-manager { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr); gap: 1.5rem; align-items: start; }
+.about-section-list, .about-section-editor { min-width: 0; }
+.about-section-editor { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #eaded3; border-radius: 16px; background: #fffaf5; }
+.about-section-editor .panel-heading { margin-bottom: .25rem; }
+.about-section-editor .panel-heading h3 { margin: .45rem 0 0; color: #5e3d2e; font: 400 1.45rem Georgia, serif; }
+.about-section-editor .field { display: grid; gap: .4rem; }
+.about-section-editor .field label { font-size: .78rem; font-weight: 600; color: #6e5445; }
+.about-section-editor input:not([type="checkbox"]), .about-section-editor textarea, .about-section-editor select { width: 100%; min-width: 0; border: 1px solid #e1d3c7; border-radius: 8px; padding: .75rem .85rem; background: #fff; color: #4e3327; font: inherit; }
+.about-section-editor textarea { resize: vertical; }
+.about-section-list .list-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; margin-bottom: 1rem; }
+.about-section-list .list-heading h3 { color: #5e3d2e; font: 400 1.4rem Georgia, serif; }
+.about-admin-card { display: grid; grid-template-columns: 82px minmax(0,1fr); gap: .9rem; align-items: center; margin-bottom: .75rem; padding: .8rem; border: 1px solid #eaded3; border-radius: 12px; background: #fff; }
+.about-admin-card.selected { border-color: #9e755d; box-shadow: 0 0 0 2px rgba(158,117,93,.12); }
+.about-admin-card-media { width: 82px; height: 92px; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: #f4e8dd; color: #9a6b4f; font-size: 2rem; }
+.about-admin-card-media img { width: 100%; height: 100%; object-fit: cover; }
+.about-admin-card-copy { min-width: 0; display: grid; gap: .3rem; }
+.about-admin-card-copy strong { color: #4e3327; overflow-wrap: anywhere; }
+.about-admin-card-copy small { color: #887366; font-size: .72rem; overflow-wrap: anywhere; }
+.about-admin-card-actions { grid-column: 2; display: flex; gap: .8rem; }
+.danger-text { color: #a33c32 !important; }
+.about-publish-toggle { display: flex; align-items: center; gap: .6rem; color: #6e5445; font-size: .85rem; }
+.about-publish-toggle input { accent-color: #79523d; }
+.about-section-editor .form-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+@media (max-width: 980px) { .about-section-manager { grid-template-columns: 1fr; } }

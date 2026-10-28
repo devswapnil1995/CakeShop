@@ -49,8 +49,6 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("ClientId", "Id");
-
                     b.HasIndex("ClientId", "Slug")
                         .IsUnique();
 
@@ -104,8 +102,6 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("ClientId", "Id");
-
                     b.HasIndex("ClientId", "CategoryId");
 
                     b.HasIndex("ClientId", "Slug")
@@ -143,38 +139,68 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("ClientId", "Id");
-
                     b.HasIndex("ClientId", "ProductId", "WeightInGrams")
                         .IsUnique();
 
                     b.ToTable("ProductVariants", (string)null);
                 });
 
-            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollection", b =>
+            modelBuilder.Entity("CakeShop.Domain.Content.AboutPageSection", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
-                    b.Property<DateTime>("CreatedUtc").HasColumnType("datetime2");
-                    b.Property<string>("Description").IsRequired().HasMaxLength(2000).HasColumnType("nvarchar(2000)");
-                    b.Property<string>("Highlights").IsRequired().HasMaxLength(4000).HasColumnType("nvarchar(4000)");
-                    b.Property<DateTime?>("EndsUtc").HasColumnType("datetime2");
-                    b.Property<string>("ImageUrl").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
-                    b.Property<bool>("IsPublished").HasColumnType("bit");
-                    b.Property<string>("Kind").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
-                    b.Property<string>("NavigationLabel").HasMaxLength(60).HasColumnType("nvarchar(60)");
-                    b.Property<decimal?>("BundlePrice").HasColumnType("decimal(18,2)");
-                    b.Property<int>("SortOrder").HasColumnType("int");
-                    b.Property<bool>("ShowInNavigation").HasColumnType("bit");
-                    b.Property<string>("Slug").IsRequired().HasMaxLength(180).HasColumnType("nvarchar(180)");
-                    b.Property<DateTime?>("StartsUtc").HasColumnType("datetime2");
-                    b.Property<string>("Title").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
-                    b.Property<DateTime>("UpdatedUtc").HasColumnType("datetime2");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Animation")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Eyebrow")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Layout")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)");
+
+                    b.Property<string>("SecondaryImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("nvarchar(180)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
-                    b.HasAlternateKey("ClientId", "Id");
-                    b.HasIndex("ClientId", "IsPublished", "SortOrder");
-                    b.HasIndex("ClientId", "Kind", "Slug").IsUnique();
-                    b.ToTable("StoreCollections", (string)null);
+
+                    b.HasIndex("ClientId", "SortOrder");
+
+                    b.ToTable("AboutPageSections", (string)null);
                 });
 
             modelBuilder.Entity("CakeShop.Domain.Content.HeroBanner", b =>
@@ -246,6 +272,166 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClientId", "SortOrder");
 
                     b.ToTable("HeroBanners", (string)null);
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("BundlePrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("EndsUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Highlights")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("NavigationLabel")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<bool>("ShowInNavigation")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("nvarchar(180)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartsUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("ClientId", "Id");
+
+                    b.HasIndex("ClientId", "IsPublished", "SortOrder");
+
+                    b.HasIndex("ClientId", "Kind", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("StoreCollections", (string)null);
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<string>("FacebookUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("HomeDescription")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasDefaultValue("Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.");
+
+                    b.Property<string>("InstagramUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OpeningHours")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Story")
+                        .IsRequired()
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)");
+
+                    b.Property<string>("StoryImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("StoryTitle")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("nvarchar(180)");
+
+                    b.Property<string>("Tagline")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("WhatsAppNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
+                    b.ToTable("StoreProfiles", (string)null);
                 });
 
             modelBuilder.Entity("CakeShop.Domain.Expenses.Expense", b =>
@@ -403,8 +589,6 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("ClientId", "Id");
-
                     b.HasIndex("ClientId", "OrderNumber")
                         .IsUnique();
 
@@ -415,21 +599,54 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CakeShop.Domain.Orders.CustomerOrderItem", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ClientId").HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("OrderId").HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ProductId").HasColumnType("uniqueidentifier");
-                    b.Property<Guid>("ProductVariantId").HasColumnType("uniqueidentifier");
-                    b.Property<string>("ProductName").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
-                    b.Property<string>("SizeLabel").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
-                    b.Property<int>("WeightInGrams").HasColumnType("int");
-                    b.Property<int>("Quantity").HasColumnType("int");
-                    b.Property<decimal>("UnitPrice").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
-                    b.Property<decimal>("LineTotal").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SizeLabel")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WeightInGrams")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
                     b.HasIndex("ClientId", "OrderId");
+
                     b.HasIndex("ClientId", "ProductId");
+
                     b.HasIndex("ClientId", "ProductVariantId");
+
                     b.ToTable("CustomerOrderItems", (string)null);
                 });
 
@@ -669,7 +886,34 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CakeShop.Domain.Content.AboutPageSection", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CakeShop.Domain.Content.HeroBanner", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreCollection", b =>
+                {
+                    b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CakeShop.Domain.Content.StoreProfile", b =>
                 {
                     b.HasOne("CakeShop.Domain.Tenants.ClientMaster", null)
                         .WithMany()
@@ -708,14 +952,25 @@ namespace CakeShop.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CakeShop.Domain.Orders.CustomerOrderItem", b =>
                 {
                     b.HasOne("CakeShop.Domain.Orders.CustomerOrder", null)
-                        .WithMany().HasForeignKey("ClientId", "OrderId")
-                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ClientId", "OrderId")
+                        .HasPrincipalKey("ClientId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("CakeShop.Domain.Catalog.Product", null)
-                        .WithMany().HasForeignKey("ClientId", "ProductId")
-                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ClientId", "ProductId")
+                        .HasPrincipalKey("ClientId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("CakeShop.Domain.Catalog.ProductVariant", null)
-                        .WithMany().HasForeignKey("ClientId", "ProductVariantId")
-                        .HasPrincipalKey("ClientId", "Id").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ClientId", "ProductVariantId")
+                        .HasPrincipalKey("ClientId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CakeShop.Domain.Orders.OrderStatusHistory", b =>

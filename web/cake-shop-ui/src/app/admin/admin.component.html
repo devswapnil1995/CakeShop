@@ -91,6 +91,16 @@
           Homepage banners <b>{{ heroBanners().length }}</b>
         </button>
 
+        <button type="button" [class.selected]="activeTab === 'about-page'" (click)="selectTab('about-page')">
+          <span>✦</span>
+          About page <b>{{ aboutSections().length }}</b>
+        </button>
+
+        <button type="button" [class.selected]="activeTab === 'store-profile'" (click)="selectTab('store-profile')">
+          <span>✧</span>
+          Brand & contact
+        </button>
+
         <div class="sidebar-note"><span>✿</span><strong>Small batches.<br />Big happiness.</strong>
           <p>Your catalogue is the first taste of your brand.</p>
         </div>
@@ -1394,6 +1404,108 @@
             <p class="form-hint span-two">Local uploads are stored under the API wwwroot folder. Configure persistent cloud object storage before production deployment.</p>
           </form>
         </div>
+        }
+
+        @if (activeTab === 'about-page') {
+          <section class="panel-layout about-admin-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">STORYTELLING STUDIO</span><h2>About page builder</h2>
+                <p class="muted">Create multiple image-and-text sections, choose a layout and animation, and publish each section independently.</p></div>
+              <button class="text-btn" type="button" (click)="loadAboutSections()" [disabled]="aboutSectionsLoading()">↻ Refresh</button>
+            </div>
+
+            <div class="about-section-manager">
+              <div class="about-section-list">
+                <div class="list-heading"><h3>Page sections <span>{{ aboutSections().length }}</span></h3>
+                  <button class="text-btn" type="button" (click)="newAboutSection()">＋ New section</button></div>
+                @if (aboutSectionsLoading()) { <div class="empty-state">Loading About sections…</div> }
+                @for (section of aboutSections(); track section.id) {
+                  <article class="about-admin-card" [class.selected]="editingAboutSectionId === section.id">
+                    <div class="about-admin-card-media">
+                      @if (section.imageUrl) { <img [src]="resolveProductImageUrl(section.imageUrl)" [alt]="section.title" /> }
+                      @else { <span>✿</span> }
+                    </div>
+                    <div class="about-admin-card-copy">
+                      <span class="eyebrow">{{ section.eyebrow }}</span>
+                      <strong>{{ section.title }}</strong>
+                      <small>Order {{ section.sortOrder }} · {{ section.layout }} · {{ section.animation }}</small>
+                      <span class="status-pill" [class.status-published]="section.isPublished">{{ section.isPublished ? 'Published' : 'Draft' }}</span>
+                    </div>
+                    <div class="about-admin-card-actions">
+                      <button type="button" class="text-btn" (click)="editAboutSection(section)">Edit</button>
+                      <button type="button" class="text-btn danger-text" (click)="deleteAboutSection(section)">Delete</button>
+                    </div>
+                  </article>
+                } @empty {
+                  @if (!aboutSectionsLoading()) { <div class="empty-state">No About sections yet. Add your first story block to start building the page.</div> }
+                }
+              </div>
+
+              <form class="about-section-editor" (ngSubmit)="saveAboutSection()">
+                <div class="panel-heading">
+                  <div><span class="eyebrow">{{ editingAboutSectionId ? 'EDIT SECTION' : 'NEW SECTION' }}</span>
+                    <h3>{{ editingAboutSectionId ? 'Refine this story' : 'Create a story block' }}</h3></div>
+                  @if (editingAboutSectionId) { <button type="button" class="text-btn" (click)="newAboutSection()">Cancel edit</button> }
+                </div>
+                <div class="field"><label for="aboutEyebrow">Small label / eyebrow *</label><input id="aboutEyebrow" name="aboutEyebrow" [(ngModel)]="aboutSectionForm.eyebrow" maxlength="100" required placeholder="OUR CRAFT" /></div>
+                <div class="field"><label for="aboutTitle">Heading *</label><input id="aboutTitle" name="aboutTitle" [(ngModel)]="aboutSectionForm.title" maxlength="180" required placeholder="A little care in every layer" /></div>
+                <div class="field"><label for="aboutBody">Story text *</label><textarea id="aboutBody" name="aboutBody" [(ngModel)]="aboutSectionForm.body" rows="5" maxlength="3000" required placeholder="Tell this part of your bakery story…"></textarea></div>
+                <div class="field"><label for="aboutImage">Primary image URL</label><input id="aboutImage" name="aboutImage" [(ngModel)]="aboutSectionForm.imageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <div class="field"><label for="aboutImage2">Second / detail image URL</label><input id="aboutImage2" name="aboutImage2" [(ngModel)]="aboutSectionForm.secondaryImageUrl" maxlength="1000" placeholder="Optional second image" /></div>
+                <div class="field"><label for="aboutLayout">Visual layout</label>
+                  <select id="aboutLayout" name="aboutLayout" [(ngModel)]="aboutSectionForm.layout">
+                    <option value="image-left">Image left · story right</option><option value="image-right">Image right · story left</option>
+                    <option value="centered">Centered editorial</option><option value="full-bleed">Full-bleed image-led</option><option value="editorial">Editorial collage</option>
+                  </select>
+                </div>
+                <div class="field"><label for="aboutAnimation">Entrance animation</label>
+                  <select id="aboutAnimation" name="aboutAnimation" [(ngModel)]="aboutSectionForm.animation">
+                    <option value="none">No animation</option><option value="fade-up">Soft fade up</option><option value="fade-in">Fade in</option>
+                    <option value="slide-left">Slide from left</option><option value="slide-right">Slide from right</option><option value="zoom-in">Gentle zoom</option>
+                  </select>
+                </div>
+                <div class="field"><label for="aboutSort">Display order</label><input id="aboutSort" name="aboutSort" type="number" min="0" max="10000" [(ngModel)]="aboutSectionForm.sortOrder" /></div>
+                <label class="about-publish-toggle"><input type="checkbox" name="aboutPublished" [(ngModel)]="aboutSectionForm.isPublished" /> Publish this section on the About page</label>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit" [disabled]="aboutSectionSaving()">{{ aboutSectionSaving() ? 'Saving…' : (editingAboutSectionId ? 'Save section' : 'Create section') }}</button>
+                  <button class="text-btn" type="button" (click)="newAboutSection()">Clear form</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        }
+
+        @if (activeTab === 'store-profile') {
+          <section class="panel-layout store-profile-panel">
+            <div class="panel-heading">
+              <div><span class="eyebrow">YOUR BAKERY IDENTITY</span><h2>Brand & contact details</h2>
+                <p class="muted">Manage the story, logo and ways customers can reach your shop.</p></div>
+              <button class="text-btn" type="button" (click)="loadStoreProfile()" [disabled]="storeProfileLoading()">↻ Refresh</button>
+            </div>
+            @if (storeProfileLoading() && !storeProfile()) { <div class="empty-state">Loading bakery profile…</div> }
+            @else {
+              <form class="form-grid store-profile-form" (ngSubmit)="saveStoreProfile()">
+                <h3 class="span-two">Homepage teaser & brand story</h3>
+          <div class="field span-two"><label for="profileHomeDescription">Short homepage description *</label><textarea id="profileHomeDescription" name="profileHomeDescription" rows="2" [(ngModel)]="storeProfileForm.homeDescription" maxlength="320" required placeholder="A short introduction shown on the home page."></textarea></div>
+                <div class="field"><label for="profileTagline">Tagline *</label><input id="profileTagline" name="profileTagline" [(ngModel)]="storeProfileForm.tagline" maxlength="120" required /></div>
+                <div class="field"><label for="profileStoryTitle">Story heading *</label><input id="profileStoryTitle" name="profileStoryTitle" [(ngModel)]="storeProfileForm.storyTitle" maxlength="180" required /></div>
+                <div class="field span-two"><label for="profileStory">About your bakery *</label><textarea id="profileStory" name="profileStory" rows="5" [(ngModel)]="storeProfileForm.story" maxlength="3000" required placeholder="Tell customers what makes your bakery special."></textarea></div>
+                <div class="field"><label for="profileStoryImage">Story image URL</label><input id="profileStoryImage" name="profileStoryImage" [(ngModel)]="storeProfileForm.storyImageUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <div class="field"><label for="profileLogo">Logo URL</label><input id="profileLogo" name="profileLogo" [(ngModel)]="storeProfileForm.logoUrl" maxlength="1000" placeholder="HTTPS URL or /uploads/ path" /></div>
+                <h3 class="span-two">Contact & location</h3>
+                <div class="field"><label for="profilePhone">Phone</label><input id="profilePhone" name="profilePhone" type="tel" [(ngModel)]="storeProfileForm.phone" maxlength="40" /></div>
+                <div class="field"><label for="profileWhatsapp">WhatsApp number (international format)</label><input id="profileWhatsapp" name="profileWhatsapp" type="tel" [(ngModel)]="storeProfileForm.whatsAppNumber" maxlength="40" placeholder="Country code + number" /></div>
+                <div class="field"><label for="profileEmail">Email</label><input id="profileEmail" name="profileEmail" type="email" [(ngModel)]="storeProfileForm.email" maxlength="254" /></div>
+                <div class="field"><label for="profileHours">Opening hours</label><input id="profileHours" name="profileHours" [(ngModel)]="storeProfileForm.openingHours" maxlength="500" /></div>
+                <div class="field span-two"><label for="profileAddress">Shop address</label><textarea id="profileAddress" name="profileAddress" rows="2" [(ngModel)]="storeProfileForm.address" maxlength="500"></textarea></div>
+                <h3 class="span-two">Online presence</h3>
+                <div class="field"><label for="profileInstagram">Instagram URL</label><input id="profileInstagram" name="profileInstagram" [(ngModel)]="storeProfileForm.instagramUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="field"><label for="profileFacebook">Facebook URL</label><input id="profileFacebook" name="profileFacebook" [(ngModel)]="storeProfileForm.facebookUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="field span-two"><label for="profileWebsite">Website URL</label><input id="profileWebsite" name="profileWebsite" [(ngModel)]="storeProfileForm.websiteUrl" maxlength="500" placeholder="https://…" /></div>
+                <div class="span-two form-actions"><button class="primary-btn" type="submit" [disabled]="storeProfileSaving()">{{ storeProfileSaving() ? 'Saving profile…' : 'Save brand & contact details' }}</button></div>
+              </form>
+            }
+          </section>
         }
 
       </section>

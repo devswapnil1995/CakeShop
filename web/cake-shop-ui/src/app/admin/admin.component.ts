@@ -18,7 +18,7 @@ import {
   HeroBannerTextPosition,
   HeroBannerWrite,
   AdminStoreCollection,
-  StoreCollectionWrite
+  StoreCollectionWrite, AdminStoreProfile, StoreProfileWrite, AdminAboutSection, AboutSectionWrite
 } from './admin-api.service';
 
 @Component({
@@ -41,7 +41,36 @@ export class AdminComponent implements OnInit {
     | 'expenses'
     | 'reports'
     | 'hero-banners'
-    | 'collections' = 'dashboard';
+    | 'collections'
+    | 'store-profile'
+    | 'about-page' = 'dashboard';
+
+  readonly aboutSections = signal<AdminAboutSection[]>([]);
+  readonly aboutSectionsLoading = signal(false);
+  readonly aboutSectionSaving = signal(false);
+  editingAboutSectionId: string | null = null;
+  aboutSectionForm: AboutSectionWrite = this.emptyAboutSection();
+
+  private emptyAboutSection(): AboutSectionWrite {
+    return { eyebrow: 'OUR STORY', title: '', body: '', imageUrl: null, secondaryImageUrl: null,
+      layout: 'image-left', animation: 'fade-up', sortOrder: this.aboutSections().length, isPublished: false };
+  }
+
+  readonly storeProfile = signal<AdminStoreProfile | null>(null);
+  readonly storeProfileLoading = signal(false);
+  readonly storeProfileSaving = signal(false);
+  storeProfileForm: StoreProfileWrite = this.emptyStoreProfile();
+
+  private emptyStoreProfile(): StoreProfileWrite {
+    return {
+      tagline: 'Baked with a little magic',
+      storyTitle: 'Not just cake. A feeling.',
+      homeDescription: 'Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.',
+      story: 'We believe the sweetest memories are often the simplest ones. Every bake is made with care, creativity, and lots of heart.',
+      storyImageUrl: null, logoUrl: null, phone: null, whatsAppNumber: null, email: null,
+      address: null, openingHours: null, instagramUrl: null, facebookUrl: null, websiteUrl: null
+    };
+  }
 
   readonly storeCollections = signal<AdminStoreCollection[]>([]);
   readonly storeCollectionsLoading = signal(false);
@@ -187,6 +216,7 @@ export class AdminComponent implements OnInit {
       this.loadDashboard();
       this.loadOrders();
       this.loadHeroBanners();
+      this.loadStoreProfile();
     }
   }
 
@@ -203,6 +233,7 @@ export class AdminComponent implements OnInit {
         this.loadDashboard();
         this.loadOrders();
         this.loadHeroBanners();
+        this.loadStoreProfile();
       },
       error: err => {
         this.error.set(err.status === 401 ? 'Email or password is incorrect.' : (err.error?.message ?? 'Unable to sign in. Check that the API is running and the admin account has been seeded.'));
@@ -248,7 +279,7 @@ export class AdminComponent implements OnInit {
   }
 
   selectTab(
-    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections'
+    tab: 'dashboard' | 'products' | 'categories' | 'orders' | 'expenses' | 'reports' | 'hero-banners' | 'collections' | 'store-profile' | 'about-page'
   ): void {
     this.activeTab = tab;
     this.error.set('');
@@ -271,6 +302,12 @@ export class AdminComponent implements OnInit {
     }
     if (tab === 'hero-banners') {
       this.loadHeroBanners();
+    }
+    if (tab === 'store-profile') {
+      this.loadStoreProfile();
+    }
+    if (tab === 'about-page') {
+      this.loadAboutSections();
     }
     if (tab === 'collections') {
       this.loadStoreCollections();
@@ -351,6 +388,103 @@ export class AdminComponent implements OnInit {
     if (!url) return '';
     if (!url.startsWith('/')) return url;
     return `${environment.apiBaseUrl || 'http://localhost:5080'}${url}`;
+  }
+
+  loadAboutSections(): void {
+    if (!this.loggedIn()) return;
+    this.aboutSectionsLoading.set(true);
+    this.api.getAboutSections().pipe(finalize(() => this.aboutSectionsLoading.set(false))).subscribe({
+      next: rows => this.aboutSections.set(rows),
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  newAboutSection(): void {
+    this.editingAboutSectionId = null;
+    this.aboutSectionForm = this.emptyAboutSection();
+    this.error.set('');
+    this.notice = '';
+  }
+
+  editAboutSection(section: AdminAboutSection): void {
+    const { id, ...form } = section;
+    this.editingAboutSectionId = id;
+    this.aboutSectionForm = { ...form };
+    this.error.set('');
+    this.notice = '';
+  }
+
+  saveAboutSection(): void {
+    const f = this.aboutSectionForm;
+    if (!f.eyebrow.trim() || !f.title.trim() || !f.body.trim()) {
+      this.error.set('Eyebrow, title and body are required.');
+      return;
+    }
+    this.error.set('');
+    this.notice = '';
+    this.aboutSectionSaving.set(true);
+    const request: AboutSectionWrite = {
+      ...f, eyebrow: f.eyebrow.trim(), title: f.title.trim(), body: f.body.trim(),
+      imageUrl: f.imageUrl?.trim() || null, secondaryImageUrl: f.secondaryImageUrl?.trim() || null
+    };
+    const operation: Observable<unknown> = this.editingAboutSectionId
+      ? this.api.updateAboutSection(this.editingAboutSectionId, request)
+      : this.api.createAboutSection(request);
+    operation.pipe(finalize(() => this.aboutSectionSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = this.editingAboutSectionId ? 'About section updated.' : 'About section created.';
+        this.newAboutSection();
+        this.loadAboutSections();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  deleteAboutSection(section: AdminAboutSection): void {
+    if (!window.confirm(`Delete the About section "${section.title}"? This cannot be undone.`)) return;
+    this.api.deleteAboutSection(section.id).subscribe({
+      next: () => {
+        this.notice = 'About section deleted.';
+        if (this.editingAboutSectionId === section.id) this.newAboutSection();
+        this.loadAboutSections();
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  loadStoreProfile(): void {
+    this.storeProfileLoading.set(true);
+    this.api.getStoreProfile().pipe(finalize(() => this.storeProfileLoading.set(false))).subscribe({
+      next: profile => {
+        this.storeProfile.set(profile);
+        const { clientId, name, slug, ...form } = profile;
+        this.storeProfileForm = { ...form };
+      },
+      error: err => this.handleApiError(err)
+    });
+  }
+
+  saveStoreProfile(): void {
+    const form = this.storeProfileForm;
+    if (!form.tagline.trim() || !form.storyTitle.trim() || !form.story.trim()) {
+      this.error.set('Tagline, story title and story are required.');
+      return;
+    }
+    this.error.set('');
+    this.notice = '';
+    this.storeProfileSaving.set(true);
+    this.api.updateStoreProfile({
+      ...form,
+      tagline: form.tagline.trim(),
+      storyTitle: form.storyTitle.trim(),
+      story: form.story.trim()
+    }).pipe(finalize(() => this.storeProfileSaving.set(false))).subscribe({
+      next: () => {
+        this.notice = 'Bakery profile saved. Refresh the storefront to see the changes.';
+        this.loadStoreProfile();
+      },
+      error: err => this.handleApiError(err)
+    });
   }
 
   loadHeroBanners(): void {

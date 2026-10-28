@@ -14,6 +14,8 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     public DbSet<ClientMaster> Clients => Set<ClientMaster>();
     public DbSet<HeroBanner> HeroBanners => Set<HeroBanner>();
     public DbSet<StoreCollection> StoreCollections => Set<StoreCollection>();
+    public DbSet<StoreProfile> StoreProfiles => Set<StoreProfile>();
+    public DbSet<AboutPageSection> AboutPageSections => Set<AboutPageSection>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
@@ -34,6 +36,41 @@ public sealed class CakeShopDbContext(DbContextOptions<CakeShopDbContext> option
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<AboutPageSection>(e =>
+        {
+            e.ToTable("AboutPageSections");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Eyebrow).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(180).IsRequired();
+            e.Property(x => x.Body).HasMaxLength(3000).IsRequired();
+            e.Property(x => x.ImageUrl).HasMaxLength(1000);
+            e.Property(x => x.SecondaryImageUrl).HasMaxLength(1000);
+            e.Property(x => x.Layout).HasMaxLength(24).IsRequired();
+            e.Property(x => x.Animation).HasMaxLength(24).IsRequired();
+            e.HasIndex(x => new { x.ClientId, x.SortOrder });
+            e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<StoreProfile>(e =>
+        {
+            e.ToTable("StoreProfiles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Tagline).HasMaxLength(120).IsRequired();
+            e.Property(x => x.StoryTitle).HasMaxLength(180).IsRequired();
+            e.Property(x => x.HomeDescription).HasMaxLength(320).IsRequired().HasDefaultValue("Thoughtfully baked, beautifully shared. Discover the care and creativity behind every Sweet Panda creation.");
+            e.Property(x => x.Story).HasMaxLength(3000).IsRequired();
+            e.Property(x => x.StoryImageUrl).HasMaxLength(1000);
+            e.Property(x => x.LogoUrl).HasMaxLength(1000);
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.WhatsAppNumber).HasMaxLength(40);
+            e.Property(x => x.Email).HasMaxLength(254);
+            e.Property(x => x.Address).HasMaxLength(500);
+            e.Property(x => x.OpeningHours).HasMaxLength(500);
+            e.Property(x => x.InstagramUrl).HasMaxLength(500);
+            e.Property(x => x.FacebookUrl).HasMaxLength(500);
+            e.Property(x => x.WebsiteUrl).HasMaxLength(500);
+            e.HasIndex(x => x.ClientId).IsUnique();
+            e.HasOne<ClientMaster>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<StoreCollection>(e =>
         {
             e.ToTable("StoreCollections");

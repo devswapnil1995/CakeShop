@@ -18,6 +18,20 @@ export interface HeroBannerDto {
   endsUtc: string | null;
 }
 
+export interface StoreProfileDto {
+  clientId: string; name: string; slug: string; tagline: string; storyTitle: string; homeDescription: string; story: string;
+  storyImageUrl: string | null; logoUrl: string | null; phone: string | null; whatsAppNumber: string | null;
+  email: string | null; address: string | null; openingHours: string | null; instagramUrl: string | null;
+  facebookUrl: string | null; websiteUrl: string | null;
+}
+
+export interface AboutPageSectionDto {
+  id: string; eyebrow: string; title: string; body: string; imageUrl: string | null;
+  secondaryImageUrl: string | null; layout: 'image-left' | 'image-right' | 'centered' | 'full-bleed' | 'editorial';
+  animation: 'none' | 'fade-up' | 'fade-in' | 'slide-left' | 'slide-right' | 'zoom-in';
+  sortOrder: number; isPublished: boolean;
+}
+
 export interface StoreCollectionDto {
   id: string; kind: 'Hamper' | 'Seasonal'; title: string; slug: string; description: string;
   highlights: string; imageUrl: string | null; navigationLabel: string | null;
@@ -75,6 +89,12 @@ export interface CatalogProductVariantDto {
 export class CatalogApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1`;
+  getAboutSections(): Observable<AboutPageSectionDto[]> {
+    return this.http.get<AboutPageSectionDto[]>(`${this.baseUrl}/about-sections`);
+  }
+  getStoreProfile(): Observable<StoreProfileDto> {
+    return this.http.get<StoreProfileDto>(`${this.baseUrl}/store-profile`);
+  }
   getHeroBanners(): Observable<HeroBannerDto[]> {
     return this.http.get<HeroBannerDto[]>(`${this.baseUrl}/hero-banners`);
   }
