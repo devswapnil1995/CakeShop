@@ -49,6 +49,8 @@ export class AdminComponent implements OnInit {
   readonly aboutSectionsLoading = signal(false);
   readonly aboutSectionSaving = signal(false);
   editingAboutSectionId: string | null = null;
+  readonly aboutPrimaryImageUrl = signal<string | null>(null);
+  readonly aboutSecondaryImageUrl = signal<string | null>(null);
   aboutSectionForm: AboutSectionWrite = this.emptyAboutSection();
 
   private emptyAboutSection(): AboutSectionWrite {
@@ -402,6 +404,8 @@ export class AdminComponent implements OnInit {
   newAboutSection(): void {
     this.editingAboutSectionId = null;
     this.aboutSectionForm = this.emptyAboutSection();
+    this.aboutPrimaryImageUrl.set(null);
+    this.aboutSecondaryImageUrl.set(null);
     this.error.set('');
     this.notice = '';
   }
@@ -410,8 +414,20 @@ export class AdminComponent implements OnInit {
     const { id, ...form } = section;
     this.editingAboutSectionId = id;
     this.aboutSectionForm = { ...form };
+    this.aboutPrimaryImageUrl.set(form.imageUrl ?? null);
+    this.aboutSecondaryImageUrl.set(form.secondaryImageUrl ?? null);
     this.error.set('');
     this.notice = '';
+  }
+
+  setAboutPrimaryImageUrl(value: string | null): void {
+    this.aboutPrimaryImageUrl.set(value);
+    this.aboutSectionForm.imageUrl = value;
+  }
+
+  setAboutSecondaryImageUrl(value: string | null): void {
+    this.aboutSecondaryImageUrl.set(value);
+    this.aboutSectionForm.secondaryImageUrl = value;
   }
 
   saveAboutSection(): void {
@@ -761,8 +777,14 @@ export class AdminComponent implements OnInit {
         switch (target) {
           case "profile-story": this.storeProfileForm.storyImageUrl = result.mediaUrl; break;
           case "profile-logo": this.storeProfileForm.logoUrl = result.mediaUrl; break;
-          case "about-primary": this.aboutSectionForm.imageUrl = result.mediaUrl; break;
-          case "about-secondary": this.aboutSectionForm.secondaryImageUrl = result.mediaUrl; break;
+          case "about-primary":
+            this.aboutSectionForm.imageUrl = result.mediaUrl;
+            this.aboutPrimaryImageUrl.set(result.mediaUrl);
+            break;
+          case "about-secondary":
+            this.aboutSectionForm.secondaryImageUrl = result.mediaUrl;
+            this.aboutSecondaryImageUrl.set(result.mediaUrl);
+            break;
         }
         this.notice = "Image uploaded to Azure Blob Storage. Save the form to keep this change.";
       },
