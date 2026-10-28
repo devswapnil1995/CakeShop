@@ -427,7 +427,7 @@ export class AdminComponent implements OnInit {
       ...f, eyebrow: f.eyebrow.trim(), title: f.title.trim(), body: f.body.trim(),
       imageUrl: f.imageUrl?.trim() || null, secondaryImageUrl: f.secondaryImageUrl?.trim() || null
     };
-    const operation = this.editingAboutSectionId
+    const operation: Observable<unknown> = this.editingAboutSectionId
       ? this.api.updateAboutSection(this.editingAboutSectionId, request)
       : this.api.createAboutSection(request);
     operation.pipe(finalize(() => this.aboutSectionSaving.set(false))).subscribe({
