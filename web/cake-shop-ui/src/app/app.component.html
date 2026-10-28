@@ -593,10 +593,13 @@
       @if (storeProfile()?.phone) {
         <div class="visit-card-row"><span class="visit-icon">☎</span><div><small>CALL US</small><p><a [href]="'tel:' + storeProfile()?.phone">{{ storeProfile()?.phone }}</a></p></div></div>
       }
+      @if (storeProfile()?.whatsAppNumber) {
+        <div class="visit-card-row"><span class="visit-icon">↗</span><div><small>WHATSAPP</small><p><a [href]="getContactWhatsAppUrl()" target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a></p></div></div>
+      }
       @if (storeProfile()?.email) {
         <div class="visit-card-row"><span class="visit-icon">✉</span><div><small>EMAIL</small><p><a [href]="'mailto:' + storeProfile()?.email">{{ storeProfile()?.email }}</a></p></div></div>
       }
-      @if (!storeProfile()?.address && !storeProfile()?.openingHours && !storeProfile()?.phone && !storeProfile()?.email) {
+      @if (!storeProfile()?.address && !storeProfile()?.openingHours && !storeProfile()?.phone && !storeProfile()?.whatsAppNumber && !storeProfile()?.email) {
         <div class="visit-card-row"><span class="visit-icon">♡</span><div><small>ORDERS & ENQUIRIES</small><p>Message us on WhatsApp</p></div></div>
       }
       <div class="visit-social-links">
